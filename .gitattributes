@@ -1,0 +1,7 @@
+*.cs !text !filter !merge !diff
+*.meta !text !filter !merge !diff
+*.unity !text !filter !merge !diff
+*.prefab !text !filter !merge !diff
+*.asset !text !filter !merge !diff
+*.mat !text !filter !merge !diff
+*.txt !text !filter !merge !diff
