@@ -1,9 +1,12 @@
+using DroneCore;
+using MathUtil;
+using RobotCore.Sensors;
+using SimCore;
 using UnityEngine;
-using QuadSim.SimCore;
-using QuadSim.MathUtil;
 
-namespace QuadSim.RobotCore
+namespace RobotCore
 {
+    [RequireComponent(typeof(DroneBody))]
     public sealed class SensorManager : MonoBehaviour, ISimulatable
     {
         [Header("Refs")]
@@ -27,8 +30,8 @@ namespace QuadSim.RobotCore
         private FrequencyLimiter _gpsLimiter;
         private FrequencyLimiter _logLimiter;
 
-        public readonly IMUSensor IMU = new IMUSensor();
-        public readonly GPSSensor GPS = new GPSSensor();
+        public IMUSensor IMU { get; private set; }
+        public GPSSensor GPS { get; private set; }
 
         public SensorData Latest { get; private set; }
 
@@ -47,27 +50,26 @@ namespace QuadSim.RobotCore
         private void Awake()
         {
             ResolveRefsOrThrow();
-            IMU.OutputFrame = outputFrame;
         }
 
         public void OnSimulationStart(SimulationManager sim)
         {
             ResolveRefsOrThrow();
+            
+            IMU = new IMUSensor(rb, bodyTransform);
+            GPS = new GPSSensor(rb);
+            IMU.OutputFrame = outputFrame;
+            IMU.Reset();
+            IMU.Initialize(rb);
 
-            // Create clock-driven limiters using sim time.
-            // Start them at t=now so first ShouldRunAndConsume will fire immediately.
-            long now = 0; // safe because your limiter runs immediately on first call anyway
+            
+            GPS.Reset();
+            GPS.Initialize();
+
+            long now = 0; 
             _imuLimiter = new FrequencyLimiter(imuHz, now);
             _gpsLimiter = new FrequencyLimiter(gpsHz, now);
             _logLimiter = new FrequencyLimiter(logHz <= 0 ? 1e-6 : logHz, now);
-
-            IMU.OutputFrame = outputFrame;
-            IMU.Reset();
-            GPS.Reset();
-
-            IMU.Initialize(rb);
-            GPS.Initialize();
-
             Latest = default;
         }
 
@@ -94,22 +96,24 @@ namespace QuadSim.RobotCore
             // IMU
             if (_imuLimiter.ShouldRunAndConsume(nowNanos))
             {
-                IMU.Sample(rb, bodyTransform, nowSec, (float)dtSec);
+                IMU.Sample(nowSec, (float)dtSec);
 
-                latest.imuAngVelRad = IMU.LastAngVel;
-                latest.imuLinAccMS2 = IMU.LastLinAcc;
-                latest.imuTimestampSec = IMU.LastTimestampSec;
-                latest.imuValid = IMU.IsValid;
+                latest.ImuAngVel = IMU.LastAngVel;
+                latest.ImuAttitude = IMU.LastAtt;
+                latest.ImuAccel = IMU.LastLinAcc;
+                latest.ImuVel = IMU.LastVel;
+                latest.ImuTimestampSec = IMU.LastTimestampSec;
+                latest.ImuValid = IMU.IsValid;
             }
 
             // GPS
             if (_gpsLimiter.ShouldRunAndConsume(nowNanos))
             {
-                GPS.Sample(rb, nowSec);
+                GPS.Sample(nowSec);
 
-                latest.gpsPositionM = GPS.LastPositionWorldM;
-                latest.gpsTimestampSec = GPS.LastTimestampSec;
-                latest.gpsValid = GPS.HasFix;
+                latest.GpsPosition = GPS.LastPositionWorldM;
+                latest.GpsTimestampSec = GPS.LastTimestampSec;
+                latest.GpsValid = GPS.HasFix;
             }
 
             Latest = latest;
@@ -118,14 +122,14 @@ namespace QuadSim.RobotCore
             if (logSensors && _logLimiter.ShouldRunAndConsume(nowNanos))
             {
                 var s = Latest;
-                Vector3 gyroDeg = s.imuAngVelRad * Mathf.Rad2Deg;
+                Vector3 gyroDeg = s.ImuAttitude * Mathf.Rad2Deg;
                 Vector3 eulerWorldDeg = bodyTransform.rotation.eulerAngles;
 
                 Debug.Log(
                     $"[Sensors {outputFrame}] " +
-                    $"gyro(deg/s)={gyroDeg} acc(m/s^2)={s.imuLinAccMS2} " +
+                    $"gyro(deg/s)={gyroDeg} acc(m/s^2)={s.ImuAccel}  vel(m/s)={s.ImuVel}" +
                     $"rotWorld(deg)=(R={eulerWorldDeg.x:F1}, P={eulerWorldDeg.y:F1}, Y={eulerWorldDeg.z:F1}) " +
-                    $"GPS posW(m)={s.gpsPositionM}"
+                    $"GPS posW(m)={s.GpsPosition}"
                 );
 
 

@@ -1,12 +1,14 @@
+using DroneCore.Common;
+using DroneCore.Controllers.Cascades;
+using RobotCore;
+using SimCore;
 using UnityEngine;
-using QuadSim.SimCore;
-using QuadSim.Controllers;
-using QuadSim.MathUtil;
-using QuadSim.RobotCore;
 
-namespace QuadSim.DroneCore
+namespace DroneCore.Controllers
 {
-    public sealed class DroneSim : MonoBehaviour, ISimulatable
+    [RequireComponent(typeof(DroneBody))]
+
+    public sealed class CascadedController : MonoBehaviour, ISimulatable
     {
         [SerializeField] private DroneBody body;
         [SerializeField] private ThrusterSet thrusters;
@@ -21,7 +23,7 @@ namespace QuadSim.DroneCore
         public float maxThrottleDelta = 0.25f;
 
         [Header("Z PID")]
-        public QuadPidController zPid = new QuadPidController
+        public QuadPIDController zPid = new QuadPIDController
         {
             Kp = 1.5f, Ki = 0.2f, Kd = 0.4f,
             MinOutput = -0.25f, MaxOutput = 0.25f,
@@ -61,17 +63,17 @@ namespace QuadSim.DroneCore
 
             // Initialize gains from your YAML defaults (rate_gains)
             // Outputs are mix terms; limits are important.
-            acro.Roll.SetGains(0.35f, 0.02f, 0.0001f);
-            acro.Pitch.SetGains(0.35f, 0.02f, 0.0001f);
-            acro.Yaw.SetGains(1.0f, 0.0f, 0.0f);
+            acro.roll.SetGains(0.35f, 0.02f, 0.0001f);
+            acro.pitch.SetGains(0.35f, 0.02f, 0.0001f);
+            acro.yaw.SetGains(1.0f, 0.0f, 0.0f);
 
-            acro.Roll.SetLimits(-0.35f, 0.35f);
-            acro.Pitch.SetLimits(-0.5f, 0.5f);
-            acro.Yaw.SetLimits(-0.5f, 0.5f);
+            acro.roll.SetLimits(-0.35f, 0.35f);
+            acro.pitch.SetLimits(-0.5f, 0.5f);
+            acro.yaw.SetLimits(-0.5f, 0.5f);
 
-            acro.Roll.SetIntegralLimits(2.0f);
-            acro.Pitch.SetIntegralLimits(2.0f);
-            acro.Yaw.SetIntegralLimits(2.0f);
+            acro.roll.SetIntegralLimits(2.0f);
+            acro.pitch.SetIntegralLimits(2.0f);
+            acro.yaw.SetIntegralLimits(2.0f);
         }
 
         public void OnSimulationStart(SimulationManager sim)
@@ -112,8 +114,8 @@ namespace QuadSim.DroneCore
 
             Vector3 measuredRates = Vector3.zero;
             var s = sensorManager.Latest;
-            if (s.imuValid)
-                measuredRates = s.imuAngVelRad;
+            if (s.ImuValid)
+                measuredRates = s.ImuAngVel;
 
             Vector3 desiredRates = desiredRatesDeg * Mathf.Deg2Rad;
 

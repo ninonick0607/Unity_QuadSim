@@ -1,4 +1,4 @@
-namespace QuadSim.Controllers
+namespace DroneCore.Controllers.Cascades
 {
     public class AngleController
     {

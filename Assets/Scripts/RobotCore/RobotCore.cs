@@ -1,7 +1,9 @@
+using DroneCore;
 using UnityEngine;
 
-namespace QuadSim.RobotCore
+namespace RobotCore
 {
+    [RequireComponent(typeof(DroneBody))]
     public sealed class RobotCore : MonoBehaviour
     {
         [SerializeField] private SensorManager sensors;
