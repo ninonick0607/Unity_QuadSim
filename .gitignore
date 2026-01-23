@@ -1,3 +1,4 @@
+# Unity
 [Ll]ibrary/
 [Tt]emp/
 [Oo]bj/
@@ -5,17 +6,25 @@
 [Bb]uilds/
 [Ll]ogs/
 [Uu]ser[Ss]ettings/
-[Mm]emoryCaptures/
 
-# IDE
-.vscode/
+# Rider / VS / CLion
 .idea/
+.vscode/
 *.csproj
 *.sln
 *.user
-*.userprefs
+*.pidb
+*.booproj
 
 # OS
 .DS_Store
 Thumbs.db
-	
+
+# Crash reports
+sysinfo.txt
+
+# Addressables
+Assets/AddressableAssetsData/*/*.bin*
+
+# Gradle
+.gradle/
