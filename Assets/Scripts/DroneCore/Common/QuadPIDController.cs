@@ -1,9 +1,9 @@
 using UnityEngine;
 
-namespace QuadSim.Controllers
+namespace DroneCore.Common
 {
     [System.Serializable]
-    public sealed class QuadPidController
+    public sealed class QuadPIDController
     {
         public float Kp = 0f;
         public float Ki = 0f;

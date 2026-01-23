@@ -49,25 +49,30 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets/Scripts/RobotCore/SensorManager.cs" />
-    <Compile Include="Assets/Scripts/MathUtil/BodyRates.cs" />
+    <Compile Include="Assets/Scripts/DroneCore/Common/EffectivenessAllocator4.cs" />
+    <Compile Include="Assets/Scripts/DroneCore/Debug/DroneDebugDraw.cs" />
     <Compile Include="Assets/Scripts/RobotCore/RobotCore.cs" />
-    <Compile Include="Assets/Scripts/DroneCore/DroneSim.cs" />
-    <Compile Include="Assets/Scripts/DroneCore/DroneDebugDraw.cs" />
     <Compile Include="Assets/Scripts/MathUtil/Frames.cs" />
-    <Compile Include="Assets/Scripts/DroneCore/DroneGizmos.cs" />
-    <Compile Include="Assets/Scripts/DroneCore/Controllers/AcroController.cs" />
-    <Compile Include="Assets/Scripts/DroneCore/Controllers/AngleController.cs" />
+    <Compile Include="Assets/Scripts/DroneCore/DroneRootBootstrap.cs" />
+    <Compile Include="Assets/Scripts/UI/SimTopBarController.cs" />
+    <Compile Include="Assets/Scripts/DroneCore/Controllers/CascadedController.cs" />
+    <Compile Include="Assets/Scripts/DroneCore/Common/QuadPIDController.cs" />
+    <Compile Include="Assets/Scripts/DroneCore/Controllers/Cascades/AngleController.cs" />
+    <Compile Include="Assets/Scripts/DroneCore/Common/ThrusterSet.cs" />
     <Compile Include="Assets/Scripts/SimCore/SimClock.cs" />
-    <Compile Include="Assets/Scripts/DroneCore/Controllers/QuadPidController.cs" />
     <Compile Include="Assets/Scripts/RobotCore/SensorData.cs" />
     <Compile Include="Assets/Scripts/SimCore/SimulationManager.cs" />
-    <Compile Include="Assets/Scripts/DroneCore/ThrusterSet.cs" />
     <Compile Include="Assets/Scripts/SimCore/FrequencyLimiter.cs" />
     <Compile Include="Assets/Scripts/RobotCore/Sensors/GPSSensor.cs" />
     <Compile Include="Assets/Scripts/DroneCore/DroneBody.cs" />
+    <Compile Include="Assets/Scripts/DroneCore/Core/DroneManager.cs" />
+    <Compile Include="Assets/Scripts/DroneCore/Controllers/Cascades/AcroController.cs" />
     <Compile Include="Assets/Scripts/RobotCore/Sensors/IMUSensor.cs" />
     <Compile Include="Assets/Scripts/SimCore/ClockFactory.cs" />
-    <Compile Include="Assets/Scripts/DroneCore/Controllers/EffectivenessAllocator4.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Assets/UI/SimTopBar.uss" />
+    <None Include="Assets/UI/SimTopBar.uxml" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">

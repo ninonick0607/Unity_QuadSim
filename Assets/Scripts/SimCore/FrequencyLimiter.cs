@@ -1,7 +1,8 @@
 // Assets/Scripts/SimCore/FrequencyLimiter.cs
+
 using System;
 
-namespace QuadSim.SimCore
+namespace SimCore
 {
     /// <summary>
     /// Clock-driven frequency limiter (sim-time), similar to your UE FrequencyLimiter.

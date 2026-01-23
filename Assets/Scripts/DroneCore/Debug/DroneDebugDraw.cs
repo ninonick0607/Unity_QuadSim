@@ -1,7 +1,7 @@
+using MathUtil;
 using UnityEngine;
-using QuadSim.MathUtil;
 
-namespace QuadSim.DroneCore
+namespace DroneCore
 {
     public sealed class DroneDebugDraw : MonoBehaviour
     {

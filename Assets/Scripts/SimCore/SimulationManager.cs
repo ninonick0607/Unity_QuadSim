@@ -1,9 +1,10 @@
 // Assets/Scripts/SimCore/SimulationManager.cs
+
 using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace QuadSim.SimCore
+namespace SimCore
 {
     /// <summary>
     /// Unity equivalent to your UE SimulationManager/TimeController backbone:
@@ -55,6 +56,14 @@ namespace QuadSim.SimCore
         public double BaseDtSec => ClockFactory.BaseDtSec;
         public RunMode Mode => runMode;
 
+        public bool IsPaused => ClockFactory.Scaled.IsPaused;
+
+        public void SetTimeScale(double ts)
+        {
+            timeScale = ts;
+            ClockFactory.SetTimeScale(timeScale);
+        }
+        
         private void Awake()
         {
             Physics.simulationMode = SimulationMode.Script;
@@ -189,7 +198,7 @@ namespace QuadSim.SimCore
 
             // Find all MonoBehaviours that implement ISimulatable.
             // (This is fine early; later you can replace with explicit registration for performance.)
-            var behaviours = FindObjectsOfType<MonoBehaviour>(includeInactive: false);
+            var behaviours = FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             for (int i = 0; i < behaviours.Length; i++)
             {
                 if (behaviours[i] is ISimulatable s && behaviours[i] != this)

@@ -1,7 +1,8 @@
 // Assets/Scripts/SimCore/ClockFactory.cs
+
 using System;
 
-namespace QuadSim.SimCore
+namespace SimCore
 {
     /// <summary>
     /// Central clock registry. Everything in the sim should reference time through here.

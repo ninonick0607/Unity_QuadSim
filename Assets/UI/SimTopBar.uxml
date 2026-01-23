@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="TopBarRoot" class="topbar-root">
+        <ui:VisualElement class="row">
+
+            <ui:VisualElement class="left">
+                <ui:Button name="BtnSettings" text="Settings" class="btn" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="spacer" />
+
+            <ui:VisualElement class="center">
+                <ui:Button name="BtnSlower" text="&lt;&lt;" class="btn" />
+                <ui:Button name="BtnPlayPause" text="PAUSE" class="btn btn-wide" />
+                <ui:Button name="BtnStep" text="Step" class="btn" />
+                <ui:Button name="BtnFaster" text="&gt;&gt;" class="btn" />
+
+                <ui:VisualElement class="speed-box">
+                    <ui:Label name="LblSpeed" text="x1.00" class="speed-label" />
+                </ui:VisualElement>
+
+                <ui:Button name="BtnReset" text="Reset" class="btn" />
+                <ui:Button name="BtnSpawn" text="Spawn" class="btn" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="spacer" />
+
+            <ui:VisualElement class="right">
+                <ui:Button name="BtnTelemetry" text="Telemetry" class="btn" />
+                <ui:Button name="BtnInspector" text="Control Panel" class="btn" />
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

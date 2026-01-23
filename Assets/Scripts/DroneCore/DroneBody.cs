@@ -1,8 +1,9 @@
 using System;
 using UnityEngine;
 
-namespace QuadSim.DroneCore
+namespace DroneCore
 {
+    [RequireComponent(typeof(Rigidbody))]
     public sealed class DroneBody : MonoBehaviour
     {
         [Header("Core")]

@@ -1,7 +1,8 @@
 // Assets/Scripts/SimCore/SimClock.cs
+
 using System;
 
-namespace QuadSim.SimCore
+namespace SimCore
 {
     /// <summary>
     /// Authoritative simulation clock. Use this everywhere (controllers, sensors, limiters, IO).

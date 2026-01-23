@@ -1,12 +1,13 @@
 using System;
 using UnityEngine;
-
-namespace QuadSim.DroneCore
+/*Will be Deprecated Soon*/
+namespace DroneCore.Common
 {
     /// <summary>
     /// Applies per-motor thrust using AddForceAtPosition (physical rotor wrench).
     /// Commands are normalized [0..1] and mapped to Newtons.
     /// </summary>
+    [RequireComponent(typeof(DroneBody))]
     public sealed class ThrusterSet : MonoBehaviour
     {
         [Header("Refs")]
@@ -14,7 +15,7 @@ namespace QuadSim.DroneCore
 
         [Header("Thrust Model")]
         [Tooltip("Max thrust per motor in Newtons at command=1.")]
-        [SerializeField] private float maxThrustPerMotorN = 12.0f;
+        [SerializeField] private float maxThrustPerMotorN = 4.12f;
 
         [Tooltip("Clamp commands to [0..1].")]
         [SerializeField] private bool clamp01 = true;
@@ -23,6 +24,7 @@ namespace QuadSim.DroneCore
         [Tooltip("If >0, applies a body yaw torque proportional to thrust. Units: Nm per Newton.")]
         [SerializeField] private float yawTorquePerNewton = 0.02f; // start small
 
+        
         [Tooltip("Motor spin direction: +1 or -1 per motor. Typical X quad: [-1,+1,+1,-1] depending on layout.")]
         [SerializeField] private int[] spinDirection = new[] { +1, -1, -1, +1 }; // FL FR BL BR
         public int[] SpinDirection => spinDirection;

@@ -1,13 +1,19 @@
 using UnityEngine;
 
-namespace QuadSim.RobotCore
+namespace RobotCore.Sensors
 {
     public sealed class GPSSensor
     {
+        private Rigidbody _rb;
+
         public Vector3 LastPositionWorldM { get; private set; }
         public double LastTimestampSec { get; private set; }
         public bool HasFix { get; private set; }
 
+        public GPSSensor(Rigidbody inRb)
+        {
+            _rb = inRb;
+        }
         public void Reset()
         {
             LastPositionWorldM = Vector3.zero;
@@ -21,15 +27,15 @@ namespace QuadSim.RobotCore
             HasFix = true;
         }
 
-        public void Sample(Rigidbody rb, double nowSec)
+        public void Sample(double nowSec)
         {
-            if (rb == null)
+            if (_rb == null)
             {
                 HasFix = false;
                 return;
             }
 
-            LastPositionWorldM = rb.position; // Unity units are meters
+            LastPositionWorldM = _rb.position; // Unity units are meters
             LastTimestampSec = nowSec;
             HasFix = true;
         }

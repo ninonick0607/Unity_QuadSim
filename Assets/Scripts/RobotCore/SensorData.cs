@@ -1,20 +1,21 @@
 using UnityEngine;
 
-namespace QuadSim.RobotCore
+namespace RobotCore
 {
-    // Keep it simple for now; add validity + timestamps like UE.
     public struct SensorData
     {
         // IMU (frame: selected output frame)
-        public Vector3 imuAngVelRad;     // rad/s
-        public Vector3 imuLinAccMS2;     // m/s^2 (see note below on gravity)
-        public Quaternion imuOrientation;// orientation in chosen frame (optional for now)
-        public double imuTimestampSec;
-        public bool imuValid;
+        public Vector3 ImuAngVel;  
+        public Vector3 ImuAttitude;
+        public Vector3 ImuAccel;     
+        public Vector3 ImuVel;
+        public Quaternion ImuOrientation;
+        public double ImuTimestampSec;
+        public bool ImuValid;
 
         // GPS
-        public Vector3 gpsPositionM;     // meters (world or frame-defined; we will pick one)
-        public double gpsTimestampSec;
-        public bool gpsValid;
+        public Vector3 GpsPosition;    
+        public double GpsTimestampSec;
+        public bool GpsValid;
     }
 }

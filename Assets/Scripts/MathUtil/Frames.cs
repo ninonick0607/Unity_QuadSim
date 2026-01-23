@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace QuadSim.MathUtil
+namespace MathUtil
 {
     public enum SimFrame
     {

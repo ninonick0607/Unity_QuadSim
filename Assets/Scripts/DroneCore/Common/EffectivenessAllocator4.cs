@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace QuadSim.Controllers
+namespace DroneCore.Common
 {
     /// <summary>
     /// UE-style effectiveness allocator for a 4-motor quad.
@@ -82,10 +82,13 @@ namespace QuadSim.Controllers
                 // pitch axis = +RIGHT = -Z (body)  <-- critical for your +Z-left model
                 // yaw axis   = +Y (body)
                 float rollEff  = arm.x;
+                
+                // TODO: Make this implicit, hide it in robotcore
                 float pitchEff = -arm.z;
                 float yawEff   = arm.y + (spinDir[m] * yawTorquePerNewton);
 
                 // Thrust effectiveness: along +Y (up) divided by N (matches UE /NumMotors)
+                // TODO: Def use NumMotors when we implement yaml
                 float thrustEff = thrustDirBody.y / 4f;
 
                 _E[0, m] = rollEff;
