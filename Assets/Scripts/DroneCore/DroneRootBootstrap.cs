@@ -24,9 +24,9 @@ public sealed class DroneRootBootstrap : MonoBehaviour
     {
         var rb       = GetOrAdd<Rigidbody>(gameObject);
         var body     = GetOrAdd<DroneBody>(gameObject);
-        var sensors  = GetOrAdd<SensorManager>(gameObject);
         var thr      = GetOrAdd<ThrusterSet>(gameObject);
         var ctrl     = GetOrAdd<CascadedController>(gameObject);
+        var sensors  = GetOrAdd<SensorManager>(gameObject);
         var core     = GetOrAdd<RobotCore.RobotCore>(gameObject);
 
         //if (ensureMotorChildren) EnsureMotorChildren(transform);
@@ -35,10 +35,11 @@ public sealed class DroneRootBootstrap : MonoBehaviour
         body.AutoWireIfNeeded();
         body.ValidateOrThrow();
 
+        rb.mass = 1.28f;
         // Basic RB defaults (optional)
-        rb.interpolation = RigidbodyInterpolation.Interpolate;
-        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-        rb.maxAngularVelocity = 100f;
+        rb.interpolation = RigidbodyInterpolation.None;
+        rb.collisionDetectionMode = CollisionDetectionMode.Discrete;
+        //rb.maxAngularVelocity = 100f;
     }
 
     private static T GetOrAdd<T>(GameObject go) where T : Component

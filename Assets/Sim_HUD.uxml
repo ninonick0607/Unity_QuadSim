@@ -1,0 +1,10 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <ui:Template name="TelemetryTemplate" src="project://database/Assets/UI/SimTelemetryPanel.uxml?fileID=9197481963319205126&amp;guid=c27b216044d742d886a0909f10c6fc83&amp;type=3#SimTelemetryPanel"/>
+    <ui:Template name="TopBarTemplate" src="project://database/Assets/UI/SimTopBar.uxml?fileID=9197481963319205126&amp;guid=36abc863f0254f4a82bca143d2174686&amp;type=3#SimTopBar"/>
+    <Style src="project://database/Assets/UI/SimTopBar.uss?fileID=7433441132597879392&amp;guid=b005bee63b7f46d7b6cf51ad2a2d9198&amp;type=3#SimTopBar"/>
+    <Style src="project://database/Assets/UI/SimTelemetryPanel.uss?fileID=7433441132597879392&amp;guid=f553dcd68bb8429c9875002a17cc0856&amp;type=3#SimTelemetryPanel"/>
+    <ui:VisualElement name="HUDRoot" class="hud-root">
+        <ui:Instance template="TopBarTemplate"/>
+        <ui:Instance template="TelemetryTemplate"/>
+    </ui:VisualElement>
+</ui:UXML>

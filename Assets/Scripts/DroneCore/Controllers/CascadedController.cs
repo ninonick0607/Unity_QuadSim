@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using DroneCore.Common;
 using DroneCore.Controllers.Cascades;
 using RobotCore;
@@ -49,8 +50,11 @@ namespace DroneCore.Controllers
 
         [Tooltip("Scale yaw authority like your UE yawAuthorityScale (start small).")]
         public float yawAuthorityScale = 0.03f;
-        
+
         private readonly float[] _motor = new float[4];
+        public IReadOnlyList<float> LastMotor01 => _motor;
+        public Vector3 DesiredRatesRad => desiredRatesDeg * Mathf.Deg2Rad;
+        public Vector3 MeasuredRatesRad => sensorManager != null && sensorManager.Latest.ImuValid ? sensorManager.Latest.ImuAngVel : Vector3.zero;
 
         public int ExecutionOrder => 100;
         public string DebugName => name;

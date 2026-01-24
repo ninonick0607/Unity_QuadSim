@@ -52,10 +52,14 @@
     <Compile Include="Assets/Scripts/DroneCore/Common/EffectivenessAllocator4.cs" />
     <Compile Include="Assets/Scripts/DroneCore/Debug/DroneDebugDraw.cs" />
     <Compile Include="Assets/Scripts/RobotCore/RobotCore.cs" />
+    <Compile Include="Assets/Scripts/UI/Core/TelemetryRingBuffer.cs" />
+    <Compile Include="Assets/Scripts/UI/DockableWindowController.cs" />
     <Compile Include="Assets/Scripts/MathUtil/Frames.cs" />
     <Compile Include="Assets/Scripts/DroneCore/DroneRootBootstrap.cs" />
     <Compile Include="Assets/Scripts/UI/SimTopBarController.cs" />
     <Compile Include="Assets/Scripts/DroneCore/Controllers/CascadedController.cs" />
+    <Compile Include="Assets/Scripts/UI/Core/TelemetryGraphElement.cs" />
+    <Compile Include="Assets/Scripts/UI/TelemetryDeckController.cs" />
     <Compile Include="Assets/Scripts/DroneCore/Common/QuadPIDController.cs" />
     <Compile Include="Assets/Scripts/DroneCore/Controllers/Cascades/AngleController.cs" />
     <Compile Include="Assets/Scripts/DroneCore/Common/ThrusterSet.cs" />
@@ -65,6 +69,7 @@
     <Compile Include="Assets/Scripts/SimCore/FrequencyLimiter.cs" />
     <Compile Include="Assets/Scripts/RobotCore/Sensors/GPSSensor.cs" />
     <Compile Include="Assets/Scripts/DroneCore/DroneBody.cs" />
+    <Compile Include="Assets/Scripts/UI/SimHUDController.cs" />
     <Compile Include="Assets/Scripts/DroneCore/Core/DroneManager.cs" />
     <Compile Include="Assets/Scripts/DroneCore/Controllers/Cascades/AcroController.cs" />
     <Compile Include="Assets/Scripts/RobotCore/Sensors/IMUSensor.cs" />
@@ -72,6 +77,10 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets/UI/SimTopBar.uss" />
+    <None Include="Assets/Sim_HUD.uxml" />
+    <None Include="Assets/UI/SimTelemetryPanel.uxml" />
+    <None Include="Assets/UI/SimHUDRoot.uxml" />
+    <None Include="Assets/UI/SimTelemetryPanel.uss" />
     <None Include="Assets/UI/SimTopBar.uxml" />
   </ItemGroup>
   <ItemGroup>
