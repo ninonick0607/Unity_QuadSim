@@ -87,6 +87,8 @@ namespace RobotCore
         public void PrePhysicsStep(double dtSec, long nowNanos)
         {
             double nowSec = nowNanos * 1e-9;
+            if (_logLimiter.ShouldRunAndConsume(nowNanos))
+                Debug.Log($"[Sensor] nowNanos={nowNanos} imuValid={Latest.ImuValid}");
 
             // keep output frame synced
             IMU.OutputFrame = outputFrame;
@@ -117,24 +119,7 @@ namespace RobotCore
             }
 
             Latest = latest;
-
-            // debug log at logHz using same limiter style
-            if (logSensors && _logLimiter.ShouldRunAndConsume(nowNanos))
-            {
-                var s = Latest;
-                Vector3 gyroDeg = s.ImuAttitude * Mathf.Rad2Deg;
-                Vector3 eulerWorldDeg = bodyTransform.rotation.eulerAngles;
-
-                Debug.Log(
-                    $"[Sensors {outputFrame}] " +
-                    $"gyro(deg/s)={gyroDeg} acc(m/s^2)={s.ImuAccel}  vel(m/s)={s.ImuVel}" +
-                    $"rotWorld(deg)=(R={eulerWorldDeg.x:F1}, P={eulerWorldDeg.y:F1}, Y={eulerWorldDeg.z:F1}) " +
-                    $"GPS posW(m)={s.GpsPosition}"
-                );
-
-
-
-            }
+            
         }
 
         public void PostPhysicsStep(double dtSec, long nowNanos) { }

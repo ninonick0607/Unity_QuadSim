@@ -5,66 +5,59 @@ using SimCore;
 
 namespace QuadSim.UI
 {
-    public interface IDroneSpawner
-    {
-        void SpawnDrone();
-    }
-
     [DisallowMultipleComponent]
     public sealed class SimTopBarController : MonoBehaviour
     {
-        [Header("Refs (optional)")]
+        [Header("Optional refs")]
         [SerializeField] private SimulationManager sim;
         [SerializeField] private MonoBehaviour droneSpawner; // must implement IDroneSpawner
 
-        [Header("Callbacks (optional)")]
-        public Action OnToggleSettings;
-        public Action OnToggleInspector;
-        public Action OnToggleTelemetry;
+        // Exposed hooks (wired by SimHUDController)
+        public Action OnSettingsPressed;
+        public Action OnInspectorPressed;
+        public Action OnTelemetryPressed;
 
         private Button _btnSettings, _btnSlower, _btnPlayPause, _btnStep, _btnFaster, _btnReset, _btnSpawn, _btnTelemetry, _btnInspector;
         private Label _lblSpeed;
 
         private float _currentSpeedScale = 1.0f;
 
-        private void Awake()
+        public void Initialize(VisualElement hudRoot)
         {
             if (sim == null) sim = FindFirstObjectByType<SimulationManager>();
 
-            var doc = GetComponent<UIDocument>();
-            if (doc == null) throw new Exception("SimTopBarController requires a UIDocument on the same GameObject.");
+            // IMPORTANT: hudRoot is your compositor root, not document root
+            var top = hudRoot.Q<VisualElement>("TopBarRoot");
+            if (top == null) Debug.LogError("[TopBar] Could not find TopBarRoot in UXML.");
 
-            var root = GetComponent<UIDocument>().rootVisualElement;
-            root.style.backgroundColor = new Color(1, 0, 0, 0.5f);
-            
-            _btnSettings  = root.Q<Button>("BtnSettings");
-            _btnSlower    = root.Q<Button>("BtnSlower");
-            _btnPlayPause = root.Q<Button>("BtnPlayPause");
-            _btnStep      = root.Q<Button>("BtnStep");
-            _btnFaster    = root.Q<Button>("BtnFaster");
-            _btnReset     = root.Q<Button>("BtnReset");
-            _btnSpawn     = root.Q<Button>("BtnSpawn");
-            _btnTelemetry = root.Q<Button>("BtnTelemetry");
-            _btnInspector = root.Q<Button>("BtnInspector");
-            _lblSpeed     = root.Q<Label>("LblSpeed");
+            _btnSettings  = hudRoot.Q<Button>("BtnSettings");
+            _btnSlower    = hudRoot.Q<Button>("BtnSlower");
+            _btnPlayPause = hudRoot.Q<Button>("BtnPlayPause");
+            _btnStep      = hudRoot.Q<Button>("BtnStep");
+            _btnFaster    = hudRoot.Q<Button>("BtnFaster");
+            _btnReset     = hudRoot.Q<Button>("BtnReset");
+            _btnSpawn     = hudRoot.Q<Button>("BtnSpawn");
+            _btnTelemetry = hudRoot.Q<Button>("BtnTelemetry");
+            _btnInspector = hudRoot.Q<Button>("BtnInspector");
+            _lblSpeed     = hudRoot.Q<Label>("LblSpeed");
 
             if (_btnSettings == null || _btnPlayPause == null || _lblSpeed == null)
-                throw new Exception("SimTopBar UXML is missing expected named elements.");
+                throw new Exception("[TopBar] UXML is missing expected named elements.");
 
-            // Tooltips (optional)
             _btnStep.tooltip = "Advance one physics step";
 
-            // Wire UI actions
-            _btnSettings.clicked  += () => OnToggleSettings?.Invoke();
-            _btnTelemetry.clicked += () => OnToggleTelemetry?.Invoke();
-            _btnInspector.clicked += () => OnToggleInspector?.Invoke();
+            // UI actions -> events
+            _btnSettings.clicked  += () => OnSettingsPressed?.Invoke();
+            _btnInspector.clicked += () => OnInspectorPressed?.Invoke();
+            _btnTelemetry.clicked += () => OnTelemetryPressed?.Invoke();
 
-            _btnSlower.clicked += Slower;
-            _btnFaster.clicked += Faster;
-            _btnStep.clicked += StepOnce;
+            // Time controls
+            _btnSlower.clicked    += Slower;
+            _btnFaster.clicked    += Faster;
+            _btnStep.clicked      += StepOnce;
             _btnPlayPause.clicked += PlayPause;
-            _btnReset.clicked += ResetSim;
-            _btnSpawn.clicked += SpawnDrone;
+            _btnReset.clicked     += ResetSim;
+            _btnSpawn.clicked     += SpawnDrone;
 
             RefreshLabels();
         }
@@ -90,10 +83,7 @@ namespace QuadSim.UI
         private void PlayPause()
         {
             if (sim == null) return;
-
-            // Your SimulationManager already has TogglePaused()
             sim.TogglePaused();
-
             RefreshLabels();
         }
 
@@ -101,37 +91,28 @@ namespace QuadSim.UI
         {
             if (sim == null) return;
 
-            
             _currentSpeedScale = 1.0f;
             sim.SetRunMode(SimulationManager.RunMode.FreeRun);
             sim.SetPaused(false);
 
-            // Ensure timescale is applied (ClockFactory)
             ApplyTimeScale();
-
             sim.ResetSimulation();
+
             RefreshLabels();
-            
         }
 
         private void SpawnDrone()
         {
-            if (droneSpawner is IDroneSpawner spawner)
-            {
-                spawner.SpawnDrone();
-                return;
-            }
-            // optional fallback: do nothing
+            // if (droneSpawner is IDroneSpawner spawner)
+            // {
+            //     spawner.SpawnDrone();
+            // }
         }
 
         private void ApplyTimeScale()
         {
-            // SimulationManager syncs timeScale in Update -> ClockFactory.SetTimeScale(timeScale)
-            // So we need to write to its serialized field or expose a method.
-            // Add this method to SimulationManager: SetTimeScale(double ts)
             if (sim == null) return;
             sim.SetTimeScale(_currentSpeedScale);
-
             RefreshLabels();
         }
 
