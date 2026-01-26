@@ -1,0 +1,30 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="TopBarRoot" class="topbar-root qs-surface-0">
+        <ui:VisualElement class="row topbar-row">
+            <ui:Button name="BtnSettings" text="Settings" class="qs-btn" />
+
+            <ui:VisualElement class="spacer" />
+
+            <!-- Time controls -->
+            <ui:VisualElement class="row topbar-group">
+                <!-- TODO : CHANGE THIS TO <<-->
+                <ui:Button name="BtnSlower" text="Slower'" class="qs-btn" />
+        <ui:Button name="BtnPlayPause" text="PAUSE" class="qs-btn qs-accent-solid" />
+                <ui:Button name="BtnStep" text="Step" class="qs-btn" />
+                <ui:Button name="BtnFaster" text=">>" class="qs-btn" />
+                <ui:Label name="LblSpeed" text="x1.00" class="qs-title" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="row topbar-group">
+                <ui:Button name="BtnReset" text="Reset" class="qs-btn" />
+                <ui:DropdownField name="SpawnDropdown" class="qs-btn" />
+                <ui:Button name="BtnSpawn" text="Spawn" class="qs-btn qs-accent-bg" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="spacer" />
+
+            <ui:Button name="BtnTelemetry" text="Telemetry" class="qs-btn" />
+            <ui:Button name="BtnInspector" text="Control" class="qs-btn" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

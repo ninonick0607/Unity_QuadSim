@@ -260,6 +260,17 @@ namespace QuadSim.UI
                 evt.StopPropagation();
             });
         }
+        public void BringToFront()
+        {
+            if (_window == null) return;
+
+            var p = _window.parent;
+            if (p == null) return;
+
+            // Remove + re-add makes it last sibling (front-most)
+            p.Remove(_window);
+            p.Add(_window);
+        }
 
         private void HookResizeEdge(VisualElement handle, int dirX, int dirY)
         {

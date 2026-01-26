@@ -1,0 +1,137 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+  <ui:VisualElement name="ControlRoot" class="control-root qs-surface-1 qs-border qs-radius is-hidden">
+
+    <ui:VisualElement name="ControlTitleBar" class="window-titlebar row">
+      <ui:Label text="Control" class="qs-title" />
+      <ui:VisualElement class="spacer" />
+      <ui:Label name="WipLabel" text="WIP (only Cascade+Acro writes)" class="qs-label" />
+    </ui:VisualElement>
+
+    <ui:VisualElement class="content col">
+
+      <!-- Drone selector -->
+      <ui:VisualElement class="row section">
+        <ui:Label text="Target" class="qs-label section-label" />
+        <ui:DropdownField name="DroneDropdown" class="dropdown" />
+      </ui:VisualElement>
+      
+      <!-- Target drone -->
+      <ui:VisualElement class="state-card mt0">
+        <ui:VisualElement class="state-card-header">
+          <ui:Label text="Target" class="state-card-title" />
+          <ui:VisualElement class="spacer" />
+        </ui:VisualElement>
+
+        <ui:DropdownField name="DroneDropdown" class="control-field mr0" />
+      </ui:VisualElement>
+
+      <!-- Controllers -->
+      <ui:VisualElement class="col section">
+        <ui:Label text="Controller" class="qs-title" />
+        <ui:VisualElement class="row btngroup">
+          <ui:Button name="CtrlCascade" text="Cascade" class="qs-btn active" />
+          <ui:Button name="CtrlGeometric" text="Geometric" class="qs-btn" />
+          <ui:Button name="CtrlApi" text="API" class="qs-btn" />
+        </ui:VisualElement>
+      </ui:VisualElement>
+
+      <!-- GameMode -->
+      <ui:VisualElement class="col section">
+        <ui:Label text="GameMode" class="qs-title" />
+        <ui:VisualElement class="row btngroup wrap">
+          <ui:Button name="ModePosition" text="Position" class="qs-btn" />
+          <ui:Button name="ModeVelocity" text="Velocity" class="qs-btn" />
+          <ui:Button name="ModeAngle" text="Angle" class="qs-btn" />
+          <ui:Button name="ModeAcro" text="Acro" class="qs-btn active" />
+          <ui:Button name="ModePassthrough" text="Passthrough" class="qs-btn" />
+        </ui:VisualElement>
+      </ui:VisualElement>
+
+      <!-- Foldouts -->
+      <ui:Foldout name="FoldClamps" text="Clamps / Drone Settings" class="fold">
+        <ui:VisualElement class="col clamp-grid">
+          <ui:VisualElement class="row clamp-row">
+            <ui:Label text="Roll" class="qs-label clamp-label" />
+            <ui:FloatField name="ClampMinRoll" class="num" />
+            <ui:FloatField name="ClampMaxRoll" class="num" />
+          </ui:VisualElement>
+          <ui:VisualElement class="row clamp-row">
+            <ui:Label text="Pitch" class="qs-label clamp-label" />
+            <ui:FloatField name="ClampMinPitch" class="num" />
+            <ui:FloatField name="ClampMaxPitch" class="num" />
+          </ui:VisualElement>
+          <ui:VisualElement class="row clamp-row">
+            <ui:Label text="Yaw" class="qs-label clamp-label" />
+            <ui:FloatField name="ClampMinYaw" class="num" />
+            <ui:FloatField name="ClampMaxYaw" class="num" />
+          </ui:VisualElement>
+        </ui:VisualElement>
+      </ui:Foldout>
+
+      <ui:Foldout name="FoldInputs" text="Inputs" class="fold" value="true">
+        <ui:VisualElement name="InputsContainer" class="col inputs">
+
+          <!-- Roll -->
+          <ui:VisualElement class="axis-row">
+            <ui:Label text="Roll" class="qs-label axis-label" />
+            <ui:Slider name="SliderRoll" class="axis-slider" />
+            <ui:FloatField name="InputRoll" class="num axis-num" />
+            <ui:Label name="ReadoutRoll" text="0.0" class="qs-value axis-readout" />
+          </ui:VisualElement>
+
+          <!-- Pitch -->
+          <ui:VisualElement class="axis-row">
+            <ui:Label text="Pitch" class="qs-label axis-label" />
+            <ui:Slider name="SliderPitch" class="axis-slider" />
+            <ui:FloatField name="InputPitch" class="num axis-num" />
+            <ui:Label name="ReadoutPitch" text="0.0" class="qs-value axis-readout" />
+          </ui:VisualElement>
+
+          <!-- Yaw -->
+          <ui:VisualElement class="axis-row">
+            <ui:Label text="Yaw" class="qs-label axis-label" />
+            <ui:Slider name="SliderYaw" class="axis-slider" />
+            <ui:FloatField name="InputYaw" class="num axis-num" />
+            <ui:Label name="ReadoutYaw" text="0.0" class="qs-value axis-readout" />
+          </ui:VisualElement>
+
+          <ui:VisualElement class="row section">
+            <ui:VisualElement class="spacer" />
+            <ui:Button name="BtnResetInputs" text="Reset all to 0" class="qs-btn qs-accent-bg" />
+          </ui:VisualElement>
+
+          <ui:VisualElement class="control-clamp-actions">
+            <ui:VisualElement class="spacer" />
+            <ui:Button name="BtnResetInputs" text="Reset all to 0" class="tab mr0" />
+          </ui:VisualElement>
+
+
+        </ui:VisualElement>
+      </ui:Foldout>
+
+      <ui:VisualElement class="spacer" />
+
+      <!-- Bottom actions -->
+      <ui:VisualElement class="row bottom-actions">
+        <ui:Button name="BtnSwitchCamera" text="Switch Camera" class="qs-btn" />
+        <ui:Button name="BtnResetRotation" text="Reset Rotation" class="qs-btn" />
+        <ui:Button name="BtnResetPosition" text="Reset Position" class="qs-btn" />
+        <ui:Button name="BtnResetDrone" text="Reset Drone" class="qs-btn qs-accent-solid" />
+      </ui:VisualElement>
+
+    </ui:VisualElement>
+
+    <!-- Resize overlay -->
+    <ui:VisualElement name="ResizeOverlay" class="resize-overlay">
+      <ui:VisualElement name="ResizeTL" class="resize-handle corner tl" />
+      <ui:VisualElement name="ResizeTR" class="resize-handle corner tr" />
+      <ui:VisualElement name="ResizeBL" class="resize-handle corner bl" />
+      <ui:VisualElement name="ResizeBR" class="resize-handle corner br" />
+      <ui:VisualElement name="ResizeL"  class="resize-handle edge l" />
+      <ui:VisualElement name="ResizeR"  class="resize-handle edge r" />
+      <ui:VisualElement name="ResizeT"  class="resize-handle edge t" />
+      <ui:VisualElement name="ResizeB"  class="resize-handle edge b" />
+    </ui:VisualElement>
+
+  </ui:VisualElement>
+</ui:UXML>

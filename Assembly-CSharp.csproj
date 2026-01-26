@@ -50,6 +50,7 @@
   <ItemGroup>
     <Compile Include="Assets/Scripts/RobotCore/SensorManager.cs" />
     <Compile Include="Assets/Scripts/DroneCore/Common/EffectivenessAllocator4.cs" />
+    <Compile Include="Assets/Scripts/UI/ControlDeckController.cs" />
     <Compile Include="Assets/Scripts/DroneCore/Debug/DroneDebugDraw.cs" />
     <Compile Include="Assets/Scripts/RobotCore/RobotCore.cs" />
     <Compile Include="Assets/Scripts/UI/Core/TelemetryRingBuffer.cs" />
@@ -76,12 +77,17 @@
     <Compile Include="Assets/Scripts/SimCore/ClockFactory.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Assets/UI/SimTopBar.uss" />
-    <None Include="Assets/Sim_HUD.uxml" />
-    <None Include="Assets/UI/SimTelemetryPanel.uxml" />
-    <None Include="Assets/UI/SimHUDRoot.uxml" />
-    <None Include="Assets/UI/SimTelemetryPanel.uss" />
-    <None Include="Assets/UI/SimTopBar.uxml" />
+    <None Include="Assets/UI/SimHUD/TopBar/SimTopBar.uss" />
+    <None Include="Assets/UI/SimHUD/Sim_HUD.uxml" />
+    <None Include="Assets/UI/SimHUD/Telemetry/SimTelemetryPanel.uxml" />
+    <None Include="Assets/UI/SimHUD/Telemetry/SimTelemetryPanel.uss" />
+    <None Include="Assets/UI/SimHUD/TopBar/SimTopBar.uxml" />
+    <None Include="Assets/UI/SimHUD/Control/ControlDeck.uxml" />
+    <None Include="Assets/UI/SimHUD/Shared/Widgets.uss" />
+    <None Include="Assets/UI/SimHUD/Theme/QuadSimTheme.uss" />
+    <None Include="Assets/UI/SimHUD/Control/ControlDeck.uss" />
+    <None Include="Assets/UI/SimHUD/SimHUDRoot.uss" />
+    <None Include="Assets/UI/SimHUD/Shared/DockableWindow.uss" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">

@@ -1,0 +1,22 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <!-- Global styles -->
+    <Style src="project://database/Assets/UI/SimHUD/Theme/QuadSimTheme.uss" />
+    <Style src="project://database/Assets/UI/SimHUD/Shared/Widgets.uss" />
+    <Style src="project://database/Assets/UI/SimHUD/Shared/DockableWindow.uss" />
+    <Style src="project://database/Assets/UI/SimHUD/SimHUDRoot.uss" />
+
+    <!-- Template declarations -->
+    <ui:Template name="TopBarTemplate"
+                 src="project://database/Assets/UI/SimHUD/TopBar/SimTopBar.uxml" />
+    <ui:Template name="TelemetryTemplate"
+                 src="project://database/Assets/UI/SimHUD/Telemetry/SimTelemetryPanel.uxml" />
+    <ui:Template name="ControlTemplate"
+                 src="project://database/Assets/UI/SimHUD/Control/ControlDeck.uxml" />
+
+    <!-- Root -->
+    <ui:VisualElement name="HUDRoot" class="hud-root">
+        <ui:Instance template="TopBarTemplate" />
+        <ui:Instance template="TelemetryTemplate" />
+        <ui:Instance template="ControlTemplate" />
+    </ui:VisualElement>
+</ui:UXML>
