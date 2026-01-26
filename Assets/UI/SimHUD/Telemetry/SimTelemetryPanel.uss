@@ -2,7 +2,6 @@
    Utility
 ------------------------------------------------------------ */
 .is-hidden { display: none; }
-
 .spacer { flex-grow: 1; }
 
 /* Kill default theme background image so colors show */
@@ -13,9 +12,9 @@
 ------------------------------------------------------------ */
 .telemetry-window {
     background-color: rgba(15, 15, 15, 0.92);
-    border-width: 1px;
+    border-width: 1;
     border-color: rgba(255,255,255,0.14);
-    border-radius: 10px;
+    border-radius: 10;
     flex-direction: column;
     padding: 0;
 }
@@ -26,24 +25,25 @@
     justify-content: flex-start;
     flex-grow: 0;
     flex-shrink: 0;
-    padding: 0 10px;
-    height: 36px;
+    padding-left: 10;
+    padding-right: 10;
+    height: 36;
     background-color: rgba(255,255,255,0.06);
-    border-bottom-width: 1px;
+    border-bottom-width: 1;
     border-bottom-color: rgba(255,255,255,0.10);
 }
 
 .telemetry-title {
     margin: 0;
     padding: 0;
-    height: 36px;
+    height: 36;
     -unity-text-align: middle-left;
     color: rgb(240,240,240);
 }
 
 .telemetry-window-body {
-    padding: 10px;
-    padding-bottom: 14px; /* breathing room near bottom edge handle */
+    padding: 10;
+    padding-bottom: 14; /* breathing room near bottom edge handle */
     flex-grow: 1;
     flex-shrink: 1;
 }
@@ -51,16 +51,16 @@
 /* ------------------------------------------------------------
    Tabs / layout
 ------------------------------------------------------------ */
-.telemetry-tabs { flex-direction: row; margin-bottom: 8px; }
-.subtabs { flex-direction: row; margin-bottom: 8px; }
+.telemetry-tabs { flex-direction: row; margin-bottom: 8; }
+.subtabs { flex-direction: row; margin-bottom: 8; }
 
 .tab {
-    height: 26px;
-    padding-left: 10px;
-    padding-right: 10px;
-    margin-right: 6px;
-    border-radius: 6px;
-    border-width: 1px;
+    height: 26;
+    padding-left: 10;
+    padding-right: 10;
+    margin-right: 6;
+    border-radius: 6;
+    border-width: 1;
     border-color: rgba(255, 255, 255, 0.12);
     background-color: rgba(255, 255, 255, 0.06);
     color: rgb(220, 220, 220);
@@ -69,13 +69,13 @@
 
 .tab.active {
     background-color: rgba(90, 140, 255, 0.25);
-    border-color: rgba(90, 140, 255, 0.6);
+    border-color: rgba(90, 140, 255, 0.60);
 }
 
 /* Button icon */
 .btn.btn-icon {
-    width: 28px;
-    height: 28px;
+    width: 28;
+    height: 28;
     padding: 0;
     margin: 0;
     -unity-text-align: middle-center;
@@ -101,35 +101,37 @@
 
 .content {
     flex-grow: 1;
-    padding: 6px;
-    border-radius: 8px;
-    border-width: 1px;
-    border-color: rgba(255, 255, 255, 0.1);
+    padding: 6;
+    border-radius: 8;
+    border-width: 1;
+    border-color: rgba(255, 255, 255, 0.10);
     background-color: rgba(0, 0, 0, 0.25);
 }
 
 .scroll { flex-grow: 1; }
 
-.graphs-scroll { flex-grow: 1; margin: 2px 6px 6px; }
+.graphs-scroll { flex-grow: 1;
+    margin: 2 6 6;
+}
 .graphs-content { flex-direction: column; }
 
-.graph-block { margin-bottom: 6px; }
+.graph-block { margin-bottom: 6; }
 .graph-label {
-    margin-bottom: 4px;
+    margin-bottom: 4;
     color: rgb(230,230,230);
     -unity-font-style: bold;
-    font-size: 12px;
+    font-size: 12;
 }
 
 .telemetry-graph {
-    height: 110px;
+    height: 110;
     flex-grow: 0;
 }
 
-.legend { flex-direction: row; align-items: center; margin-top: 4px; }
-.legend-item { flex-direction: row; align-items: center; margin-right: 12px; }
-.swatch { width: 14px; height: 3px; border-radius: 2px; margin-top: 0; }
-.legend-text { margin-left: 6px; font-size: 11px; color: rgb(210, 210, 210); }
+.legend { flex-direction: row; align-items: center; margin-top: 4; }
+.legend-item { flex-direction: row; align-items: center; margin-right: 12; }
+.swatch { width: 14; height: 3; border-radius: 2; }
+.legend-text { margin-left: 6; font-size: 11; color: rgb(210, 210, 210); }
 
 .swatch.meas { background-color: rgba(60, 200, 255, 1); }
 .swatch.des  { background-color: rgba(255, 165, 60, 1); }
@@ -148,16 +150,16 @@
 /* Corners */
 .resize-handle-corner {
     position: absolute;
-    width: 24px;
-    height: 24px;
+    width: 24;
+    height: 24;
     background-color: rgba(255,255,255,0.00); /* invisible */
-    border-radius: 6px;
+    border-radius: 6;
 }
 .resize-handle-corner:hover { background-color: rgba(255,255,255,0.18); }
 
 /* Corner placement (below titlebar) */
-.resize-handle-corner.tl { left: 0;  top: 36px; }
-.resize-handle-corner.tr { right: 0; top: 36px; }
+.resize-handle-corner.tl { left: 0;  top: 36; }
+.resize-handle-corner.tr { right: 0; top: 36; }
 .resize-handle-corner.bl { left: 0;  bottom: 0; }
 .resize-handle-corner.br { right: 0; bottom: 0; }
 
@@ -169,36 +171,38 @@
 
 /* thickness */
 .resize-handle-edge.t,
-.resize-handle-edge.b { height: 6px; left: 0; right: 0; }
+.resize-handle-edge.b { height: 6; left: 0; right: 0; }
 
 .resize-handle-edge.l,
-.resize-handle-edge.r { width: 6px; }
+.resize-handle-edge.r { width: 6; }
 
 /* placement (IMPORTANT: below titlebar) */
-.resize-handle-edge.t { top: 36px; left: 0; right: 0; }
+.resize-handle-edge.t { top: 36; left: 0; right: 0; }
 .resize-handle-edge.b { bottom: 0; left: 0; right: 0; }
 
-.resize-handle-edge.l { left: 0; top: 36px; bottom: 0; }
-.resize-handle-edge.r { right: 0; top: 36px; bottom: 0; }
-
+.resize-handle-edge.l { left: 0; top: 36; bottom: 0; }
+.resize-handle-edge.r { right: 0; top: 36; bottom: 0; }
 
 /* ------------------------------------------------------------
    STATE view (cards + rows)
 ------------------------------------------------------------ */
-
 .state-root {
     flex-direction: column;
-    row-gap: 10px;
-    padding: 2px;
+    padding: 2;
+}
+
+/* spacing between cards (no gap support) */
+.state-root > * {
+    margin-top: 10;
 }
 
 .state-card {
     flex-direction: column;
-    padding: 10px;
+    padding: 10;
 
-    border-width: 1px;
+    border-width: 1;
     border-color: rgba(255,255,255,0.10);
-    border-radius: 10px;
+    border-radius: 10;
 
     background-color: rgba(0,0,0,0.18);
 }
@@ -206,28 +210,28 @@
 .state-card-header {
     flex-direction: row;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: 8;
 }
 
 .state-card-title {
     -unity-font-style: bold;
-    font-size: 12px;
+    font-size: 12;
     color: rgb(235,235,235);
 }
 
 .state-pill {
-    padding-left: 8px;
-    padding-right: 8px;
-    height: 18px;
+    padding-left: 8;
+    padding-right: 8;
+    height: 18;
 
-    border-radius: 9px;
+    border-radius: 9;
     -unity-text-align: middle-center;
 
-    font-size: 11px;
+    font-size: 11;
     color: rgb(245,245,245);
 
     background-color: rgba(255,255,255,0.10);
-    border-width: 1px;
+    border-width: 1;
     border-color: rgba(255,255,255,0.10);
 }
 
@@ -245,7 +249,11 @@
 
 .state-grid {
     flex-direction: column;
-    row-gap: 6px;
+}
+
+/* spacing between rows (no gap support) */
+.state-grid > * {
+    margin-top: 6;
 }
 
 .state-row {
@@ -256,25 +264,23 @@
 
 .state-key {
     color: rgb(170,170,170);
-    font-size: 11px;
-    margin-right: 10px;
+    font-size: 11;
+    margin-right: 10;
 }
 
 .state-val {
     color: rgb(140,255,170);
-    font-size: 11px;
+    font-size: 11;
     -unity-text-align: middle-right;
 }
 
 .mono {
-    -unity-font: resource("Fonts/RobotoMono-Regular");
-    /* If this font isn't available in your project, remove this line.
-       The rest still works. */
+    -unity-font: resource("Fonts/Roboto-Regular");
 }
 
 .state-divider {
-    height: 1px;
-    margin-top: 6px;
-    margin-bottom: 6px;
+    height: 1;
+    margin-top: 6;
+    margin-bottom: 6;
     background-color: rgba(255,255,255,0.08);
 }

@@ -2,17 +2,25 @@
     display: none;
 }
 
+.hud-root {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+}
+
 .topbar-root {
     position: absolute;
     left: 0;
     right: 0;
     top: 0;
-    height: 44px;
-    padding-left: 10px;
-    padding-right: 10px;
+    height: 44;
+    padding-left: 10;
+    padding-right: 10;
     background-color: rgba(18, 18, 18, 0.85);
-    border-bottom-width: 1px;
-    border-bottom-color: rgba(255, 255, 255, 0.1);
+    border-bottom-width: 1;
+    border-bottom-color: rgba(255, 255, 255, 0.10);
     justify-content: center;
 }
 
@@ -32,24 +40,27 @@
     flex-grow: 1;
 }
 
+/* Ensure default theme doesn't fight */
+.unity-button {
+    background-image: none;
+}
+
+/* Base button visual */
 .btn {
-    height: 28px;
-    margin-left: 4px;
-    margin-right: 4px;
-    padding-left: 10px;
-    padding-right: 10px;
-    border-radius: 6px;
-    border-width: 1px;
+    height: 28;
+    margin-left: 4;
+    margin-right: 4;
+    padding-left: 10;
+    padding-right: 10;
+    border-radius: 6;
+    border-width: 1;
     border-color: rgba(255, 255, 255, 0.12);
     background-color: rgba(255, 255, 255, 0.06);
     color: rgb(235, 235, 235);
     -unity-text-align: middle-center;
 }
 
-.unity-button {
-    background-image: none;
-}
-
+/* Unity button states */
 .unity-button.btn {
     background-color: rgba(255, 255, 255, 0.06);
     border-color: rgba(255, 255, 255, 0.12);
@@ -57,7 +68,7 @@
 
 .unity-button.btn:hover {
     background-color: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.20);
 }
 
 .unity-button.btn:active {
@@ -67,41 +78,43 @@
 
 .unity-button.btn-primary {
     background-color: rgba(90, 140, 255, 0.22);
-    border-color: rgba(90, 140, 255, 0.5);
+    border-color: rgba(90, 140, 255, 0.50);
 }
 
 .unity-button.btn-primary:hover {
-    background-color: rgba(90, 140, 255, 0.3);
+    background-color: rgba(90, 140, 255, 0.30);
     border-color: rgba(90, 140, 255, 0.65);
 }
 
 .unity-button.btn-primary:active {
     background-color: rgba(90, 140, 255, 0.36);
-    border-color: rgba(90, 140, 255, 0.8);
+    border-color: rgba(90, 140, 255, 0.80);
 }
 
+/* Small icon-like buttons */
 .btn-icon {
-    width: 34px;
+    width: 34;
     padding-left: 0;
     padding-right: 0;
 }
 
 .btn-primary {
-    min-width: 86px;
+    min-width: 86;
     background-color: rgba(90, 140, 255, 0.22);
-    border-color: rgba(90, 140, 255, 0.5);
+    border-color: rgba(90, 140, 255, 0.50);
 }
 
+/* Pills */
 .pill {
-    height: 30px;
-    margin-left: 6px;
-    margin-right: 6px;
-    padding-left: 12px;
-    padding-right: 12px;
-    border-radius: 9999px;
+    height: 30;
+    margin-left: 6;
+    margin-right: 6;
+    padding-left: 12;
+    padding-right: 12;
+    border-radius: 9999;
     background-color: rgba(0, 0, 0, 0.35);
-    border-width: 1px;
-    border-color: rgba(255, 255, 255, 0.1);
+    border-width: 1;
+    border-color: rgba(255, 255, 255, 0.10);
     justify-content: center;
     align-items: center;
 }
@@ -111,42 +124,43 @@
     -unity-text-align: middle-center;
 }
 
+/* (If you still have legacy drawer styles in this file) */
 .drawer {
     position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
-    height: 340px;
-    padding: 10px;
+    height: 340;
+    padding: 10;
     background-color: rgba(15, 15, 15, 0.92);
-    border-top-width: 1px;
+    border-top-width: 1;
     border-top-color: rgba(255, 255, 255, 0.12);
 }
 
 .drawer-header {
     flex-direction: row;
     align-items: center;
-    margin-bottom: 6px;
+    margin-bottom: 6;
 }
 
 .drawer-title {
-    font-size: 14px;
-    unity-font-style: bold;
+    font-size: 14;
+    -unity-font-style: bold;
     color: white;
 }
 
 .drawer-tabs {
     flex-direction: row;
-    margin-bottom: 8px;
+    margin-bottom: 8;
 }
 
 .tab {
-    height: 26px;
-    padding-left: 10px;
-    padding-right: 10px;
-    margin-right: 6px;
-    border-radius: 6px;
-    border-width: 1px;
+    height: 26;
+    padding-left: 10;
+    padding-right: 10;
+    margin-right: 6;
+    border-radius: 6;
+    border-width: 1;
     border-color: rgba(255, 255, 255, 0.12);
     background-color: rgba(255, 255, 255, 0.06);
     color: rgb(220, 220, 220);
@@ -155,13 +169,13 @@
 
 .tab.active {
     background-color: rgba(90, 140, 255, 0.25);
-    border-color: rgba(90, 140, 255, 0.6);
+    border-color: rgba(90, 140, 255, 0.60);
 }
 
 .kv-row {
     flex-direction: row;
     justify-content: space-between;
-    margin-bottom: 6px;
+    margin-bottom: 6;
 }
 
 .kv-label {
@@ -170,12 +184,4 @@
 
 .kv-value {
     color: rgb(140, 255, 170);
-}
-
-.hud-root {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    bottom: 0;
 }

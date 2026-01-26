@@ -9,9 +9,10 @@ namespace QuadSim.UI.Core
     /// Lightweight time-series plotter for UI Toolkit.
     /// Expects time in seconds (monotonic), values in chosen units.
     /// </summary>
-    [UxmlElement] 
     public sealed partial class TelemetryGraphElement : VisualElement
     {
+        public new class UxmlFactory : UxmlFactory<TelemetryGraphElement, VisualElement.UxmlTraits> { }
+
         public struct Series
         {
             public string Label;
@@ -31,13 +32,9 @@ namespace QuadSim.UI.Core
         public TelemetryGraphElement()
         {
             generateVisualContent += OnGenerateVisualContent;
-            style.flexGrow = 0f;
-            style.flexShrink = 0f;
-            pickingMode = PickingMode.Ignore; // if you want mouse interaction later, change this
+            pickingMode = PickingMode.Ignore;
             RegisterCallback<WheelEvent>(OnWheel);
-
         }
-
         
         private float _timeZoom = 1f;   // 1 = default window
         private float _valueZoom = 1f;  // 1 = default range

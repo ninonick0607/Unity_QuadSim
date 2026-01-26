@@ -81,6 +81,9 @@ namespace QuadSim.UI
             }
 
             _drawer = _hudRoot.Q<VisualElement>("TelemetryRoot");
+            //Debug.Log($"[Telemetry] classes: {string.Join(",", _drawer.GetClasses())}");
+           // Debug.Log($"[Telemetry] bg resolved: {_drawer.resolvedStyle.backgroundColor}");
+
             if (_drawer == null)
             {
                 Debug.LogError("[Telemetry] Could not find TelemetryRoot in UXML.");

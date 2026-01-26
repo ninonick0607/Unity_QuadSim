@@ -5,7 +5,7 @@ namespace QuadSim.UI
 {
     /// <summary>
     /// The compositor/controller for the whole HUD.
-    /// Owns wiring between TopBar and Telemetry drawer.
+    /// Owns wiring between TopBar and drawers.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class SimHUDController : MonoBehaviour
@@ -17,6 +17,9 @@ namespace QuadSim.UI
         [SerializeField] private SimTopBarController topBar;
         [SerializeField] private TelemetryDeckController telemetry;
 
+        // NEW
+        [SerializeField] private ControlDeckController control;
+
         private VisualElement _docRoot;
         private VisualElement _hudRoot;
 
@@ -26,6 +29,9 @@ namespace QuadSim.UI
             if (topBar == null) topBar = GetComponent<SimTopBarController>();
             if (telemetry == null) telemetry = GetComponent<TelemetryDeckController>();
 
+            // NEW
+            if (control == null) control = GetComponent<ControlDeckController>();
+
             if (document == null)
             {
                 Debug.LogError("[SimHUD] Missing UIDocument.");
@@ -34,6 +40,8 @@ namespace QuadSim.UI
             }
 
             _docRoot = document.rootVisualElement;
+            Debug.Log($"[SimHUD] root styleSheets = {_docRoot.styleSheets.count}");
+
             if (_docRoot == null)
             {
                 Debug.LogError("[SimHUD] document.rootVisualElement is null.");
@@ -41,7 +49,7 @@ namespace QuadSim.UI
                 return;
             }
 
-            // This MUST match the name in Sim_Hud.uxml: <ui:VisualElement name="HUDRoot" ...>
+            // MUST match: <ui:VisualElement name="HUDRoot" ...>
             _hudRoot = _docRoot.Q<VisualElement>("HUDRoot");
             if (_hudRoot == null)
             {
@@ -50,17 +58,23 @@ namespace QuadSim.UI
                 return;
             }
 
-            // Hard guarantee that HUDRoot is a true full-screen anchor.
             ForceFullScreen(_hudRoot);
 
             // Initialize child controllers against the same HUD root
             if (telemetry != null) telemetry.Initialize(_hudRoot);
+            if (control != null) control.Initialize(_hudRoot); // NEW
             if (topBar != null) topBar.Initialize(_hudRoot);
 
-            // Wire TopBar -> Telemetry here (TopBar does NOT FindFirstObjectByType).
+            // Wire TopBar -> drawers (TopBar does NOT FindFirstObjectByType).
             if (topBar != null && telemetry != null)
             {
                 topBar.OnTelemetryPressed = telemetry.Toggle;
+            }
+
+            // NEW
+            if (topBar != null && control != null)
+            {
+                topBar.OnControlPressed = control.Toggle;
             }
         }
 
