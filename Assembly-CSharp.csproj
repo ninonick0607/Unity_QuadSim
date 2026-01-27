@@ -49,6 +49,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets/Scripts/RobotCore/SensorManager.cs" />
+    <Compile Include="Assets/Scripts/DroneCore/Interfaces/ICommandSource.cs" />
     <Compile Include="Assets/Scripts/DroneCore/Common/EffectivenessAllocator4.cs" />
     <Compile Include="Assets/Scripts/UI/ControlDeckController.cs" />
     <Compile Include="Assets/Scripts/DroneCore/Debug/DroneDebugDraw.cs" />
@@ -57,15 +58,20 @@
     <Compile Include="Assets/Scripts/UI/DockableWindowController.cs" />
     <Compile Include="Assets/Scripts/MathUtil/Frames.cs" />
     <Compile Include="Assets/Scripts/DroneCore/DroneRootBootstrap.cs" />
+    <Compile Include="Assets/Samples/Shader Graph/17.3.0/Common/Scripts/DisableGizmos.cs" />
+    <Compile Include="Assets/Scripts/DroneCore/Interfaces/FlightCommandProxy.cs" />
     <Compile Include="Assets/Scripts/UI/SimTopBarController.cs" />
     <Compile Include="Assets/Scripts/DroneCore/Controllers/CascadedController.cs" />
+    <Compile Include="Assets/Scripts/DroneCore/Interfaces/FlightCommandTypes.cs" />
     <Compile Include="Assets/Scripts/UI/Core/TelemetryGraphElement.cs" />
     <Compile Include="Assets/Scripts/UI/TelemetryDeckController.cs" />
     <Compile Include="Assets/Scripts/DroneCore/Common/QuadPIDController.cs" />
     <Compile Include="Assets/Scripts/DroneCore/Controllers/Cascades/AngleController.cs" />
     <Compile Include="Assets/Scripts/DroneCore/Common/ThrusterSet.cs" />
     <Compile Include="Assets/Scripts/SimCore/SimClock.cs" />
+    <Compile Include="Assets/Scripts/RobotCore/Common/Axis4.cs" />
     <Compile Include="Assets/Scripts/RobotCore/SensorData.cs" />
+    <Compile Include="Assets/Samples/Shader Graph/17.3.0/Common/Scripts/Rotate.cs" />
     <Compile Include="Assets/Scripts/SimCore/SimulationManager.cs" />
     <Compile Include="Assets/Scripts/SimCore/FrequencyLimiter.cs" />
     <Compile Include="Assets/Scripts/RobotCore/Sensors/GPSSensor.cs" />
@@ -77,17 +83,47 @@
     <Compile Include="Assets/Scripts/SimCore/ClockFactory.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Assets/TextMesh Pro/Shaders/TMPro.cginc" />
+    <None Include="Assets/Samples/Shader Graph/17.3.0/Custom Lighting/Components/Debug/DebugLightingComplexity.hlsl" />
+    <None Include="Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile Overlay.shader" />
     <None Include="Assets/UI/SimHUD/TopBar/SimTopBar.uss" />
+    <None Include="Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile-2-Pass.shader" />
     <None Include="Assets/UI/SimHUD/Sim_HUD.uxml" />
+    <None Include="Assets/Samples/Scriptable Render Pipeline Core/17.3.0/Common/TextMesh Pro/Resources/Fonts &amp; Materials/TMP_Node.hlsl" />
+    <None Include="Assets/TextMesh Pro/Shaders/TMP_Bitmap.shader" />
+    <None Include="Assets/Samples/Shader Graph/17.3.0/Common/Subgraphs/PseudoSubsurface.hlsl" />
     <None Include="Assets/UI/SimHUD/Telemetry/SimTelemetryPanel.uxml" />
+    <None Include="Assets/TextMesh Pro/Shaders/TMPro_Mobile.cginc" />
+    <None Include="Assets/TextMesh Pro/Shaders/TMP_SDF SSD.shader" />
+    <None Include="Assets/TextMesh Pro/Shaders/TMP_SDF-Surface-Mobile.shader" />
     <None Include="Assets/UI/SimHUD/Telemetry/SimTelemetryPanel.uss" />
     <None Include="Assets/UI/SimHUD/TopBar/SimTopBar.uxml" />
+    <None Include="Assets/TextMesh Pro/Shaders/SDFFunctions.hlsl" />
     <None Include="Assets/UI/SimHUD/Control/ControlDeck.uxml" />
     <None Include="Assets/UI/SimHUD/Shared/Widgets.uss" />
+    <None Include="Assets/Samples/Shader Graph/17.3.0/Terrain Shaders/Subgraphs/Components/Hex/Hashes.hlsl" />
     <None Include="Assets/UI/SimHUD/Theme/QuadSimTheme.uss" />
+    <None Include="Assets/TextMesh Pro/Shaders/TMP_SDF-Surface.shader" />
+    <None Include="Assets/TextMesh Pro/Sprites/EmojiOne Attribution.txt" />
+    <None Include="Assets/TextMesh Pro/Shaders/TMP_Bitmap-Custom-Atlas.shader" />
+    <None Include="Assets/TextMesh Pro/Shaders/TMP_SDF.shader" />
+    <None Include="Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile SSD.shader" />
+    <None Include="Assets/TextMesh Pro/Resources/LineBreaking Leading Characters.txt" />
+    <None Include="Assets/TextMesh Pro/Shaders/TMPro_Properties.cginc" />
+    <None Include="Assets/Samples/Shader Graph/17.3.0/Common/Subgraphs/SampleReflectionProbes.hlsl" />
+    <None Include="Assets/TextMesh Pro/Shaders/TMPro_Surface.cginc" />
+    <None Include="Assets/TextMesh Pro/Resources/LineBreaking Following Characters.txt" />
     <None Include="Assets/UI/SimHUD/Control/ControlDeck.uss" />
+    <None Include="Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile Masking.shader" />
     <None Include="Assets/UI/SimHUD/SimHUDRoot.uss" />
+    <None Include="Assets/Samples/Shader Graph/17.3.0/Terrain Shaders/Subgraphs/Components/Hex/TextureTilingRandomization.hlsl" />
+    <None Include="Assets/TextMesh Pro/Shaders/TMP_SDF Overlay.shader" />
+    <None Include="Assets/TextMesh Pro/Shaders/TMP_Bitmap-Mobile.shader" />
+    <None Include="Assets/TextMesh Pro/Fonts/LiberationSans - OFL.txt" />
+    <None Include="Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile.shader" />
+    <None Include="Assets/Samples/Scriptable Render Pipeline Core/17.3.0/Common/TextMesh Pro/Resources/Fonts &amp; Materials/Inter-LICENSE.txt" />
     <None Include="Assets/UI/SimHUD/Shared/DockableWindow.uss" />
+    <None Include="Assets/TextMesh Pro/Shaders/TMP_Sprite.shader" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">
@@ -1130,6 +1166,10 @@
       <HintPath>/home/ninonick0426/Unity/Hub/Editor/6000.3.4f1/Editor/Data/NetStandard/compat/2.1.0/shims/netfx/mscorlib.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Unity.VisualEffectGraph.Editor">
+      <HintPath>Library/ScriptAssemblies/Unity.VisualEffectGraph.Editor.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Unity.RenderPipelines.Core.Editor">
       <HintPath>Library/ScriptAssemblies/Unity.RenderPipelines.Core.Editor.dll</HintPath>
       <Private>False</Private>
@@ -1262,12 +1302,20 @@
       <HintPath>Library/ScriptAssemblies/Unity.RenderPipelines.GPUDriven.Runtime.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Unity.RenderPipelines.HighDefinition.Runtime">
+      <HintPath>Library/ScriptAssemblies/Unity.RenderPipelines.HighDefinition.Runtime.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Unity.Timeline.Editor">
       <HintPath>Library/ScriptAssemblies/Unity.Timeline.Editor.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.VisualScripting.State.Editor">
       <HintPath>Library/ScriptAssemblies/Unity.VisualScripting.State.Editor.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.VisualEffectGraph.Runtime">
+      <HintPath>Library/ScriptAssemblies/Unity.VisualEffectGraph.Runtime.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.Mathematics">
@@ -1284,6 +1332,10 @@
     </Reference>
     <Reference Include="Unity.Multiplayer.Center.Common">
       <HintPath>Library/ScriptAssemblies/Unity.Multiplayer.Center.Common.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.RenderPipelines.HighDefinition.Editor">
+      <HintPath>Library/ScriptAssemblies/Unity.RenderPipelines.HighDefinition.Editor.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.Burst">
@@ -1326,6 +1378,10 @@
       <HintPath>Library/ScriptAssemblies/Unity.ShaderGraph.Editor.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Unity.RenderPipelines.HighDefinition.Config.Runtime">
+      <HintPath>Library/ScriptAssemblies/Unity.RenderPipelines.HighDefinition.Config.Runtime.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Unity.RenderPipelines.Core.Editor.Shared">
       <HintPath>Library/ScriptAssemblies/Unity.RenderPipelines.Core.Editor.Shared.dll</HintPath>
       <Private>False</Private>
@@ -1340,6 +1396,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="Unity.RenderPipelines.Core.Samples.Editor.csproj" />
+    <ProjectReference Include="Unity.RenderPipelines.Core.Samples.Runtime.csproj" />
   </ItemGroup>
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
   <ItemGroup>

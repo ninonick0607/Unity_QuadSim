@@ -1,69 +1,91 @@
-using UnityEngine;
-using DroneCore;
-using DroneCore.Common;
-using DroneCore.Controllers;
-using RobotCore;
-
-[DisallowMultipleComponent]
-public sealed class DroneRootBootstrap : MonoBehaviour
-{
-    public bool ensureMotorChildren = false;
-
-    private void Reset() => Build();
-    private void Awake() => Build();
-
 #if UNITY_EDITOR
-    private void OnValidate()
+using UnityEditor;
+#endif
+using DroneCore.Common;
+using UnityEngine;
+
+namespace DroneCore
+{
+    [DisallowMultipleComponent]
+    public sealed class DroneRootBootstrap : MonoBehaviour
     {
-        if (!Application.isPlaying) Build();
-    }
+#if UNITY_EDITOR
+        private bool _buildQueued;
 #endif
 
-    [ContextMenu("Build DroneRoot")]
-    public void Build()
-    {
-        var rb       = GetOrAdd<Rigidbody>(gameObject);
-        var body     = GetOrAdd<DroneBody>(gameObject);
-        var thr      = GetOrAdd<ThrusterSet>(gameObject);
-        var ctrl     = GetOrAdd<CascadedController>(gameObject);
-        var sensors  = GetOrAdd<SensorManager>(gameObject);
-        var core     = GetOrAdd<RobotCore.RobotCore>(gameObject);
+        private void Reset() => Build();
+        private void Awake()
+        {
+            // Runtime only; OnValidate handles editor-time.
+            if (Application.isPlaying) Build();
+        }
 
-        //if (ensureMotorChildren) EnsureMotorChildren(transform);
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (Application.isPlaying) return;
+            if (_buildQueued) return;
 
-        // Let components self-wire
-        body.AutoWireIfNeeded();
-        body.ValidateOrThrow();
+            _buildQueued = true;
+            EditorApplication.delayCall += () =>
+            {
+                _buildQueued = false;
+                if (this == null) return;
+                if (Application.isPlaying) return;
+                Build();
+            };
+        }
+#endif
 
-        rb.mass = 1.28f;
-        // Basic RB defaults (optional)
-        rb.interpolation = RigidbodyInterpolation.None;
-        rb.collisionDetectionMode = CollisionDetectionMode.Discrete;
-        //rb.maxAngularVelocity = 100f;
-    }
+        [ContextMenu("Build DroneRoot")]
+        public void Build()
+        {
+            // DEDUPE FIRST (important)
+            RemoveDuplicates<Rigidbody>(gameObject);
+            RemoveDuplicates<DroneBody>(gameObject);
+            RemoveDuplicates<ThrusterSet>(gameObject);
+            RemoveDuplicates<Controllers.CascadedController>(gameObject);
+            RemoveDuplicates<RobotCore.SensorManager>(gameObject);
+            RemoveDuplicates<RobotCore.RobotCore>(gameObject);
+            RemoveDuplicates<Interfaces.FlightCommandProxy>(gameObject);
 
-    private static T GetOrAdd<T>(GameObject go) where T : Component
-    {
-        if (!go.TryGetComponent<T>(out var c))
-            c = go.AddComponent<T>();
-        return c;
-    }
+            var rb      = GetOrAdd<Rigidbody>(gameObject);
+            var body    = GetOrAdd<DroneBody>(gameObject);
+            var thr     = GetOrAdd<ThrusterSet>(gameObject);
+            var ctrl    = GetOrAdd<Controllers.CascadedController>(gameObject);
+            var sensors = GetOrAdd<RobotCore.SensorManager>(gameObject);
+            var core    = GetOrAdd<RobotCore.RobotCore>(gameObject);
+            var cmd     = GetOrAdd<Interfaces.FlightCommandProxy>(gameObject);
 
-    private static void EnsureMotorChildren(Transform root)
-    {
-        EnsureChild(root, "MotorFL");
-        EnsureChild(root, "MotorFR");
-        EnsureChild(root, "MotorBL");
-        EnsureChild(root, "MotorBR");
-    }
+            body.AutoWireIfNeeded();
+            body.ValidateOrThrow();
 
-    private static Transform EnsureChild(Transform root, string name)
-    {
-        var t = root.Find(name);
-        if (t != null) return t;
+            rb.mass = 1.28f;
+            rb.interpolation = RigidbodyInterpolation.None;
+            rb.collisionDetectionMode = CollisionDetectionMode.Discrete;
+        }
 
-        var go = new GameObject(name);
-        go.transform.SetParent(root, false);
-        return go.transform;
+        private static void RemoveDuplicates<T>(GameObject go) where T : Component
+        {
+            var comps = go.GetComponents<T>();
+            for (int i = 1; i < comps.Length; i++)
+            {
+#if UNITY_EDITOR
+                if (!Application.isPlaying)
+                    Object.DestroyImmediate(comps[i]);
+                else
+                    Object.Destroy(comps[i]);
+#else
+                Object.Destroy(comps[i]);
+#endif
+            }
+        }
+
+        private static T GetOrAdd<T>(GameObject go) where T : Component
+        {
+            if (!go.TryGetComponent<T>(out var c))
+                c = go.AddComponent<T>();
+            return c;
+        }
     }
 }

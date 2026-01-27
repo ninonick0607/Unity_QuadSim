@@ -4,6 +4,7 @@ using UnityEngine;
 namespace RobotCore
 {
     [RequireComponent(typeof(DroneBody))]
+    [DisallowMultipleComponent]
     public sealed class RobotCore : MonoBehaviour
     {
         [SerializeField] private SensorManager sensors;

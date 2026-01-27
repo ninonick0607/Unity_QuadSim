@@ -122,10 +122,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81f70fe1fc3745f28373cc1e3220322b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::QuadSim.UI.ControlDeckController
-  hiddenClass: is-hidden
-  activeClass: active
-  initialDockThickness: 320
-  minWidth: 360
-  minHeight: 260
   cascadedController: {fileID: 0}
   targetRigidbody: {fileID: 0}
+  commandProxy: {fileID: 0}

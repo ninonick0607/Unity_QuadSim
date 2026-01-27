@@ -2,18 +2,21 @@ using System.Collections.Generic;
 using DroneCore.Common;
 using DroneCore.Controllers.Cascades;
 using RobotCore;
+using DroneCore.Interfaces;
 using SimCore;
 using UnityEngine;
+
 
 namespace DroneCore.Controllers
 {
     [RequireComponent(typeof(DroneBody))]
-
+    [DisallowMultipleComponent]
     public sealed class CascadedController : MonoBehaviour, ISimulatable
     {
         [SerializeField] private DroneBody body;
         [SerializeField] private ThrusterSet thrusters;
         [SerializeField] private SensorManager sensorManager;
+        [SerializeField] private FlightCommandProxy commandProxy;
 
         [Header("Altitude Hold (world Y meters)")]
         public bool altitudeHoldEnabled = true;
@@ -64,6 +67,7 @@ namespace DroneCore.Controllers
             if (body == null) body = GetComponent<DroneBody>();
             if (thrusters == null) thrusters = GetComponent<ThrusterSet>();
             if (sensorManager == null) sensorManager = GetComponent<SensorManager>() ?? GetComponentInParent<SensorManager>();
+            if (commandProxy == null) commandProxy = GetComponent<DroneCore.Interfaces.FlightCommandProxy>();
 
             // Initialize gains from your YAML defaults (rate_gains)
             // Outputs are mix terms; limits are important.
@@ -106,7 +110,15 @@ namespace DroneCore.Controllers
         public void PrePhysicsStep(double dtSec, long nowNanos)
         {
             float dt = (float)dtSec;
+            if (commandProxy == null)
+            {
+                Debug.LogError("[Cascade] commandProxy is null");
+                return;
+            }
 
+            commandProxy.LatchForStep();
+            var snap = commandProxy.GetSnapshot();
+            
             float throttle = hoverThrottle01;
             if (altitudeHoldEnabled && body != null)
             {
@@ -121,7 +133,8 @@ namespace DroneCore.Controllers
             if (s.ImuValid)
                 measuredRates = s.ImuAngVel;
 
-            Vector3 desiredRates = desiredRatesDeg * Mathf.Deg2Rad;
+            Vector3 desiredRates =
+                snap.Command.XYZ * Mathf.Deg2Rad; // if your proxy stores deg/s
 
             Vector3 rateOut = acro.Update(desiredRates, measuredRates, dt);
 

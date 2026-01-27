@@ -16,10 +16,12 @@ namespace RobotCore.Sensors
         public SimFrame OutputFrame = SimFrame.FLU;
         public bool RemoveGravity = true;
 
-        public Vector3 LastAngVel { get; private set; }   // rad/s in OutputFrame
-        public Vector3 LastAtt { get; private set; }   // rad/s in OutputFrame
-        public Vector3 LastLinAcc { get; private set; }   // m/s^2 in OutputFrame
+        public Vector3 LastAngVel { get; private set; }      // rad/s in OutputFrame
+        public Vector3 LastAtt { get; private set; }         // degrees (Euler) in OutputFrame
+        public Quaternion LastOrientation { get; private set; } // orientation in OutputFrame
+        public Vector3 LastLinAcc { get; private set; }      // m/s^2 in OutputFrame
         public Vector3 LastVel { get; private set; }
+
         public double LastTimestampSec { get; private set; }
         public bool IsValid { get; private set; }
 
@@ -35,6 +37,7 @@ namespace RobotCore.Sensors
             _prevVelWorld = Vector3.zero;
             LastAngVel = Vector3.zero;
             LastAtt = Vector3.zero;
+            LastOrientation = Quaternion.identity;
             LastLinAcc = Vector3.zero;
             LastVel = Vector3.zero;
             LastTimestampSec = 0;
@@ -65,10 +68,15 @@ namespace RobotCore.Sensors
 
         public void SampleAttitude(double nowSec, float deltaTime)
         {
-            Vector3 wWorld = _rb.rotation.eulerAngles;
-            // TODO: Change Semantics to be Attidue not angVel
-            LastAtt = Frames.TransformAngularVelocity(wWorld, OutputFrame);
+            // Euler for controller math (UE-style convention mapping)
+            Vector3 rpyDeg = _bodyTransform.rotation.eulerAngles;
+            LastAtt = Frames.TransformAttitude(rpyDeg, OutputFrame);
+
+            // Quaternion in case we need geometric math later (true basis change)
+            LastOrientation = Frames.TransformQuaternion(_bodyTransform.rotation, OutputFrame);
         }
+
+
         
         public void SampleAcceleration(double nowSec, float deltaTime)
         {

@@ -1,4 +1,4 @@
-<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:qs="QuadSim.UI.Core">
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:qs="UI.Core">
     <ui:VisualElement name="TelemetryRoot" class="telemetry-root qs-surface-1 qs-border qs-radius is-hidden">
 
     <!-- Title bar -->

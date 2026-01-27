@@ -1,302 +1,411 @@
 /* ------------------------------------------------------------
-   ControlDeck.uss - self contained visuals + telemetry-matching palette
-   (no gap / no row-gap / no pseudo selectors)
+   ControlDeck.uss (Unity 6.3 safe)
+   - No gap
+   - No pseudo selectors like :last-child / :focus
 ------------------------------------------------------------ */
 
-/* Utility */
-.mt0 { margin-top: 0; }
-.mr0 { margin-right: 0; }
-.ml0 { margin-left: 0; }
+.control-root {
+    position: absolute;
+    /* DockableWindowController will override these when docking/floating,
+       but having sane defaults helps during early layout. */
+    right: 10px;
+    top: 60px;
 
-/* Ensure default button theme doesn't fight us */
-.unity-button { background-image: none; }
+    width: 420px;
+    min-width: 360px;
 
-/* ------------------------------------------------------------
-   Window + body
------------------------------------------------------------- */
-.telemetry-window {
-    background-color: rgba(15, 15, 15, 0.92);
-    border-width: 1;
-    border-color: rgba(255,255,255,0.14);
-    border-radius: 10;
+    background-color: rgba(18,18,18,0.90);
+    border-width: 1px;
+    border-color: rgba(255,255,255,0.10);
+    border-radius: 10px;
+
     flex-direction: column;
-    padding: 0;
     overflow: hidden;
 }
 
-.telemetry-titlebar {
-    flex-direction: row;
-    align-items: center;
-    justify-content: flex-start;
-    flex-grow: 0;
+/* basic layout helpers (avoid relying on other USS) */
+.row { flex-direction: row; align-items: center; }
+.wrap { flex-wrap: wrap; }
+.spacer { flex-grow: 1; }
+
+/* Title bar */
+.control-titlebar {
+    height: 36px;
+    padding-left: 10px;
+    padding-right: 10px;
+
+    background-color: rgba(255,255,255,0.05);
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(255,255,255,0.08);
+
     flex-shrink: 0;
-    padding-left: 10;
-    padding-right: 10;
-    height: 36;
-    background-color: rgba(255,255,255,0.06);
-    border-bottom-width: 1;
-    border-bottom-color: rgba(255,255,255,0.10);
 }
 
-.telemetry-title {
-    margin: 0;
-    padding: 0;
-    height: 36;
-    -unity-text-align: middle-left;
-    color: rgb(240,240,240);
+.control-title {
+    -unity-font-style: bold;
+    font-size: 13px;
+    color: rgba(240,240,240,1.0);
+    margin-right: 10px;
 }
 
-.telemetry-window-body {
-    padding: 10;
-    padding-bottom: 14;
+.control-meta {
+    font-size: 11px;
+    color: rgba(255,255,255,0.60);
+}
+
+/* Scroll body */
+.control-body {
     flex-grow: 1;
     flex-shrink: 1;
-    overflow: hidden;
+
+    /* leave room visually above footer */
+    padding: 10px;
 }
 
-/* Container */
-.content {
+/* sections */
+.control-section {
+    margin-bottom: 10px;
+}
+
+.control-label {
+    width: 56px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.65);
+    margin-right: 10px;
+}
+
+.control-h4 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.80);
+    -unity-font-style: bold;
+}
+
+/* dropdown */
+.control-dropdown {
     flex-grow: 1;
-    padding: 10;
-    border-radius: 8;
-    border-width: 1;
-    border-color: rgba(255, 255, 255, 0.10);
-    background-color: rgba(0, 0, 0, 0.25);
-    overflow: hidden;
+    height: 30px;
 }
 
-/* ------------------------------------------------------------
-   Tabs
------------------------------------------------------------- */
-.telemetry-tabs { flex-direction: row; margin-bottom: 8; flex-wrap: wrap; }
+/* Tabs (HTML-like) */
+.control-tabs { flex-direction: row; }
+.control-tabs > * { margin-right: 8px; margin-bottom: 8px; }
 
 .tab {
-    height: 26;
-    padding-left: 10;
-    padding-right: 10;
-    margin-right: 6;
-    margin-bottom: 6;
-    border-radius: 6;
-    border-width: 1;
-    border-color: rgba(255, 255, 255, 0.12);
-    background-color: rgba(255, 255, 255, 0.06);
-    color: rgb(220, 220, 220);
+    height: 28px;
+    padding-left: 10px;
+    padding-right: 10px;
+
+    border-radius: 7px;
+    border-width: 1px;
+    border-color: rgba(255,255,255,0.12);
+
+    background-color: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.92);
+
     -unity-text-align: middle-center;
+    font-size: 12px;
+    -unity-font-style: bold;
 }
 
 .tab.active {
-    background-color: rgba(90, 140, 255, 0.25);
-    border-color: rgba(90, 140, 255, 0.60);
+    background-color: rgba(90,140,255,0.25);
+    border-color: rgba(90,140,255,0.55);
+    color: rgba(220,235,255,0.95);
 }
 
-/* ------------------------------------------------------------
-   Cards
------------------------------------------------------------- */
-.state-card {
-    flex-direction: column;
-    padding: 10;
-    margin-top: 10;
+/* Foldouts (container look like HTML “fold”) */
+.control-fold {
+    margin-bottom: 10px;
 
-    border-width: 1;
+    border-width: 1px;
     border-color: rgba(255,255,255,0.10);
-    border-radius: 10;
+    border-radius: 10px;
+
     background-color: rgba(0,0,0,0.18);
-
-    overflow: hidden;
+    padding-left: 8px;
+    padding-right: 8px;
+    padding-bottom: 8px;
 }
 
-.state-card-header {
-    flex-direction: row;
+/* Foldout header text style: try a few Unity-internal selectors */
+.control-fold .unity-foldout__toggle,
+.control-fold .unity-foldout__text {
+    color: rgba(240,240,240,1.0);
+    -unity-font-style: bold;
+    font-size: 12px;
+}
+
+/* Clamp grid */
+.clamp-grid { flex-direction: column; }
+
+.clamp-row {
+    margin-top: 8px;
+}
+
+.clamp-row > * { margin-right: 10px; }
+
+.clamp-axis {
+    width: 52px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.72);
+    -unity-font-style: bold;
+}
+
+/* numeric fields (FloatField) */
+.control-num {
+    width: 96px;
+    height: 28px;
+}
+/* -----------------------------
+   Text / number input styling
+   - Force dark background
+   - Fix vertical clipping by matching inner input height + padding
+------------------------------ */
+
+/* Outer containers */
+.control-root .control-num,
+.control-root .control-dropdown {
+    height: 30px;          /* bump to 30 to match your topbar inputs */
+    min-height: 30px;
+}
+
+/* Unity internal input element names vary by version.
+   Style ALL of them. */
+.control-root .unity-text-input,
+.control-root .unity-text-field__input,
+.control-root .unity-float-field__input,
+.control-root .unity-integer-field__input,
+.control-root .unity-double-field__input,
+.control-root .unity-long-field__input {
+    height: 30px;
+    min-height: 30px;
+
+    background-color: rgba(0,0,0,0.30);
+    color: rgba(235,235,235,1.0);
+
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+
+    border-left-color: rgba(255,255,255,0.14);
+    border-right-color: rgba(255,255,255,0.14);
+    border-top-color: rgba(255,255,255,0.14);
+    border-bottom-color: rgba(255,255,255,0.14);
+
+    border-radius: 6px;
+
+    /* This is the key to stopping top/bottom clipping */
+    padding: 6px 8px;
+
+    -unity-text-align: middle-left;
+}
+
+/* Inputs */
+.inputs { flex-direction: column; }
+
+.axis-row {
+    padding-top: 6px;
+    padding-bottom: 6px;
+
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(255,255,255,0.06);
+
     align-items: center;
-    margin-bottom: 8;
 }
 
-.state-card-title {
+.axis-row > * { margin-right: 10px; }
+
+.axis-label {
+    width: 52px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.72);
     -unity-font-style: bold;
-    font-size: 12;
-    color: rgb(235,235,235);
 }
 
-.state-divider {
-    height: 1;
-    margin-top: 8;
-    margin-bottom: 8;
-    background-color: rgba(255,255,255,0.08);
-}
-
-/* WIP pill */
-.state-pill {
-    padding-left: 8;
-    padding-right: 8;
-    height: 18;
-    border-radius: 9;
-    -unity-text-align: middle-center;
-    font-size: 11;
-    color: rgb(245,245,245);
-    background-color: rgba(255,255,255,0.10);
-    border-width: 1;
-    border-color: rgba(255,255,255,0.10);
-}
-
-/* ------------------------------------------------------------
-   Foldout: label/icon styling
------------------------------------------------------------- */
-.control-foldout {
-    margin-top: 0;
-}
-
-/* These selectors vary by Unity version; keep all */
-.control-foldout .unity-foldout__toggle,
-.control-foldout .unity-foldout__toggle .unity-foldout__text,
-.control-foldout .unity-foldout__toggle .unity-foldout__icon,
-.control-foldout .unity-toggle__checkmark,
-.control-foldout .unity-foldout__checkmark,
-.control-foldout .unity-foldout__toggle-checkmark {
-    color: rgb(240,240,240);
-    -unity-background-image-tint-color: rgb(240,240,240);
-}
-
-.control-foldout .unity-foldout__text {
-    -unity-font-style: bold;
-    font-size: 13;
-    color: rgb(240,240,240);
-}
-
-/* ------------------------------------------------------------
-   Clamp grid
------------------------------------------------------------- */
-.control-grid-head,
-.control-grid-row {
-    flex-direction: row;
-    align-items: center;
-    justify-content: flex-start;
-    margin-top: 8;
-}
-
-.control-grid-headcell {
-    width: 90;
-    font-size: 11;
-    color: rgb(170,170,170);
-}
-
-.control-grid-axis {
-    width: 90;
-    font-size: 13;
-    -unity-font-style: bold;
-    color: rgb(235,235,235);
-}
-
-/* keep fields compact and aligned */
-.control-field {
-    width: 110;
-}
-
-/* ------------------------------------------------------------
-   Inputs rows
------------------------------------------------------------- */
-.control-inputs-inner { flex-direction: column; }
-
-.control-axis-row {
-    flex-direction: row;
-    align-items: center;
-    justify-content: flex-start;
-    margin-top: 10;
-}
-
-.control-axis-label {
-    width: 90;
-    font-size: 13;
-    -unity-font-style: bold;
-    color: rgb(235,235,235);
-}
-
-.control-axis-slider {
+.axis-slider {
     flex-grow: 1;
-    flex-shrink: 1;
-    min-width: 160;
+    min-width: 160px;
 }
 
-.control-axis-field {
-    width: 96;
-    flex-shrink: 0;
-}
+.axis-num { width: 86px; }
 
-.control-axis-readout {
-    width: 64;
-    flex-shrink: 0;
-    font-size: 12;
-    color: rgb(210,210,210);
+.axis-read {
+    width: 62px;
+    font-size: 12px;
+    color: rgba(190,255,205,0.95);
     -unity-text-align: middle-right;
 }
+.axis-reset {
+    width: 28px;
+    height: 28px;
+    padding-left: 0;
+    padding-right: 0;
+    -unity-text-align: middle-center;
+    opacity: 0.85;
+}
 
-/* ------------------------------------------------------------
-   Slider visuals (blue)
------------------------------------------------------------- */
-.control-axis-slider .unity-base-slider__track,
-.control-axis-slider .unity-slider__track {
-    height: 6;
-    border-radius: 3;
+/* -----------------------------
+   Dropdown (DropdownField) styling
+   - Dark background
+   - Fix vertical clipping
+------------------------------ */
+
+.control-root .control-dropdown,
+.control-root .topbar-select {
+    height: 30px;
+    min-height: 30px;
+}
+
+/* PopupField / DropdownField internals (Unity 6.x uses base-popup-field classes) */
+.control-root .unity-base-popup-field__input,
+.control-root .unity-popup-field__input,
+.control-root .unity-dropdown-field__input {
+    height: 30px;
+    min-height: 30px;
+
+    background-color: rgba(0,0,0,0.30);
+    color: rgba(235,235,235,1.0);
+
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+
+    border-left-color: rgba(255,255,255,0.14);
+    border-right-color: rgba(255,255,255,0.14);
+    border-top-color: rgba(255,255,255,0.14);
+    border-bottom-color: rgba(255,255,255,0.14);
+
+    border-radius: 6px;
+
+    /* leave room for arrow */
+    padding: 6px 26px 6px 8px;
+
+    -unity-text-align: middle-left;
+}
+/* Ensure popup-field text doesn't clip */
+.control-root .unity-base-popup-field__text,
+.control-root .unity-popup-field__text,
+.control-root .unity-dropdown-field__text {
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+/* Text element inside the popup field */
+.control-root .unity-base-popup-field__text,
+.control-root .unity-popup-field__text,
+.control-root .unity-dropdown-field__text {
+    color: rgba(235,235,235,1.0);
+}
+
+/*!* Arrow *!*/
+/*.control-root .unity-base-popup-field__arrow,*/
+/*.control-root .unity-popup-field__arrow,*/
+/*.control-root .unity-dropdown-field__arrow {*/
+/*    tint-color: rgba(255,255,255,0.75);*/
+/*}*/
+
+
+/* blue slider look (Unity internal parts) */
+.axis-slider .unity-base-slider__track,
+.axis-slider .unity-slider__track {
+    height: 6px;
+    border-radius: 3px;
     background-color: rgba(255,255,255,0.12);
-    border-width: 1;
+    border-width: 1px;
     border-color: rgba(0,0,0,0.65);
 }
 
-.control-axis-slider .unity-base-slider__fill,
-.control-axis-slider .unity-slider__fill {
-    height: 6;
-    border-radius: 3;
-    background-color: rgba(90, 140, 255, 0.55);
+.axis-slider .unity-base-slider__fill,
+.axis-slider .unity-slider__fill {
+    height: 6px;
+    border-radius: 3px;
+    background-color: rgba(90,140,255,0.55);
 }
 
-.control-axis-slider .unity-base-slider__dragger,
-.control-axis-slider .unity-slider__dragger,
-.control-axis-slider .unity-base-slider__thumb,
-.control-axis-slider .unity-slider__thumb {
-    width: 12;
-    height: 18;
-    margin-top: -6;
-    border-radius: 3;
+.axis-slider .unity-base-slider__dragger,
+.axis-slider .unity-slider__dragger,
+.axis-slider .unity-base-slider__thumb,
+.axis-slider .unity-slider__thumb {
+    width: 12px;
+    height: 18px;
+    margin-top: -6px;
+    border-radius: 3px;
     background-color: rgba(255,255,255,0.95);
-    border-width: 1;
+    border-width: 1px;
     border-color: rgba(0,0,0,0.95);
 }
 
-/* ------------------------------------------------------------
-   FloatField/TextField visuals
------------------------------------------------------------- */
-.control-axis-field .unity-text-input,
-.control-field .unity-text-input,
-.unity-float-field .unity-text-input {
-    background-color: rgba(0,0,0,0.30);
-    border-width: 1;
-    border-color: rgba(255,255,255,0.14);
-    border-radius: 6;
-    color: rgb(235,235,235);
-    padding-left: 8;
-    padding-right: 8;
-    height: 28;
-}
 
-/* If :focus is unsupported in your build, delete this block */
-.control-axis-field .unity-text-input:focus,
-.control-field .unity-text-input:focus,
-.unity-float-field .unity-text-input:focus {
-    border-color: rgba(90, 140, 255, 0.70);
-    background-color: rgba(0,0,0,0.36);
-}
 
-/* ------------------------------------------------------------
-   Bottom actions
------------------------------------------------------------- */
-.bottom-actions {
-    flex-direction: row;
-    align-items: center;
+/* Reset row */
+.reset-row { margin-top: 10px; }
+.control-reset { height: 28px; }
+
+/* Footer pinned */
+.control-footer {
+    flex-shrink: 0;
+
+    padding: 10px;
+
+    border-top-width: 1px;
+    border-top-color: rgba(255,255,255,0.08);
+
+    background-color: rgba(0,0,0,0.12);
+
     justify-content: flex-end;
     flex-wrap: wrap;
-    margin-top: 8;
 }
 
-.bottom-actions > * {
-    margin-right: 6;
-    margin-bottom: 6;
+.control-footer > * {
+    margin-right: 8px;
+    margin-bottom: 8px;
 }
+
+/* small spacer inside scroll view so last content isn't hidden behind footer */
+.footer-spacer {
+    height: 10px;
+}
+
+/* --- Resize overlay + handles (big + corners win) --- */
+.control-root .resize-overlay {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+}
+
+.control-root .resize-handle {
+    position: absolute;
+    background-color: rgba(90,140,255,0.00);
+}
+
+/* Sizes */
+.control-root { --edgeHit: 12px; --cornerHit: 22px; }
+
+/* Corners (on top / largest hit area) */
+.control-root .resize-handle.corner.tl { left: -10px; top: -10px; width: 22px; height: 22px; }
+.control-root .resize-handle.corner.tr { right: -10px; top: -10px; width: 22px; height: 22px; }
+.control-root .resize-handle.corner.bl { left: -10px; bottom: -10px; width: 22px; height: 22px; }
+.control-root .resize-handle.corner.br { right: -10px; bottom: -10px; width: 22px; height: 22px; }
+
+/* Edges: INSET so they do not cover the corner squares */
+.control-root .resize-handle.edge.l { left: -6px; top: 16px; bottom: 16px; width: 12px; }
+.control-root .resize-handle.edge.r { right: -6px; top: 16px; bottom: 16px; width: 12px; }
+.control-root .resize-handle.edge.t { top: -6px; left: 16px; right: 16px; height: 12px; }
+.control-root .resize-handle.edge.b { bottom: -6px; left: 16px; right: 16px; height: 12px; }
+
+/* Hover feedback */
+.control-root .resize-handle:hover { background-color: rgba(90,140,255,0.10); }
+.control-root .resize-handle.corner:hover { background-color: rgba(90,140,255,0.18); }
+
+
+/* Subtle hover feedback (so you can find the edges) */
+.control-root .resize-handle:hover {
+    background-color: rgba(90,140,255,0.10);
+}
+
+.control-root .resize-handle.corner:hover {
+    background-color: rgba(90,140,255,0.18);
+}
+

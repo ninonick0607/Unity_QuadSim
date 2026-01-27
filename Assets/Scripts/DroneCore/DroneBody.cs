@@ -4,6 +4,7 @@ using UnityEngine;
 namespace DroneCore
 {
     [RequireComponent(typeof(Rigidbody))]
+    [DisallowMultipleComponent]
     public sealed class DroneBody : MonoBehaviour
     {
         [Header("Core")]

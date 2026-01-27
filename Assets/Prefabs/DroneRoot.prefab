@@ -912,6 +912,13 @@ GameObject:
   m_Component:
   - component: {fileID: 3393294561050388046}
   - component: {fileID: 9184194430486069368}
+  - component: {fileID: 4049279432092915417}
+  - component: {fileID: -6611264674519159391}
+  - component: {fileID: -2291174402783153446}
+  - component: {fileID: -7805308036937349666}
+  - component: {fileID: 2810733869085761176}
+  - component: {fileID: -2536970485200983006}
+  - component: {fileID: -4242643215258136215}
   m_Layer: 0
   m_Name: DroneRoot
   m_TagString: Untagged
@@ -947,4 +954,173 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b44c7eba3bd847a5b02240f5b52e3119, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DroneRootBootstrap
-  ensureMotorChildren: 0
+--- !u!54 &4049279432092915417
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9135757327438227529}
+  serializedVersion: 5
+  m_Mass: 1.28
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
+--- !u!114 &-6611264674519159391
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9135757327438227529}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3df274c536784a5e942d71580e4dcf08, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneCore.DroneBody
+  rb: {fileID: 4049279432092915417}
+  motorFL: {fileID: 4111657788187158029}
+  motorFR: {fileID: 419703141765327995}
+  motorBL: {fileID: 5952494717003119130}
+  motorBR: {fileID: 7027284009040917118}
+--- !u!114 &-2291174402783153446
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9135757327438227529}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9e4ca5fecc764cd0b710b204db9608e1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneCore.Common.ThrusterSet
+  body: {fileID: -6611264674519159391}
+  maxThrustPerMotorN: 4.12
+  clamp01: 1
+  yawTorquePerNewton: 0.02
+  spinDirection: 01000000ffffffffffffffff01000000
+--- !u!114 &-7805308036937349666
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9135757327438227529}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 22552b3bdbb3404880e7cb7e82b7f4e0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneCore.Controllers.CascadedController
+  body: {fileID: 0}
+  thrusters: {fileID: 0}
+  sensorManager: {fileID: 0}
+  commandProxy: {fileID: 0}
+  altitudeHoldEnabled: 1
+  desiredAltitudeM: 24
+  hoverThrottle01: 0.75
+  maxThrottleDelta: 0.25
+  zPid:
+    Kp: 1.5
+    Ki: 0.2
+    Kd: 0.4
+    MinOutput: -0.25
+    MaxOutput: 0.25
+    IntegralLimit: 2
+    DecayFactor: 0.99
+  acro:
+    roll:
+      Kp: 0
+      Ki: 0
+      Kd: 0
+      MinOutput: -1
+      MaxOutput: 1
+      IntegralLimit: 10
+      DecayFactor: 0.99
+    pitch:
+      Kp: 0
+      Ki: 0
+      Kd: 0
+      MinOutput: -1
+      MaxOutput: 1
+      IntegralLimit: 10
+      DecayFactor: 0.99
+    yaw:
+      Kp: 0
+      Ki: 0
+      Kd: 0
+      MinOutput: -1
+      MaxOutput: 1
+      IntegralLimit: 10
+      DecayFactor: 0.99
+  desiredRatesDeg: {x: 0, y: 0, z: 0}
+  useEffectivenessAllocator: 1
+  allocator:
+    minAuthorityRatio: 0.01
+    minMotorOutput: 0.05
+    yawTorquePerNewton: 0.02
+  maxAngleRateRad: 6
+  maxYawRateRad: 3
+  yawAuthorityScale: 0.03
+--- !u!114 &2810733869085761176
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9135757327438227529}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 44a34c073e9246bdb3cf73f57cdbcd9c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobotCore.SensorManager
+  rb: {fileID: 0}
+  bodyTransform: {fileID: 0}
+  outputFrame: 1
+  imuHz: 250
+  gpsHz: 10
+  logSensors: 1
+  logHz: 2
+--- !u!114 &-2536970485200983006
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9135757327438227529}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0971c769762c4ea4bcedf49843aa678f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobotCore.RobotCore
+  sensors: {fileID: 0}
+--- !u!114 &-4242643215258136215
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9135757327438227529}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e487a40b20b406784abc6b06ccca1bb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneCore.Interfaces.FlightCommandProxy
+  defaultMode: 0
+  defaultSource: 0
+  useDoubleBuffer: 1

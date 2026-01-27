@@ -1,9 +1,9 @@
 using System;
+using SimCore;
 using UnityEngine;
 using UnityEngine.UIElements;
-using SimCore;
 
-namespace QuadSim.UI
+namespace UI
 {
     [DisallowMultipleComponent]
     public sealed class SimTopBarController : MonoBehaviour

@@ -1,10 +1,11 @@
-using UnityEngine;
 using DroneCore.Controllers;
-using QuadSim.UI.Core; // CascadedController
+using RobotCore;
+using UI.Core;
+using UnityEngine;
 using UnityEngine.UIElements;
-using RobotCore;     
+// CascadedController
 
-namespace QuadSim.UI
+namespace UI
 {
     [DisallowMultipleComponent]
     public sealed class TelemetryDeckController : MonoBehaviour

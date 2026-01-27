@@ -1,20 +1,24 @@
 using System;
+using DroneCore.Controllers;
+using DroneCore.Interfaces;
+using RobotCore.Common;
 using UnityEngine;
 using UnityEngine.UIElements;
-using DroneCore.Controllers;
 
-namespace QuadSim.UI
+namespace UI
 {
     [DisallowMultipleComponent]
     public sealed class ControlDeckController : MonoBehaviour
     {
         [Header("Optional refs")]
         [SerializeField] private CascadedController cascadedController;
-        [SerializeField] private Rigidbody targetRigidbody; // if null, auto-resolve from DroneBody or any RB
+        [SerializeField] private Rigidbody targetRigidbody; 
+        [SerializeField] private FlightCommandProxy commandProxy;
 
         private VisualElement _hudRoot;
         private VisualElement _root;
         private VisualElement _titleBar;
+        private VisualElement _telemetryRoot;
 
         private DockableWindowController _dock;
         private VisualElement _resizeOverlay;
@@ -25,6 +29,8 @@ namespace QuadSim.UI
 
         // Mode selection
         private Button _btnModePosition, _btnModeVelocity, _btnModeAngle, _btnModeAcro, _btnModePassthrough;
+        private Label _axisLabel1, _axisLabel2, _axisLabel3;
+        private Button _btnResetAxis1, _btnResetAxis2, _btnResetAxis3;
 
         // Foldouts
         private Foldout _foldClamps, _foldInputs;
@@ -103,15 +109,43 @@ namespace QuadSim.UI
             
             // Dock controller
             _dock = new DockableWindowController(_hudRoot, _root, _titleBar, _tl, _tr, _bl, _br, _l, _r, _t, _b);
+            _dock.SetConstraints(minW: 360f, minH: 220f);
+            _dock.SetDockThickness(420f);         // right panel width seed
+            _dock.SetDock(DockSide.Right);
+            _dock.SetSnapPixels(8f);
+            _dock.SetResizeSensitivity(0.35f); // if you add the setter
+            _dock.ApplyLayout();
 
+            _telemetryRoot = _hudRoot.Q<VisualElement>("TelemetryRoot");
+
+            // Recompute safe areas whenever layout changes.
+            _hudRoot.RegisterCallback<GeometryChangedEvent>(_ => UpdateBottomSafeFromTelemetry());
+            _telemetryRoot?.RegisterCallback<GeometryChangedEvent>(_ => UpdateBottomSafeFromTelemetry());
+
+            // Apply once now
+            UpdateBottomSafeFromTelemetry();
             // Bind axes (expects SliderRoll/InputRoll/ReadoutRoll/ClampMinRoll/ClampMaxRoll etc.)
             _roll  = BindAxis("Roll");
             _pitch = BindAxis("Pitch");
             _yaw   = BindAxis("Yaw");
 
-            SetAxisClampDefaults(_roll,  -250f, 250f);
-            SetAxisClampDefaults(_pitch, -250f, 250f);
-            SetAxisClampDefaults(_yaw,   -250f, 250f);
+            SetAxisClampDefaults(_roll,  -10f, 10f);
+            SetAxisClampDefaults(_pitch, -10f, 10f);
+            SetAxisClampDefaults(_yaw,   -10f, 10f);
+            _axisLabel1 = _root.Q<Label>("AxisLabel1");
+            _axisLabel2 = _root.Q<Label>("AxisLabel2");
+            _axisLabel3 = _root.Q<Label>("AxisLabel3");
+
+            _btnResetAxis1 = _root.Q<Button>("BtnResetAxis1");
+            _btnResetAxis2 = _root.Q<Button>("BtnResetAxis2");
+            _btnResetAxis3 = _root.Q<Button>("BtnResetAxis3");
+
+            if (_btnResetAxis1 != null) _btnResetAxis1.clicked += () => ResetAxisToZero(_roll);
+            if (_btnResetAxis2 != null) _btnResetAxis2.clicked += () => ResetAxisToZero(_pitch);
+            if (_btnResetAxis3 != null) _btnResetAxis3.clicked += () => ResetAxisToZero(_yaw);
+
+            // Apply initial labels for current mode
+            ApplyAxisLabelsForMode();
 
             // Button wiring
             if (_btnCtrlCascade != null) _btnCtrlCascade.clicked += () => SetController(ControllerChoice.Cascade);
@@ -147,6 +181,32 @@ namespace QuadSim.UI
             RefreshButtonStates();
             PushOutputs(); // ensure command sink matches UI on start
         }
+        private void ResetAxisToZero(AxisWidgets w)
+        {
+            if (w == null) return;
+
+            _suppressAxisEvents = true;
+            try
+            {
+                w.CurrentRaw = 0f;
+                w.SetUIValue(0f);
+                SyncAxisUIFromRaw(w);
+            }
+            finally
+            {
+                _suppressAxisEvents = false;
+            }
+
+            PushOutputs();
+        }
+        private void ApplyAxisLabelsForMode()
+        {
+            bool xyz = (_mode == ModeChoice.Position || _mode == ModeChoice.Velocity);
+
+            if (_axisLabel1 != null) _axisLabel1.text = xyz ? "X" : "Roll";
+            if (_axisLabel2 != null) _axisLabel2.text = xyz ? "Y" : "Pitch";
+            if (_axisLabel3 != null) _axisLabel3.text = xyz ? "Z" : "Yaw";
+        }
 
         public void Toggle()
         {
@@ -165,6 +225,31 @@ namespace QuadSim.UI
                 _root.AddToClassList("is-hidden");
             }
         }
+        private void UpdateBottomSafeFromTelemetry()
+        {
+            if (_dock == null || _hudRoot == null) return;
+
+            float safe = 0f;
+
+            if (_telemetryRoot != null)
+            {
+                bool telemetryHidden = _telemetryRoot.ClassListContains("is-hidden");
+                if (!telemetryHidden)
+                {
+                    // If telemetry is docked bottom, its layout.y will be near (hudH - height).
+                    float hudH = _hudRoot.resolvedStyle.height;
+                    var tr = _telemetryRoot.layout;
+
+                    bool looksBottomDocked = (hudH > 1f) && (tr.height > 1f) && (tr.y >= hudH - tr.height - 2f);
+                    if (looksBottomDocked)
+                    {
+                        safe = tr.height + 10f; // + margin so it doesn't touch
+                    }
+                }
+            }
+
+            _dock.SetBottomSafeArea(safe);
+        }
 
 
         // ----------------------------
@@ -179,7 +264,6 @@ namespace QuadSim.UI
             public SliderInt SliderInt;  // int slider (optional)
 
             public FloatField Input;
-            public Label Readout;
 
             public FloatField ClampMin;
             public FloatField ClampMax;
@@ -218,12 +302,11 @@ namespace QuadSim.UI
                 Slider = _root.Q<Slider>($"Slider{name}"),
                 SliderInt = _root.Q<SliderInt>($"Slider{name}"),
                 Input = _root.Q<FloatField>($"Input{name}"),
-                Readout = _root.Q<Label>($"Readout{name}"),
                 ClampMin = _root.Q<FloatField>($"ClampMin{name}"),
                 ClampMax = _root.Q<FloatField>($"ClampMax{name}")
             };
 
-            if ((w.Slider == null && w.SliderInt == null) || w.Input == null || w.Readout == null || w.ClampMin == null || w.ClampMax == null)
+            if ((w.Slider == null && w.SliderInt == null) || w.Input == null || w.ClampMin == null || w.ClampMax == null)
                 throw new Exception($"[ControlDeck] Missing axis widgets for '{name}'. Check UXML names (Slider/Input/Readout/ClampMin/ClampMax).");
 
             if (w.Slider != null)
@@ -310,14 +393,7 @@ namespace QuadSim.UI
             float hi = Mathf.Max(w.ClampMinValue, w.ClampMaxValue);
             return Mathf.Clamp(w.CurrentRaw, lo, hi);
         }
-
-        private void UpdateReadout(AxisWidgets w)
-        {
-            if (w == null || w.Readout == null) return;
-            float v = ApplyClamp(w);
-            w.Readout.text = v.ToString("0.00");
-        }
-
+        
         // ----------------------------
         // UI state
         // ----------------------------
@@ -335,10 +411,10 @@ namespace QuadSim.UI
         {
             _mode = mode;
             RefreshButtonStates();
-
-            // Phase 1: only Acro is writable under Cascade
+            ApplyAxisLabelsForMode();
             PushOutputs();
         }
+
 
         private bool IsActiveWritable()
         {
@@ -377,35 +453,45 @@ namespace QuadSim.UI
         {
             ResolveRefsIfNeeded();
 
-            float roll = ApplyClamp(_roll);
+            float roll  = ApplyClamp(_roll);
             float pitch = ApplyClamp(_pitch);
-            float yaw = ApplyClamp(_yaw);
-
-            UpdateReadout(_roll);
-            UpdateReadout(_pitch);
-            UpdateReadout(_yaw);
+            float yaw   = ApplyClamp(_yaw);
 
             if (!IsActiveWritable()) return;
 
-            // Phase 1 command sink: CascadedController desiredRatesDeg
+            // Always write to the command proxy if present.
+            if (commandProxy != null)
+            {
+                Debug.Log($"[ControlDeck] Writing mode=Rate rpy=({roll:F2},{pitch:F2},{yaw:F2}) proxy={(commandProxy!=null ? commandProxy.name : "NULL")}");
+                commandProxy.SetCommand(new Axis4(roll, pitch, yaw, 0f), GoalMode.Rate, InputSource.UI);
+                Debug.Log($"[ControlDeck] Write Rate cmd rpy=({roll:F2},{pitch:F2},{yaw:F2}) mode={GoalMode.Rate} proxy={(commandProxy!=null)}");
+            }
+
+            // Optional: keep this during transition, but it should become redundant.
             if (cascadedController != null)
             {
                 cascadedController.desiredRatesDeg = new Vector3(roll, pitch, yaw);
             }
         }
 
+
         private void BringResizeToFront()
         {
             _resizeOverlay?.BringToFront();
-            _tl?.BringToFront();
-            _tr?.BringToFront();
-            _bl?.BringToFront();
-            _br?.BringToFront();
+
+            // edges first
             _l?.BringToFront();
             _r?.BringToFront();
             _t?.BringToFront();
             _b?.BringToFront();
+
+            // corners last (on top)
+            _tl?.BringToFront();
+            _tr?.BringToFront();
+            _bl?.BringToFront();
+            _br?.BringToFront();
         }
+
 
         // ----------------------------
         // Drone selection (optional)
@@ -452,9 +538,20 @@ namespace QuadSim.UI
                 if (b.gameObject.name != name) continue;
 
                 targetRigidbody = b.Rigidbody;
+
+                cascadedController = b.GetComponent<CascadedController>();
+                if (cascadedController == null)
+                    cascadedController = b.GetComponentInParent<CascadedController>();
+
+                commandProxy = b.GetComponent<DroneCore.Interfaces.FlightCommandProxy>();
+                if (commandProxy == null)
+                    commandProxy = b.GetComponentInParent<DroneCore.Interfaces.FlightCommandProxy>();
+
+                Debug.Log($"[ControlDeck] Selected '{name}' ctrl={(cascadedController!=null)} proxy={(commandProxy!=null)}");
                 return;
             }
         }
+
 
         private void ResetAllAxesToZero()
         {
@@ -486,6 +583,12 @@ namespace QuadSim.UI
             if (cascadedController == null)
                 cascadedController = UnityEngine.Object.FindFirstObjectByType<CascadedController>();
 
+            if (commandProxy == null && cascadedController != null)
+                commandProxy = cascadedController.GetComponent<DroneCore.Interfaces.FlightCommandProxy>();
+
+            if (commandProxy == null)
+                commandProxy = UnityEngine.Object.FindFirstObjectByType<DroneCore.Interfaces.FlightCommandProxy>();
+
             if (targetRigidbody == null)
             {
                 var body = UnityEngine.Object.FindFirstObjectByType<DroneCore.DroneBody>();
@@ -494,6 +597,7 @@ namespace QuadSim.UI
                     targetRigidbody = UnityEngine.Object.FindFirstObjectByType<Rigidbody>();
             }
         }
+
 
         // ----------------------------
         // Bottom actions
