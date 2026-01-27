@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace QuadSim.UI.Core
+namespace UI.Core
 {
     /// <summary>
     /// Lightweight time-series plotter for UI Toolkit.
@@ -11,6 +11,7 @@ namespace QuadSim.UI.Core
     /// </summary>
     public sealed partial class TelemetryGraphElement : VisualElement
     {
+        [Obsolete("Obsolete")]
         public new class UxmlFactory : UxmlFactory<TelemetryGraphElement, VisualElement.UxmlTraits> { }
 
         public struct Series

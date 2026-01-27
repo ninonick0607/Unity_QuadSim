@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace QuadSim.UI
+namespace UI
 {
     /// <summary>
     /// The compositor/controller for the whole HUD.
@@ -48,6 +48,8 @@ namespace QuadSim.UI
                 enabled = false;
                 return;
             }
+            Debug.Log($"[SimHUD] UIDocument VTA = {(document.visualTreeAsset != null ? document.visualTreeAsset.name : "NULL")}");
+            Debug.Log($"[SimHUD] docRoot childCount={document.rootVisualElement.childCount}");
 
             // MUST match: <ui:VisualElement name="HUDRoot" ...>
             _hudRoot = _docRoot.Q<VisualElement>("HUDRoot");

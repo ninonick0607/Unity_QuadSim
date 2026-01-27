@@ -7,6 +7,7 @@ using UnityEngine;
 namespace RobotCore
 {
     [RequireComponent(typeof(DroneBody))]
+    [DisallowMultipleComponent]
     public sealed class SensorManager : MonoBehaviour, ISimulatable
     {
         [Header("Refs")]
@@ -87,8 +88,6 @@ namespace RobotCore
         public void PrePhysicsStep(double dtSec, long nowNanos)
         {
             double nowSec = nowNanos * 1e-9;
-            if (_logLimiter.ShouldRunAndConsume(nowNanos))
-                Debug.Log($"[Sensor] nowNanos={nowNanos} imuValid={Latest.ImuValid}");
 
             // keep output frame synced
             IMU.OutputFrame = outputFrame;
@@ -102,10 +101,12 @@ namespace RobotCore
 
                 latest.ImuAngVel = IMU.LastAngVel;
                 latest.ImuAttitude = IMU.LastAtt;
+                latest.ImuOrientation = IMU.LastOrientation; 
                 latest.ImuAccel = IMU.LastLinAcc;
                 latest.ImuVel = IMU.LastVel;
                 latest.ImuTimestampSec = IMU.LastTimestampSec;
                 latest.ImuValid = IMU.IsValid;
+
             }
 
             // GPS

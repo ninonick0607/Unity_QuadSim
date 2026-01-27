@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace QuadSim.UI.Core
+namespace UI.Core
 {
     /// <summary>
     /// Fixed-size ring buffer for (time,value) samples.

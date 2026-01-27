@@ -1,187 +1,171 @@
-.is-hidden {
-    display: none;
-}
-
-.hud-root {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    bottom: 0;
-}
-
+/* Scope everything to the top bar root to avoid leaking styles */
 .topbar-root {
     position: absolute;
     left: 0;
     right: 0;
     top: 0;
-    height: 44;
-    padding-left: 10;
-    padding-right: 10;
-    background-color: rgba(18, 18, 18, 0.85);
-    border-bottom-width: 1;
-    border-bottom-color: rgba(255, 255, 255, 0.10);
+    height: 46px;
+
+    background-color: rgba(18,18,18,0.78);
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(255,255,255,0.10);
+
+    padding-left: 12px;
+    padding-right: 12px;
+
     justify-content: center;
 }
 
-.topbar-row {
-    flex-direction: row;
-    align-items: center;
-    width: 100%;
-    height: 100%;
-}
-
-.group {
+/* Ensure these containers actually lay out horizontally */
+.topbar-root .row {
     flex-direction: row;
     align-items: center;
 }
 
-.spacer {
-    flex-grow: 1;
-}
-
-/* Ensure default theme doesn't fight */
-.unity-button {
-    background-image: none;
-}
-
-/* Base button visual */
-.btn {
-    height: 28;
-    margin-left: 4;
-    margin-right: 4;
-    padding-left: 10;
-    padding-right: 10;
-    border-radius: 6;
-    border-width: 1;
-    border-color: rgba(255, 255, 255, 0.12);
-    background-color: rgba(255, 255, 255, 0.06);
-    color: rgb(235, 235, 235);
-    -unity-text-align: middle-center;
-}
-
-/* Unity button states */
-.unity-button.btn {
-    background-color: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.12);
-}
-
-.unity-button.btn:hover {
-    background-color: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.20);
-}
-
-.unity-button.btn:active {
-    background-color: rgba(255, 255, 255, 0.18);
-    border-color: rgba(255, 255, 255, 0.26);
-}
-
-.unity-button.btn-primary {
-    background-color: rgba(90, 140, 255, 0.22);
-    border-color: rgba(90, 140, 255, 0.50);
-}
-
-.unity-button.btn-primary:hover {
-    background-color: rgba(90, 140, 255, 0.30);
-    border-color: rgba(90, 140, 255, 0.65);
-}
-
-.unity-button.btn-primary:active {
-    background-color: rgba(90, 140, 255, 0.36);
-    border-color: rgba(90, 140, 255, 0.80);
-}
-
-/* Small icon-like buttons */
-.btn-icon {
-    width: 34;
-    padding-left: 0;
-    padding-right: 0;
-}
-
-.btn-primary {
-    min-width: 86;
-    background-color: rgba(90, 140, 255, 0.22);
-    border-color: rgba(90, 140, 255, 0.50);
-}
-
-/* Pills */
-.pill {
-    height: 30;
-    margin-left: 6;
-    margin-right: 6;
-    padding-left: 12;
-    padding-right: 12;
-    border-radius: 9999;
-    background-color: rgba(0, 0, 0, 0.35);
-    border-width: 1;
-    border-color: rgba(255, 255, 255, 0.10);
-    justify-content: center;
-    align-items: center;
-}
-
-.pill-label {
-    color: rgb(140, 255, 170);
-    -unity-text-align: middle-center;
-}
-
-/* (If you still have legacy drawer styles in this file) */
-.drawer {
+/* Center group spans full width, content centered */
+.topbar-root .topbar-center {
     position: absolute;
     left: 0;
     right: 0;
+    top: 0;
     bottom: 0;
-    height: 340;
-    padding: 10;
-    background-color: rgba(15, 15, 15, 0.92);
-    border-top-width: 1;
-    border-top-color: rgba(255, 255, 255, 0.12);
-}
 
-.drawer-header {
-    flex-direction: row;
+    justify-content: center;
     align-items: center;
-    margin-bottom: 6;
 }
 
-.drawer-title {
-    font-size: 14;
+/* Left group pinned */
+.topbar-root .topbar-left {
+    position: absolute;
+    left: 12px;
+    top: 0;
+    bottom: 0;
+
+    align-items: center;
+}
+
+/* Right group pinned */
+.topbar-root .topbar-right {
+    position: absolute;
+    right: 12px;
+    top: 0;
+    bottom: 0;
+
+    align-items: center;
+}
+
+/* ------------------------------------------------------------------ */
+/* Unity replacement for gap: apply margin-right to children           */
+/* NOTE: No :last-child in Unity 6.3, so trailing margin is OK.        */
+/* ------------------------------------------------------------------ */
+
+.topbar-root .topbar-center > * { margin-right: 8px; }
+.topbar-root .topbar-left   > * { margin-right: 8px; }
+.topbar-root .topbar-right  > * { margin-right: 8px; }
+
+/* Pill internal spacing (x + value) */
+.topbar-root .topbar-pill > * { margin-right: 4px; }
+
+/* Divider (vdiv) already defines its own margins */
+.topbar-root .topbar-vdiv {
+    width: 1px;
+    height: 22px;
+    background-color: rgba(255,255,255,0.12);
+    margin-left: 6px;
+    margin-right: 6px;
+}
+
+/* Buttons (topbar-specific sizing) */
+.topbar-root .topbar-btn {
+    height: 30px;
+    min-width: 32px;
+    padding-left: 10px;
+    padding-right: 10px;
+
+    font-size: 12px;
     -unity-font-style: bold;
-    color: white;
 }
 
-.drawer-tabs {
-    flex-direction: row;
-    margin-bottom: 8;
+/* Primary button (PAUSE) */
+.topbar-root .topbar-btn-primary {
+    background-color: rgba(60,130,255,0.75);
+    color: rgba(7,16,33,1.0);
 }
 
-.tab {
-    height: 26;
-    padding-left: 10;
-    padding-right: 10;
-    margin-right: 6;
-    border-radius: 6;
-    border-width: 1;
-    border-color: rgba(255, 255, 255, 0.12);
-    background-color: rgba(255, 255, 255, 0.06);
-    color: rgb(220, 220, 220);
-    -unity-text-align: middle-center;
+/* Soft primary (Spawn) */
+.topbar-root .topbar-btn-primary-soft {
+    background-color: rgba(90,140,255,0.35);
 }
 
-.tab.active {
-    background-color: rgba(90, 140, 255, 0.25);
-    border-color: rgba(90, 140, 255, 0.60);
+/* Ghost (Settings) */
+.topbar-root .topbar-btn-ghost {
+    background-color: rgba(0,0,0,0.0);
+
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+
+    border-left-color: rgba(255,255,255,0.10);
+    border-right-color: rgba(255,255,255,0.10);
+    border-top-color: rgba(255,255,255,0.10);
+    border-bottom-color: rgba(255,255,255,0.10);
 }
 
-.kv-row {
-    flex-direction: row;
-    justify-content: space-between;
-    margin-bottom: 6;
+/* Pill (speed) */
+.topbar-root .topbar-pill {
+    height: 30px;
+    padding-left: 12px;
+    padding-right: 12px;
+
+    border-radius: 999px;
+
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+
+    border-left-color: rgba(255,255,255,0.10);
+    border-right-color: rgba(255,255,255,0.10);
+    border-top-color: rgba(255,255,255,0.10);
+    border-bottom-color: rgba(255,255,255,0.10);
+
+    background-color: rgba(0,0,0,0.30);
+
+    align-items: center;
 }
 
-.kv-label {
-    color: rgb(170, 170, 170);
+.topbar-root .topbar-pill-x {
+    font-size: 12px;
+    color: rgba(190,210,255,0.95);
 }
 
-.kv-value {
-    color: rgb(140, 255, 170);
+.topbar-root .topbar-pill-speed {
+    font-size: 12px;
+    color: rgba(190,210,255,0.95);
+    -unity-font-style: bold;
+}
+
+/* Spawn dropdown styling */
+.topbar-root .topbar-select {
+    height: 30px;
+    min-width: 110px;
+
+    border-radius: 7px;
+
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+
+    border-left-color: rgba(255,255,255,0.12);
+    border-right-color: rgba(255,255,255,0.12);
+    border-top-color: rgba(255,255,255,0.12);
+    border-bottom-color: rgba(255,255,255,0.12);
+
+    background-color: rgba(0,0,0,0.28);
+    color: rgba(255,255,255,0.92);
+
+    padding-left: 10px;
+    padding-right: 10px;
 }

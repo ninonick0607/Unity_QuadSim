@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace QuadSim.UI
+namespace UI
 {
     public enum DockSide { Floating, Left, Right, Bottom, Top }
 
@@ -20,6 +20,7 @@ namespace QuadSim.UI
         private readonly VisualElement _r;
         private readonly VisualElement _t;
         private readonly VisualElement _b;
+        private bool _skipSnapOnce;
 
         public DockSide Dock { get; private set; } = DockSide.Bottom;
 
@@ -38,6 +39,8 @@ namespace QuadSim.UI
         // Constraints
         private float _minW = 360f;
         private float _minH = 220f;
+        
+        private float _bottomSafePx = 0f;
 
         // Safe area (TopBar height)
         private float _topSafePx = 44f;
@@ -55,6 +58,8 @@ namespace QuadSim.UI
         private float _resizeStartX, _resizeStartY, _resizeStartW, _resizeStartH;
         private int _resizeDirX; // -1 left, +1 right
         private int _resizeDirY; // -1 top, +1 bottom
+        private float _resizeStartDockThickness;
+        private float _resizeSensitivity = 0.35f; // lower = less jumpy (0.25–0.5 is reasonable)
 
         public DockableWindowController(
             VisualElement hudRoot,
@@ -132,7 +137,10 @@ namespace QuadSim.UI
             Dock = dock;
             ApplyLayout();
         }
-
+        public void SetResizeSensitivity(float s)
+        {
+            _resizeSensitivity = Mathf.Clamp(s, 0.05f, 2.0f);
+        }
         public void ApplyLayout()
         {
             float hudW = _hudRoot.resolvedStyle.width;
@@ -140,7 +148,9 @@ namespace QuadSim.UI
             if (hudW <= 1f || hudH <= 1f) return;
 
             float safeTop = _topSafePx;
-            float usableH = Mathf.Max(0f, hudH - safeTop);
+            float safeBottom = _bottomSafePx;
+            float usableH = Mathf.Max(0f, hudH - safeTop - safeBottom);
+
 
             // Clamp dock thickness to usable dimension
             if (Dock == DockSide.Left || Dock == DockSide.Right)
@@ -153,7 +163,7 @@ namespace QuadSim.UI
             _h = Mathf.Clamp(_h, _minH, usableH);
 
             _x = Mathf.Clamp(_x, 0f, Mathf.Max(0f, hudW - _w));
-            _y = Mathf.Clamp(_y, safeTop, Mathf.Max(safeTop, hudH - _h));
+            _y = Mathf.Clamp(_y, safeTop, Mathf.Max(safeTop, hudH - safeBottom - _h));
 
             switch (Dock)
             {
@@ -162,7 +172,7 @@ namespace QuadSim.UI
                     break;
 
                 case DockSide.Bottom:
-                    SetRect(0f, hudH - _dockThickness, hudW, _dockThickness);
+                    SetRect(0f, hudH - safeBottom - _dockThickness, hudW, _dockThickness);
                     break;
 
                 case DockSide.Top:
@@ -170,17 +180,24 @@ namespace QuadSim.UI
                     break;
 
                 case DockSide.Left:
-                    SetRect(0f, safeTop, _dockThickness, hudH - safeTop);
+                    SetRect(0f, safeTop, _dockThickness, hudH - safeTop - safeBottom);
                     break;
 
                 case DockSide.Right:
-                    SetRect(hudW - _dockThickness, safeTop, _dockThickness, hudH - safeTop);
+                    SetRect(hudW - _dockThickness, safeTop, _dockThickness, hudH - safeTop - safeBottom);
                     break;
+
             }
         }
 
         // ---- Internals ----
 
+        public void SetBottomSafeArea(float px)
+        {
+            _bottomSafePx = Mathf.Max(0f, px);
+            ApplyLayout();
+        }
+        
         private void SetRect(float x, float y, float w, float h)
         {
             _window.style.left = x;
@@ -188,18 +205,33 @@ namespace QuadSim.UI
             _window.style.width = w;
             _window.style.height = h;
         }
+        private const float DetachInsetPx = 10f; // bottom moves up by 10px on detach
 
         private void EnsureFloatingFromDock()
         {
             if (Dock == DockSide.Floating) return;
 
-            // Switch to last remembered floating rect (Unity-like behavior)
+            var r = _window.layout; // current docked rect in HUD space
+
             Dock = DockSide.Floating;
-            _x = _lastFloatX;
-            _y = _lastFloatY;
-            _w = _lastFloatW;
-            _h = _lastFloatH;
+
+            _x = r.x;
+            _y = r.y;
+            _w = r.width;
+            _h = r.height;
+
+            // Nudge: move the bottom up a bit so it "detaches" visually
+            _h = Mathf.Max(_minH, _h - DetachInsetPx);
+
+            _lastFloatX = _x;
+            _lastFloatY = _y;
+            _lastFloatW = _w;
+            _lastFloatH = _h;
+
+            _skipSnapOnce = true; // keep your existing snap-skip behavior
         }
+
+
 
         private void SaveFloatingRect()
         {
@@ -222,8 +254,9 @@ namespace QuadSim.UI
                 EnsureFloatingFromDock();
                 ApplyLayout();
 
-                // Offset inside window so it doesn't jump
-                _dragOffsetInHud = mouseHud - new Vector2(_x, _y);
+                var wr = _window.layout;
+                _dragOffsetInHud = mouseHud - new Vector2(wr.x, wr.y);
+
 
                 _titleBar.CapturePointer(evt.pointerId);
                 evt.StopPropagation();
@@ -252,9 +285,16 @@ namespace QuadSim.UI
 
                 SaveFloatingRect();
 
-                // Snap ONLY on titlebar drag release (desktop behavior)
                 Vector2 mouseHud = _hudRoot.WorldToLocal(evt.position);
-                SnapIfNearEdge(mouseHud);
+                if (_skipSnapOnce)
+                {
+                    _skipSnapOnce = false; // detach should stay floating on first release
+                }
+                else
+                {
+                    SnapIfNearEdge(mouseHud);
+                }
+
 
                 ApplyLayout();
                 evt.StopPropagation();
@@ -292,6 +332,8 @@ namespace QuadSim.UI
                     _resizeStartY = _y;
                     _resizeStartW = _w;
                     _resizeStartH = _h;
+                    _resizeStartDockThickness = _dockThickness;
+
                 }
 
                 handle.CapturePointer(evt.pointerId);
@@ -346,27 +388,22 @@ namespace QuadSim.UI
                 }
                 else
                 {
-                    // Docked edge resize adjusts thickness, stays docked
+                    // Docked edge resize adjusts thickness, stays docked (NON-COMPOUNDING)
                     if (Dock == DockSide.Left || Dock == DockSide.Right)
                     {
-                        // Only respond to X edges when docked left/right
-                        float delta = d.x;
-
-                        // For right dock, moving left increases thickness (invert)
+                        float delta = d.x * _resizeSensitivity;
                         if (Dock == DockSide.Right) delta = -delta;
 
-                        _dockThickness = Mathf.Clamp(_dockThickness + delta, _minW, hudW);
+                        _dockThickness = Mathf.Clamp(_resizeStartDockThickness + delta, _minW, hudW);
                     }
                     else if (Dock == DockSide.Top || Dock == DockSide.Bottom)
                     {
-                        // Only respond to Y edges when docked top/bottom
-                        float delta = d.y;
-
-                        // For bottom dock, moving up increases thickness (invert)
+                        float delta = d.y * _resizeSensitivity;
                         if (Dock == DockSide.Bottom) delta = -delta;
 
-                        _dockThickness = Mathf.Clamp(_dockThickness + delta, _minH, usableH);
+                        _dockThickness = Mathf.Clamp(_resizeStartDockThickness + delta, _minH, usableH);
                     }
+
 
                     ApplyLayout();
                 }
@@ -469,25 +506,22 @@ namespace QuadSim.UI
                 }
                 else
                 {
-                    // Docked resize changes thickness only, stays docked
+                    // Docked resize changes thickness only, stays docked (NON-COMPOUNDING)
                     if (Dock == DockSide.Left || Dock == DockSide.Right)
                     {
-                        // Horizontal panels: thickness is width
-                        float delta = d.x;
-                        // If docked on left, dragging right increases; on right, dragging left increases
+                        float delta = d.x * _resizeSensitivity;
                         if (Dock == DockSide.Right) delta = -delta;
 
-                        _dockThickness = Mathf.Clamp(_dockThickness + delta, _minW, hudW);
+                        _dockThickness = Mathf.Clamp(_resizeStartDockThickness + delta, _minW, hudW);
                     }
                     else
                     {
-                        // Top/Bottom panels: thickness is height
-                        float delta = d.y;
-                        // Bottom: dragging up increases height; Top: dragging down increases height
+                        float delta = d.y * _resizeSensitivity;
                         if (Dock == DockSide.Bottom) delta = -delta;
 
-                        _dockThickness = Mathf.Clamp(_dockThickness + delta, _minH, usableH);
+                        _dockThickness = Mathf.Clamp(_resizeStartDockThickness + delta, _minH, usableH);
                     }
+
 
                     ApplyLayout();
                 }
@@ -524,8 +558,8 @@ namespace QuadSim.UI
             float distLeft = mouseHud.x;
             float distRight = hudW - mouseHud.x;
             float distTop = Mathf.Max(0f, mouseHud.y - safeTop);
-            float distBottom = hudH - mouseHud.y;
-
+            float safeBottom = _bottomSafePx;
+            float distBottom = (hudH - safeBottom) - mouseHud.y;
             DockSide target = DockSide.Floating;
             float best = _snapPx;
 

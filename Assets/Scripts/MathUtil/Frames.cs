@@ -42,6 +42,33 @@ namespace MathUtil
                 _ => wBodyUnity
             };
         }
+        
+        public static Vector3 TransformAttitude(Vector3 rpyDegUnityBody, SimFrame target)
+        {
+            // rpyDegUnityBody is expected to be (roll, pitch, yaw) in DEGREES,
+            // in YOUR controller convention, same as Unreal FRotator usage.
+
+            return target switch
+            {
+                // Match your Unreal UEToFLU_Attitude:
+                // roll stays, pitch flips, yaw flips
+                SimFrame.FLU => new Vector3(
+                    rpyDegUnityBody.x,
+                    -rpyDegUnityBody.y,
+                    -rpyDegUnityBody.z
+                ),
+
+                // Match your Unreal UEToFRD_Attitude:
+                // roll stays, pitch stays, yaw flips
+                SimFrame.FRD => new Vector3(
+                    rpyDegUnityBody.x,
+                    rpyDegUnityBody.y,
+                    -rpyDegUnityBody.z
+                ),
+
+                _ => rpyDegUnityBody
+            };
+        }
 
         // -------- Implementation (UnityBody -> FLU/FRD) --------
         //
@@ -113,5 +140,97 @@ namespace MathUtil
             // Here +Y is RIGHT and +Z is DOWN already, matching PX4-ish semantics.
             return new Vector3(w.x, -w.z, -w.y);
         }
+        
+        public static Quaternion TransformQuaternion(Quaternion qBodyUnity, SimFrame target)
+        {
+            // True basis-change for rotations.
+            // qBodyUnity is the body orientation expressed in UnityBody basis.
+            // Returns the same physical orientation expressed in the target frame basis.
+            if (target == SimFrame.UnityBody) return qBodyUnity;
+
+            Quaternion unityFromTarget = GetUnityFromTargetBasis(target);
+            return Quaternion.Inverse(unityFromTarget) * qBodyUnity * unityFromTarget;
+        }
+
+        private static Quaternion GetUnityFromTargetBasis(SimFrame target)
+        {
+            // Target frame axes expressed in UnityBody coordinates (X fwd, Y up, Z left).
+            // FLU: X=fwd, Y=left, Z=up  => (x,y,z) = (X, Z, Y)
+            // FRD: X=fwd, Y=right=-left, Z=down=-up => (x,y,z) = (X, -Z, -Y)
+            return target switch
+            {
+                SimFrame.FLU => QuaternionFromBasis(
+                    xAxisUnityBody: new Vector3(1f, 0f, 0f),
+                    yAxisUnityBody: new Vector3(0f, 0f, 1f),
+                    zAxisUnityBody: new Vector3(0f, 1f, 0f)
+                ),
+                SimFrame.FRD => QuaternionFromBasis(
+                    xAxisUnityBody: new Vector3(1f, 0f, 0f),
+                    yAxisUnityBody: new Vector3(0f, 0f, -1f),
+                    zAxisUnityBody: new Vector3(0f, -1f, 0f)
+                ),
+                _ => Quaternion.identity
+            };
+        }
+
+        private static Quaternion QuaternionFromBasis(Vector3 xAxisUnityBody, Vector3 yAxisUnityBody, Vector3 zAxisUnityBody)
+        {
+            var m = new Matrix4x4();
+            m.SetColumn(0, new Vector4(xAxisUnityBody.x, xAxisUnityBody.y, xAxisUnityBody.z, 0f));
+            m.SetColumn(1, new Vector4(yAxisUnityBody.x, yAxisUnityBody.y, yAxisUnityBody.z, 0f));
+            m.SetColumn(2, new Vector4(zAxisUnityBody.x, zAxisUnityBody.y, zAxisUnityBody.z, 0f));
+            m.SetColumn(3, new Vector4(0f, 0f, 0f, 1f));
+            return QuaternionFromMatrix(m);
+        }
+
+        private static Quaternion QuaternionFromMatrix(Matrix4x4 m)
+        {
+            float trace = m.m00 + m.m11 + m.m22;
+            if (trace > 0f)
+            {
+                float s = Mathf.Sqrt(trace + 1f) * 2f;
+                float invS = 1f / s;
+                return new Quaternion(
+                    (m.m21 - m.m12) * invS,
+                    (m.m02 - m.m20) * invS,
+                    (m.m10 - m.m01) * invS,
+                    0.25f * s
+                );
+            }
+
+            if (m.m00 > m.m11 && m.m00 > m.m22)
+            {
+                float s = Mathf.Sqrt(1f + m.m00 - m.m11 - m.m22) * 2f;
+                float invS = 1f / s;
+                return new Quaternion(
+                    0.25f * s,
+                    (m.m01 + m.m10) * invS,
+                    (m.m02 + m.m20) * invS,
+                    (m.m21 - m.m12) * invS
+                );
+            }
+
+            if (m.m11 > m.m22)
+            {
+                float s = Mathf.Sqrt(1f + m.m11 - m.m00 - m.m22) * 2f;
+                float invS = 1f / s;
+                return new Quaternion(
+                    (m.m01 + m.m10) * invS,
+                    0.25f * s,
+                    (m.m12 + m.m21) * invS,
+                    (m.m02 - m.m20) * invS
+                );
+            }
+
+            float sZ = Mathf.Sqrt(1f + m.m22 - m.m00 - m.m11) * 2f;
+            float invSZ = 1f / sZ;
+            return new Quaternion(
+                (m.m02 + m.m20) * invSZ,
+                (m.m12 + m.m21) * invSZ,
+                0.25f * sZ,
+                (m.m10 - m.m01) * invSZ
+            );
+        }
+
     }
 }

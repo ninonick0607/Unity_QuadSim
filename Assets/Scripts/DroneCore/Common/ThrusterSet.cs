@@ -8,6 +8,7 @@ namespace DroneCore.Common
     /// Commands are normalized [0..1] and mapped to Newtons.
     /// </summary>
     [RequireComponent(typeof(DroneBody))]
+    [DisallowMultipleComponent]
     public sealed class ThrusterSet : MonoBehaviour
     {
         [Header("Refs")]
