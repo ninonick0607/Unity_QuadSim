@@ -45,6 +45,10 @@ namespace DroneCore.Interfaces
         public GoalMode Mode => _frontMode;
         public InputSource Source => _frontSource;
 
+<<<<<<< HEAD
+=======
+        
+>>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
         private void Awake()
         {
             Debug.Log($"[CmdProxy] Awake on {name}");

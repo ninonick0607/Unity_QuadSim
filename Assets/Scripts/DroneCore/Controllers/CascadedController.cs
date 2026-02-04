@@ -110,6 +110,14 @@ namespace DroneCore.Controllers
         public void PrePhysicsStep(double dtSec, long nowNanos)
         {
             float dt = (float)dtSec;
+<<<<<<< HEAD
+=======
+            FlightController(dt);
+        }
+
+        public void FlightController(double deltaTime)
+        {
+>>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
             if (commandProxy == null)
             {
                 Debug.LogError("[Cascade] commandProxy is null");
@@ -123,7 +131,11 @@ namespace DroneCore.Controllers
             if (altitudeHoldEnabled && body != null)
             {
                 float y = body.Rigidbody.position.y;
+<<<<<<< HEAD
                 float delta = zPid.Calculate(desiredAltitudeM, y, dt);
+=======
+                float delta = zPid.Calculate(desiredAltitudeM, y, deltaTime);
+>>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
                 delta = Mathf.Clamp(delta, -maxThrottleDelta, maxThrottleDelta);
                 throttle = Mathf.Clamp01(hoverThrottle01 + delta);
             }
@@ -136,7 +148,11 @@ namespace DroneCore.Controllers
             Vector3 desiredRates =
                 snap.Command.XYZ * Mathf.Deg2Rad; // if your proxy stores deg/s
 
+<<<<<<< HEAD
             Vector3 rateOut = acro.Update(desiredRates, measuredRates, dt);
+=======
+            Vector3 rateOut = acro.Update(desiredRates, measuredRates, deltaTime);
+>>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
 
             float rollTorque  = Mathf.Clamp(rateOut.x / maxAngleRateRad, -1f, 1f);
             float pitchTorque = Mathf.Clamp(rateOut.y / maxAngleRateRad, -1f, 1f);
@@ -147,9 +163,13 @@ namespace DroneCore.Controllers
 
             thrusters.SetAllMotorCommands01(_motor[0], _motor[1], _motor[2], _motor[3]);
             thrusters.ApplyForces();
+<<<<<<< HEAD
             
         }
 
+=======
+        }
+>>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
         public void PostPhysicsStep(double dtSec, long nowNanos) { }
     }
 }

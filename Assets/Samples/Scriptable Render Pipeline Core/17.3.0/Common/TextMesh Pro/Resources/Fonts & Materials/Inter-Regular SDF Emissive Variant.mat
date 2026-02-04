@@ -1,6 +1,10 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+<<<<<<< HEAD
 --- !u!114 &-4919668140895673440
+=======
+--- !u!114 &-3099780617504689946
+>>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
 MonoBehaviour:
   m_ObjectHideFlags: 11
   m_CorrespondingSourceObject: {fileID: 0}
@@ -24,6 +28,7 @@ Material:
   m_Shader: {fileID: -6465566751694194690, guid: f8605069e61e60e4685c8e97ead17a56, type: 3}
   m_Parent: {fileID: -6055507529455485361, guid: 2f7116f10747a67409388e93052ae222, type: 2}
   m_ModifiedSerializedProperties: 2
+<<<<<<< HEAD
   m_ValidKeywords: []
   m_InvalidKeywords:
   - _DISABLE_SSR_TRANSPARENT
@@ -31,12 +36,24 @@ Material:
   - _EMISSION
   - _ENABLE_FOG_ON_TRANSPARENT
   - _SURFACE_TYPE_TRANSPARENT
+=======
+  m_ValidKeywords:
+  - _DISABLE_SSR_TRANSPARENT
+  - _DOUBLESIDED_ON
+  - _ENABLE_FOG_ON_TRANSPARENT
+  - _SURFACE_TYPE_TRANSPARENT
+  m_InvalidKeywords: []
+>>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
   m_LightmapFlags: 2
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
   stringTagMap:
     MotionVector: User
+<<<<<<< HEAD
+=======
+    RenderType: Transparent
+>>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
   disabledShaderPasses:
   - TransparentDepthPrepass
   - TransparentDepthPostpass
@@ -66,7 +83,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+<<<<<<< HEAD
   version: 10
+=======
+  version: 9
+>>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
 --- !u!114 &6872997888534480524
 MonoBehaviour:
   m_ObjectHideFlags: 11
