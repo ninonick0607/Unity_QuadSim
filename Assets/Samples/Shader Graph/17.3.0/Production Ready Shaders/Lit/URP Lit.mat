@@ -12,25 +12,11 @@ Material:
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
-<<<<<<< HEAD
-  - _METALLICSPECGLOSSMAP
-  - _NORMALMAP
-  - _OCCLUSIONMAP
-  - _PARALLAXMAP
-=======
   - _DISABLE_SSR_TRANSPARENT
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-<<<<<<< HEAD
-  m_CustomRenderQueue: 2000
-  stringTagMap:
-    RenderType: Opaque
-  disabledShaderPasses:
-  - MOTIONVECTORS
-=======
   m_CustomRenderQueue: 2225
   stringTagMap:
     MotionVector: User
@@ -40,7 +26,6 @@ Material:
   - TransparentDepthPostpass
   - TransparentBackface
   - RayTracingPrepass
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
@@ -101,23 +86,6 @@ Material:
     m_Floats:
     - _AddPrecomputedVelocity: 0
     - _AlphaClip: 0
-<<<<<<< HEAD
-    - _AlphaToMask: 0
-    - _Blend: 0
-    - _BlendModePreserveSpecular: 1
-    - _BumpScale: 1
-    - _CastShadows: 1
-    - _Cull: 2
-    - _Cutoff: 0.5
-    - _DETAIL_MULX2: 0
-    - _DetailAlbedoMapScale: 1
-    - _DetailNormalMapScale: 1
-    - _DstBlend: 0
-    - _EMISSION: 0
-    - _ENVIRONMENTREFLECTIONS_OFF: 1
-    - _EnvironmentReflections: 1
-    - _METALLICSPECGLOSSMAP: 0
-=======
     - _AlphaCutoffEnable: 0
     - _AlphaDstBlend: 0
     - _AlphaSrcBlend: 1
@@ -150,18 +118,10 @@ Material:
     - _METALLICSPECGLOSSMAP: 0
     - _MaterialID: 1
     - _MaterialTypeMask: 2
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
     - _Metallic: 0
     - _NORMALMAP: 0
     - _OCCLUSIONMAP: 0
     - _OcclusionStrength: 1
-<<<<<<< HEAD
-    - _PARALLAXMAP: 0
-    - _Parallax: 0.08
-    - _QueueControl: 0
-    - _QueueOffset: 0
-    - _ReceiveShadows: 1
-=======
     - _OpaqueCullMode: 2
     - _PARALLAXMAP: 0
     - _Parallax: 0.08
@@ -175,18 +135,11 @@ Material:
     - _RefractionModel: 0
     - _RenderQueueType: 1
     - _RequireSplitLighting: 0
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
     - _SPECULARHIGHLIGHTS_OFF: 1
     - _Smoothness: 1
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
-<<<<<<< HEAD
-    - _Surface: 0
-    - _USE_DETAIL_MAPS: 0
-    - _WorkflowMode: 1
-    - _ZTest: 4
-=======
     - _StencilRef: 0
     - _StencilRefDepth: 8
     - _StencilRefDistortionVec: 4
@@ -215,18 +168,13 @@ Material:
     - _ZTestDepthEqualForOpaque: 3
     - _ZTestGBuffer: 4
     - _ZTestTransparent: 4
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
     - _ZWrite: 1
     - _ZWriteControl: 0
     - _test: 0
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
-<<<<<<< HEAD
-    - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-=======
     - _DoubleSidedConstants: {r: 1, g: 1, b: -1, a: 0}
     - _EmissionColor: {r: 1, g: 1, b: 1, a: 1}
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
@@ -243,8 +191,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   version: 10
-<<<<<<< HEAD
-=======
 --- !u!114 &7050337164188113803
 MonoBehaviour:
   m_ObjectHideFlags: 11
@@ -261,4 +207,3 @@ MonoBehaviour:
   hdPluginSubTargetMaterialVersions:
     m_Keys: []
     m_Values: 
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)

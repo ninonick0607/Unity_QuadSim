@@ -18,11 +18,7 @@ MonoBehaviour:
   m_RenderMode: 0
   m_ColliderUpdateMode: 0
   m_ColliderIsTrigger: 1
-<<<<<<< HEAD
-  m_ScaleMode: 0
-=======
   m_ScaleMode: 1
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
   m_ReferenceSpritePixelsPerUnit: 100
   m_PixelsPerUnit: 100
   m_Scale: 1
