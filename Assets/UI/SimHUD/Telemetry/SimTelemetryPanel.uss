@@ -12,15 +12,9 @@
 ------------------------------------------------------------ */
 .telemetry-window {
     background-color: rgba(15, 15, 15, 0.92);
-<<<<<<< HEAD
-    border-width: 1;
-    border-color: rgba(255,255,255,0.14);
-    border-radius: 10;
-=======
     border-width: 1px;
     border-color: rgba(255,255,255,0.14);
     border-radius: 10px;
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
     flex-direction: column;
     padding: 0;
 }
@@ -31,56 +25,23 @@
     justify-content: flex-start;
     flex-grow: 0;
     flex-shrink: 0;
-<<<<<<< HEAD
-    padding-left: 10;
-    padding-right: 10;
-    height: 36;
-    background-color: rgba(255,255,255,0.06);
-    border-bottom-width: 1;
-=======
     padding-left: 10px;
     padding-right: 10px;
     height: 36px;
     background-color: rgba(255,255,255,0.06);
     border-bottom-width: 1px;
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
     border-bottom-color: rgba(255,255,255,0.10);
 }
 
 .telemetry-title {
     margin: 0;
     padding: 0;
-<<<<<<< HEAD
-    height: 36;
-=======
     height: 36px;
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
     -unity-text-align: middle-left;
     color: rgb(240,240,240);
 }
 
 .telemetry-window-body {
-<<<<<<< HEAD
-    padding: 10;
-    padding-bottom: 14; /* breathing room near bottom edge handle */
-    flex-grow: 1;
-    flex-shrink: 1;
-}
-
-/* ------------------------------------------------------------
-   Tabs / layout
------------------------------------------------------------- */
-.telemetry-tabs { flex-direction: row; margin-bottom: 8; }
-.subtabs { flex-direction: row; margin-bottom: 8; }
-
-.tab {
-    height: 26;
-    padding-left: 10;
-    padding-right: 10;
-    margin-right: 6;
-    border-radius: 6;
-    border-width: 1;
-=======
     padding: 10px;
     padding-bottom: 14px;
     flex-grow: 1;
@@ -99,7 +60,6 @@
     margin-right: 6px;
     border-radius: 6px;
     border-width: 1px;
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
     border-color: rgba(255, 255, 255, 0.12);
     background-color: rgba(255, 255, 255, 0.06);
     color: rgb(220, 220, 220);
@@ -112,16 +72,10 @@
 }
 
 /* Button icon */
-<<<<<<< HEAD
-.btn.btn-icon {
-    width: 28;
-    height: 28;
-=======
 
 .btn.btn-icon {
     width: 28px;
     height: 28px;
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
     padding: 0;
     margin: 0;
     -unity-text-align: middle-center;
@@ -147,39 +101,6 @@
 
 .content {
     flex-grow: 1;
-<<<<<<< HEAD
-    padding: 6;
-    border-radius: 8;
-    border-width: 1;
-    border-color: rgba(255, 255, 255, 0.10);
-    background-color: rgba(0, 0, 0, 0.25);
-}
-
-.scroll { flex-grow: 1; }
-
-.graphs-scroll { flex-grow: 1;
-    margin: 2 6 6;
-}
-.graphs-content { flex-direction: column; }
-
-.graph-block { margin-bottom: 6; }
-.graph-label {
-    margin-bottom: 4;
-    color: rgb(230,230,230);
-    -unity-font-style: bold;
-    font-size: 12;
-}
-
-.telemetry-graph {
-    height: 110;
-    flex-grow: 0;
-}
-
-.legend { flex-direction: row; align-items: center; margin-top: 4; }
-.legend-item { flex-direction: row; align-items: center; margin-right: 12; }
-.swatch { width: 14; height: 3; border-radius: 2; }
-.legend-text { margin-left: 6; font-size: 11; color: rgb(210, 210, 210); }
-=======
     padding: 6px;
     border-radius: 8px;
     border-width: 1px;
@@ -206,7 +127,6 @@
 .legend-item { flex-direction: row; align-items: center; margin-right: 12px; }
 .swatch { width: 14px; height: 3px; border-radius: 2px; }
 .legend-text { margin-left: 6px; font-size: 11px; color: rgb(210, 210, 210); }
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
 
 .swatch.meas { background-color: rgba(60, 200, 255, 1); }
 .swatch.des  { background-color: rgba(255, 165, 60, 1); }
@@ -225,18 +145,6 @@
 /* Corners */
 .resize-handle-corner {
     position: absolute;
-<<<<<<< HEAD
-    width: 24;
-    height: 24;
-    background-color: rgba(255,255,255,0.00); /* invisible */
-    border-radius: 6;
-}
-.resize-handle-corner:hover { background-color: rgba(255,255,255,0.18); }
-
-/* Corner placement (below titlebar) */
-.resize-handle-corner.tl { left: 0;  top: 36; }
-.resize-handle-corner.tr { right: 0; top: 36; }
-=======
     width: 24px;
     height: 24px;
     background-color: rgba(255,255,255,0.00);
@@ -246,7 +154,6 @@
 
 .resize-handle-corner.tl { left: 0;  top: 36px; }
 .resize-handle-corner.tr { right: 0; top: 36px; }
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
 .resize-handle-corner.bl { left: 0;  bottom: 0; }
 .resize-handle-corner.br { right: 0; bottom: 0; }
 
@@ -256,21 +163,6 @@
     background-color: rgba(255,255,255,0.00); /* invisible but hittable */
 }
 
-<<<<<<< HEAD
-/* thickness */
-.resize-handle-edge.t,
-.resize-handle-edge.b { height: 6; left: 0; right: 0; }
-
-.resize-handle-edge.l,
-.resize-handle-edge.r { width: 6; }
-
-/* placement (IMPORTANT: below titlebar) */
-.resize-handle-edge.t { top: 36; left: 0; right: 0; }
-.resize-handle-edge.b { bottom: 0; left: 0; right: 0; }
-
-.resize-handle-edge.l { left: 0; top: 36; bottom: 0; }
-.resize-handle-edge.r { right: 0; top: 36; bottom: 0; }
-=======
 .resize-handle-edge.t,
 .resize-handle-edge.b { height: 6px; left: 0; right: 0; }
 
@@ -282,43 +174,10 @@
 
 .resize-handle-edge.l { left: 0; top: 36px; bottom: 0; }
 .resize-handle-edge.r { right: 0; top: 36px; bottom: 0; }
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
 
 /* ------------------------------------------------------------
    STATE view (cards + rows)
 ------------------------------------------------------------ */
-<<<<<<< HEAD
-.state-root {
-    flex-direction: column;
-    padding: 2;
-}
-
-/* spacing between cards (no gap support) */
-.state-root > * {
-    margin-top: 10;
-}
-
-.state-card {
-    flex-direction: column;
-    padding: 10;
-
-    border-width: 1;
-    border-color: rgba(255,255,255,0.10);
-    border-radius: 10;
-
-    background-color: rgba(0,0,0,0.18);
-}
-
-.state-card-header {
-    flex-direction: row;
-    align-items: center;
-    margin-bottom: 8;
-}
-
-.state-card-title {
-    -unity-font-style: bold;
-    font-size: 12;
-=======
 .state-root { flex-direction: column; padding: 2px; }
 
 .state-root > * { margin-top: 10px; }
@@ -337,25 +196,10 @@
 .state-card-title {
     -unity-font-style: bold;
     font-size: 12px;
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
     color: rgb(235,235,235);
 }
 
 .state-pill {
-<<<<<<< HEAD
-    padding-left: 8;
-    padding-right: 8;
-    height: 18;
-
-    border-radius: 9;
-    -unity-text-align: middle-center;
-
-    font-size: 11;
-    color: rgb(245,245,245);
-
-    background-color: rgba(255,255,255,0.10);
-    border-width: 1;
-=======
     padding-left: 8px;
     padding-right: 8px;
     height: 18px;
@@ -365,7 +209,6 @@
     color: rgb(245,245,245);
     background-color: rgba(255,255,255,0.10);
     border-width: 1px;
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
     border-color: rgba(255,255,255,0.10);
 }
 
@@ -386,13 +229,7 @@
 }
 
 /* spacing between rows (no gap support) */
-<<<<<<< HEAD
-.state-grid > * {
-    margin-top: 6;
-}
-=======
 .state-grid > * { margin-top: 6px; }
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
 
 .state-row {
     flex-direction: row;
@@ -400,27 +237,16 @@
     justify-content: space-between;
 }
 
-<<<<<<< HEAD
-.state-key {
-    color: rgb(170,170,170);
-    font-size: 11;
-    margin-right: 10;
-=======
 
 .state-key {
     color: rgb(170,170,170);
     font-size: 11px;
     margin-right: 10px;
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
 }
 
 .state-val {
     color: rgb(140,255,170);
-<<<<<<< HEAD
-    font-size: 11;
-=======
     font-size: 11px;
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
     -unity-text-align: middle-right;
 }
 
@@ -429,14 +255,8 @@
 }
 
 .state-divider {
-<<<<<<< HEAD
-    height: 1;
-    margin-top: 6;
-    margin-bottom: 6;
-=======
     height: 1px;
     margin-top: 6px;
     margin-bottom: 6px;
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
     background-color: rgba(255,255,255,0.08);
 }

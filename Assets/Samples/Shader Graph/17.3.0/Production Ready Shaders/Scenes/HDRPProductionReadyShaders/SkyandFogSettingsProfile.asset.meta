@@ -1,9 +1,5 @@
 fileFormatVersion: 2
-<<<<<<< HEAD
-guid: 8ba92e2dd7f884a0f88b98fa2d235fe7
-=======
 guid: 5db9cb37a611363e780ddf52e9038eca
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
 NativeFormatImporter:
   externalObjects: {}
   mainObjectFileID: 11400000

@@ -85,10 +85,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets/TextMesh Pro/Shaders/TMPro.cginc" />
-<<<<<<< HEAD
-    <None Include="Assets/Samples/Shader Graph/17.3.0/Custom Lighting/Components/Debug/DebugLightingComplexity.hlsl" />
-=======
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
     <None Include="Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile Overlay.shader" />
     <None Include="Assets/UI/SimHUD/TopBar/SimTopBar.uss" />
     <None Include="Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile-2-Pass.shader" />
@@ -1304,13 +1300,6 @@
     </Reference>
     <Reference Include="Unity.VisualEffectGraph.Runtime">
       <HintPath>Library/ScriptAssemblies/Unity.VisualEffectGraph.Runtime.dll</HintPath>
-<<<<<<< HEAD
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.Mathematics">
-      <HintPath>Library/ScriptAssemblies/Unity.Mathematics.dll</HintPath>
-=======
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.Mathematics">

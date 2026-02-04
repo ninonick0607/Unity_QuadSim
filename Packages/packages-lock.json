@@ -127,31 +127,6 @@
       }
     },
     "com.unity.render-pipelines.high-definition": {
-<<<<<<< HEAD
-      "version": "17.3.0",
-      "depth": 0,
-      "source": "builtin",
-      "dependencies": {
-        "com.unity.modules.video": "1.0.0",
-        "com.unity.modules.animation": "1.0.0",
-        "com.unity.modules.imageconversion": "1.0.0",
-        "com.unity.render-pipelines.core": "17.3.0",
-        "com.unity.shadergraph": "17.3.0",
-        "com.unity.visualeffectgraph": "17.3.0",
-        "com.unity.render-pipelines.high-definition-config": "17.3.0"
-      }
-    },
-    "com.unity.render-pipelines.high-definition-config": {
-      "version": "17.3.0",
-      "depth": 1,
-      "source": "builtin",
-      "dependencies": {
-        "com.unity.render-pipelines.core": "17.3.0"
-      }
-    },
-    "com.unity.render-pipelines.universal": {
-=======
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
       "version": "17.3.0",
       "depth": 0,
       "source": "builtin",

@@ -1,12 +1,3 @@
-<<<<<<< HEAD
-namespace DroneCore.Controllers.Cascades
-{
-    public class AngleController
-    {
-        
-    }
-}
-=======
 using DroneCore.Common;
 using DroneCore.Interfaces;
 using RobotCore; // SensorManager, SensorData
@@ -98,4 +89,3 @@ namespace DroneCore.Controllers.Cascades
         public QuadPIDController GetPID() => anglePid;
     }
 }
->>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
