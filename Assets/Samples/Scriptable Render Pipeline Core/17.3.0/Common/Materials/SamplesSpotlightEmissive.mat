@@ -1,5 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+<<<<<<< HEAD
 --- !u!114 &-3366572191962525821
 MonoBehaviour:
   m_ObjectHideFlags: 11
@@ -13,6 +14,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Unity.ShaderGraph.Editor::UnityEditor.Rendering.BuiltIn.AssetVersion
   version: 0
+=======
+>>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
 --- !u!21 &2100000
 Material:
   serializedVersion: 8
@@ -24,10 +27,16 @@ Material:
   m_Shader: {fileID: -6465566751694194690, guid: 55dd6397dd059324398dec8c06cb4153, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
+<<<<<<< HEAD
   m_ValidKeywords: []
   m_InvalidKeywords:
   - _DISABLE_SSR_TRANSPARENT
   - _EMISSION
+=======
+  m_ValidKeywords:
+  - _DISABLE_SSR_TRANSPARENT
+  m_InvalidKeywords: []
+>>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
   m_LightmapFlags: 2
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -62,8 +71,11 @@ Material:
     - _AlphaCutoffEnable: 0
     - _AlphaDstBlend: 0
     - _AlphaSrcBlend: 1
+<<<<<<< HEAD
     - _BUILTIN_QueueControl: -1
     - _BUILTIN_QueueOffset: 0
+=======
+>>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
     - _BlendMode: 0
     - _ConservativeDepthOffsetEnable: 0
     - _CullMode: 2
@@ -82,7 +94,10 @@ Material:
     - _Intensity: 10
     - _MaterialID: 1
     - _MaterialTypeMask: 2
+<<<<<<< HEAD
     - _Material_Emissive_Multiplier: 1
+=======
+>>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
     - _OpaqueCullMode: 2
     - _PerPixelSorting: 0
     - _QueueControl: 1
@@ -93,7 +108,10 @@ Material:
     - _RefractionModel: 0
     - _RenderQueueType: 1
     - _RequireSplitLighting: 0
+<<<<<<< HEAD
     - _Square: 0
+=======
+>>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
     - _SrcBlend: 1
     - _StencilRef: 0
     - _StencilRefDepth: 8
@@ -139,7 +157,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+<<<<<<< HEAD
   version: 10
+=======
+  version: 9
+>>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
 --- !u!114 &6988152796153263981
 MonoBehaviour:
   m_ObjectHideFlags: 11
@@ -156,3 +178,19 @@ MonoBehaviour:
   hdPluginSubTargetMaterialVersions:
     m_Keys: []
     m_Values: 
+<<<<<<< HEAD
+=======
+--- !u!114 &8418404276022667646
+MonoBehaviour:
+  m_ObjectHideFlags: 11
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 639247ca83abc874e893eb93af2b5e44, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.ShaderGraph.Editor::UnityEditor.Rendering.BuiltIn.AssetVersion
+  version: 0
+>>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)

@@ -1,5 +1,9 @@
 fileFormatVersion: 2
+<<<<<<< HEAD
 guid: 4b8c5f132ddc2fc26a132bab38d96e34
+=======
+guid: 68ff46d548e6f3694b94f666ff9511ee
+>>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
 folderAsset: yes
 DefaultImporter:
   externalObjects: {}

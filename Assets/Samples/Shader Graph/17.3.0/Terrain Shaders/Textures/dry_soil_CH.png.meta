@@ -1,5 +1,9 @@
 fileFormatVersion: 2
+<<<<<<< HEAD
 guid: 77187935f443346528988d5663973a16
+=======
+guid: 4cd0778ec8c1502c48289b73f71b0218
+>>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}

@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<<<<<<< HEAD
 <xs:schema xmlns:editor="UnityEditor.UIElements" xmlns:engine="UnityEngine.UIElements" xmlns="UnityEditor.Accessibility" elementFormDefault="qualified" targetNamespace="UnityEditor.Toolbars" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+=======
+<xs:schema xmlns:editor="UnityEditor.UIElements" xmlns:engine="UnityEngine.UIElements" xmlns="UI.Core" elementFormDefault="qualified" targetNamespace="UnityEditor.Toolbars" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+>>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
   <xs:import schemaLocation="UnityEngine.UIElements.xsd" namespace="UnityEngine.UIElements" />
   <xs:complexType name="MainToolbarKebabButtonType">
     <xs:complexContent mixed="false">

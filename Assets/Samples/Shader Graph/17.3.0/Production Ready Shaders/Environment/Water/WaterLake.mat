@@ -27,6 +27,7 @@ Material:
   m_Shader: {fileID: -6465566751694194690, guid: 345659f527548fd418480503937b93f8, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
+<<<<<<< HEAD
   m_ValidKeywords: []
   m_InvalidKeywords:
   - _DISABLE_DECALS
@@ -40,6 +41,22 @@ Material:
   m_CustomRenderQueue: 2950
   stringTagMap:
     MotionVector: User
+=======
+  m_ValidKeywords:
+  - _DISABLE_DECALS
+  - _DISABLE_SSR_TRANSPARENT
+  - _ENABLE_FOG_ON_TRANSPARENT
+  - _SURFACE_TYPE_TRANSPARENT
+  m_InvalidKeywords:
+  - _EMISSION
+  m_LightmapFlags: 2
+  m_EnableInstancingVariants: 1
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: 3000
+  stringTagMap:
+    MotionVector: User
+    RenderType: Transparent
+>>>>>>> 714525f (Lots of additions since last build, trying to match unreals model)
   disabledShaderPasses:
   - MOTIONVECTORS
   - TransparentDepthPrepass
