@@ -41,7 +41,7 @@ namespace SimCore
         [SerializeField] private bool logEffectiveHz = true;
         [SerializeField] private float logIntervalSeconds = 1.0f;
 
-        private readonly List<ISimulatable> _simulatables = new List<ISimulatable>(128);
+        private List<ISimulatable> RegisteredManagers = new List<ISimulatable>(128);
 
         // FreeRun accumulator in seconds (sim-time to execute, converted into fixed dt steps).
         private double _accumulatorSec;
@@ -72,9 +72,7 @@ namespace SimCore
         
         private void Start()
         {
-            RefreshRegistry();
-
-            foreach (var s in _simulatables)
+            foreach (var s in RegisteredManagers)
                 s.OnSimulationStart(this);
         }
         
@@ -153,18 +151,18 @@ namespace SimCore
                 long now = ClockFactory.StepOnce();
 
                 // Pre-physics: controllers read commands, compute actuator targets, etc.
-                for (int k = 0; k < _simulatables.Count; k++)
+                for (int k = 0; k < RegisteredManagers.Count; k++)
                 {
-                    _simulatables[k].PrePhysicsStep(dt, now);
+                    RegisteredManagers[k].PrePhysicsStep(dt, now);
                 }
 
                 // Physics step (deterministic fixed dt)
                 Physics.Simulate(dtF);
 
                 // Post-physics: sensors sample, logging, IO publish, etc.
-                for (int k = 0; k < _simulatables.Count; k++)
+                for (int k = 0; k < RegisteredManagers.Count; k++)
                 {
-                    _simulatables[k].PostPhysicsStep(dt, now);
+                    RegisteredManagers[k].PostPhysicsStep(dt, now);
                 }
 
                 _stepsThisInterval++;
@@ -192,30 +190,16 @@ namespace SimCore
         /// Rebuilds the registry of simulatable systems (drones, sensors, IO).
         /// Call this if you dynamically spawn/despawn drones.
         /// </summary>
-        public void RefreshRegistry()
+        public void RegisterManagers(ISimulatable manager)
         {
-            _simulatables.Clear();
-
-            // Find all MonoBehaviours that implement ISimulatable.
-            // (This is fine early; later you can replace with explicit registration for performance.)
-            var behaviours = FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
-            for (int i = 0; i < behaviours.Length; i++)
-            {
-                if (behaviours[i] is ISimulatable s && behaviours[i] != this)
-                {
-                    _simulatables.Add(s);
-                }
-            }
-
-            // Optional: deterministic order. Sort by priority then name.
-            _simulatables.Sort((a, b) =>
-            {
-                int p = a.ExecutionOrder.CompareTo(b.ExecutionOrder);
-                if (p != 0) return p;
-                return string.CompareOrdinal(a.DebugName, b.DebugName);
-            });
+            if(!RegisteredManagers.Contains(manager))
+                RegisteredManagers.Add(manager);
         }
-
+        public void UnRegisterManager(ISimulatable manager)
+        {
+            RegisteredManagers.Remove(manager);
+        }
+        
         // ---- External control surface (API / UI / future PX4 lockstep) ----
 
         public void SetPaused(bool paused)
@@ -257,7 +241,7 @@ namespace SimCore
 
         /// <summary>
         /// Reset sim-time to 0 and notify systems to reset their internal state.
-        /// You will later also reset rigidbodies here (or via DroneBody.Reset()).
+        /// You will later also reset rigidbodies here (or via QuadPawn.Reset()).
         /// </summary>
         public void ResetSimulation()
         {
@@ -265,7 +249,7 @@ namespace SimCore
             _accumulatorSec = 0;
             _pendingSteps = 0;
 
-            foreach (var s in _simulatables)
+            foreach (var s in RegisteredManagers)
             {
                 s.OnSimulationReset(this);
             }

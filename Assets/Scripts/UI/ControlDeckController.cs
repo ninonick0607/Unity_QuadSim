@@ -42,7 +42,7 @@ namespace UI
 
         // Dropdowns
         private DropdownField _droneDropdown;
-        private readonly System.Collections.Generic.List<DroneCore.DroneBody> _droneBodies = new();
+        private readonly System.Collections.Generic.List<DroneCore.QuadPawn> _droneBodies = new();
 
         // WIP badge
         private Label _wipLabel;
@@ -502,9 +502,9 @@ namespace UI
             _droneBodies.Clear();
 
 #if UNITY_2023_1_OR_NEWER
-            var bodies = UnityEngine.Object.FindObjectsByType<DroneCore.DroneBody>(FindObjectsSortMode.None);
+            var bodies = UnityEngine.Object.FindObjectsByType<DroneCore.QuadPawn>(FindObjectsSortMode.None);
 #else
-            var bodies = UnityEngine.Object.FindObjectsOfType<DroneCore.DroneBody>();
+            var bodies = UnityEngine.Object.FindObjectsOfType<DroneCore.QuadPawn>();
 #endif
             if (bodies != null)
                 _droneBodies.AddRange(bodies);
@@ -591,7 +591,7 @@ namespace UI
 
             if (targetRigidbody == null)
             {
-                var body = UnityEngine.Object.FindFirstObjectByType<DroneCore.DroneBody>();
+                var body = UnityEngine.Object.FindFirstObjectByType<DroneCore.QuadPawn>();
                 if (body != null) targetRigidbody = body.Rigidbody;
                 if (targetRigidbody == null)
                     targetRigidbody = UnityEngine.Object.FindFirstObjectByType<Rigidbody>();

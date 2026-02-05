@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace RobotCore
 {
-    [RequireComponent(typeof(DroneBody))]
+    [RequireComponent(typeof(QuadPawn))]
     [DisallowMultipleComponent]
     public sealed class RobotCore : MonoBehaviour
     {

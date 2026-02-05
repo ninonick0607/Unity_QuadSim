@@ -52,7 +52,7 @@ namespace DroneCore.Common
 
         /// <summary>
         /// Build E and pseudo-inverse from the current motor transforms.
-        /// Must be called after DroneBody has wired motors.
+        /// Must be called after QuadPawn has wired motors.
         /// </summary>
         public void Build(Transform body, Transform[] motors, int[] spinDir)
         {

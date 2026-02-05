@@ -5,7 +5,7 @@ namespace DroneCore
 {
     public sealed class DroneDebugDraw : MonoBehaviour
     {
-        [SerializeField] private DroneBody body;
+        [SerializeField] private QuadPawn body;
 
         [Header("Draw")]
         public bool drawUnityBodyAxes = true;
@@ -21,7 +21,7 @@ namespace DroneCore
 
         private void Awake()
         {
-            if (body == null) body = GetComponent<DroneBody>();
+            if (body == null) body = GetComponent<QuadPawn>();
         }
 
         private void Update()

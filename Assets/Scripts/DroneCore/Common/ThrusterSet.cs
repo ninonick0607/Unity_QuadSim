@@ -7,12 +7,12 @@ namespace DroneCore.Common
     /// Applies per-motor thrust using AddForceAtPosition (physical rotor wrench).
     /// Commands are normalized [0..1] and mapped to Newtons.
     /// </summary>
-    [RequireComponent(typeof(DroneBody))]
+    [RequireComponent(typeof(QuadPawn))]
     [DisallowMultipleComponent]
     public sealed class ThrusterSet : MonoBehaviour
     {
         [Header("Refs")]
-        [SerializeField] private DroneBody body;
+        [SerializeField] private QuadPawn body;
 
         [Header("Thrust Model")]
         [Tooltip("Max thrust per motor in Newtons at command=1.")]
@@ -34,12 +34,12 @@ namespace DroneCore.Common
 
         private void Reset()
         {
-            body = GetComponent<DroneBody>();
+            body = GetComponent<QuadPawn>();
         }
 
         private void Awake()
         {
-            if (body == null) body = GetComponent<DroneBody>();
+            if (body == null) body = GetComponent<QuadPawn>();
             body.AutoWireIfNeeded(); 
             body.ValidateOrThrow();
 
