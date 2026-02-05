@@ -9,11 +9,11 @@ using UnityEngine;
 
 namespace DroneCore.Controllers
 {
-    [RequireComponent(typeof(DroneBody))]
+    [RequireComponent(typeof(QuadPawn))]
     [DisallowMultipleComponent]
     public sealed class CascadedController : MonoBehaviour, ISimulatable
     {
-        [SerializeField] private DroneBody body;
+        [SerializeField] private QuadPawn body;
         [SerializeField] private ThrusterSet thrusters;
         [SerializeField] private SensorManager sensorManager;
         [SerializeField] private FlightCommandProxy commandProxy;
@@ -64,7 +64,7 @@ namespace DroneCore.Controllers
 
         private void Awake()
         {
-            if (body == null) body = GetComponent<DroneBody>();
+            if (body == null) body = GetComponent<QuadPawn>();
             if (thrusters == null) thrusters = GetComponent<ThrusterSet>();
             if (sensorManager == null) sensorManager = GetComponent<SensorManager>() ?? GetComponentInParent<SensorManager>();
             if (commandProxy == null) commandProxy = GetComponent<DroneCore.Interfaces.FlightCommandProxy>();
@@ -86,7 +86,7 @@ namespace DroneCore.Controllers
 
         public void OnSimulationStart(SimulationManager sim)
         {
-            if (body == null) body = GetComponent<DroneBody>();
+            if (body == null) body = GetComponent<QuadPawn>();
             if (thrusters == null) thrusters = GetComponent<ThrusterSet>();
 
             zPid.Reset();

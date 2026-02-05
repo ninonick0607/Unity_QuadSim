@@ -2,10 +2,19 @@
 using UnityEditor;
 #endif
 using DroneCore.Common;
+using DroneCore.Controllers;
+using DroneCore.Interfaces;
 using UnityEngine;
 
 namespace DroneCore
 {
+    /// <summary>
+    /// Editor-time and runtime component assembly helper.
+    /// Ensures all required components are present on a drone prefab/GameObject.
+    /// 
+    /// This is a "prefab builder" - it doesn't handle runtime lifecycle,
+    /// that's QuadPawn's job.
+    /// </summary>
     [DisallowMultipleComponent]
     public sealed class DroneRootBootstrap : MonoBehaviour
     {
@@ -14,6 +23,7 @@ namespace DroneCore
 #endif
 
         private void Reset() => Build();
+        
         private void Awake()
         {
             // Runtime only; OnValidate handles editor-time.
@@ -40,29 +50,37 @@ namespace DroneCore
         [ContextMenu("Build DroneRoot")]
         public void Build()
         {
-            // DEDUPE FIRST (important)
+            // DEDUPE FIRST (important - prevents multiple components)
             RemoveDuplicates<Rigidbody>(gameObject);
-            RemoveDuplicates<DroneBody>(gameObject);
+            RemoveDuplicates<QuadPawn>(gameObject);
             RemoveDuplicates<ThrusterSet>(gameObject);
-            RemoveDuplicates<Controllers.CascadedController>(gameObject);
+            RemoveDuplicates<CascadedController>(gameObject);
             RemoveDuplicates<RobotCore.SensorManager>(gameObject);
             RemoveDuplicates<RobotCore.RobotCore>(gameObject);
-            RemoveDuplicates<Interfaces.FlightCommandProxy>(gameObject);
+            RemoveDuplicates<FlightCommandProxy>(gameObject);
 
-            var rb      = GetOrAdd<Rigidbody>(gameObject);
-            var body    = GetOrAdd<DroneBody>(gameObject);
-            var thr     = GetOrAdd<ThrusterSet>(gameObject);
-            var ctrl    = GetOrAdd<Controllers.CascadedController>(gameObject);
-            var sensors = GetOrAdd<RobotCore.SensorManager>(gameObject);
-            var core    = GetOrAdd<RobotCore.RobotCore>(gameObject);
-            var cmd     = GetOrAdd<Interfaces.FlightCommandProxy>(gameObject);
+            // Add required components
+            var rb       = GetOrAdd<Rigidbody>(gameObject);
+            var body     = GetOrAdd<QuadPawn>(gameObject);
+            var thr      = GetOrAdd<ThrusterSet>(gameObject);
+            var ctrl     = GetOrAdd<CascadedController>(gameObject);
+            var sensors  = GetOrAdd<RobotCore.SensorManager>(gameObject);
+            var core     = GetOrAdd<RobotCore.RobotCore>(gameObject);
+            var cmd      = GetOrAdd<FlightCommandProxy>(gameObject);
 
+            // Wire and validate QuadPawn
             body.AutoWireIfNeeded();
             body.ValidateOrThrow();
 
+            // Configure Rigidbody defaults
             rb.mass = 1.28f;
+            rb.useGravity = true;
+            rb.isKinematic = false;
             rb.interpolation = RigidbodyInterpolation.None;
             rb.collisionDetectionMode = CollisionDetectionMode.Discrete;
+            rb.maxAngularVelocity = 100f; // Prevent Unity from clamping angular velocity
+
+            Debug.Log($"[DroneRootBootstrap] Built drone components on {gameObject.name}");
         }
 
         private static void RemoveDuplicates<T>(GameObject go) where T : Component
