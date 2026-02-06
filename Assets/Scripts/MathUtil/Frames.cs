@@ -23,6 +23,23 @@ namespace MathUtil
             };
         }
 
+        public static float TransformBinary(float Unity, SimFrame target)
+        {
+            if (target == SimFrame.FRD)
+            {
+                return -Unity;
+            }
+            return Unity;
+        }
+
+        public static Vector3 TransformFlip(Vector3 Unity, SimFrame target)
+        {
+            if (target == SimFrame.FRD)
+            {
+                return new Vector3(0,0,Unity.z);
+            }
+            return Unity;
+        }
         public static Vector3 TransformAcceleration(Vector3 aBodyUnity, SimFrame target)
         {
             return target switch

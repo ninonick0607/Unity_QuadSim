@@ -2,6 +2,7 @@
 
 using System;
 using UnityEngine;
+using Mathf = UnityEngine.Mathf;
 
 namespace Yaml.Drone
 {
@@ -202,8 +203,8 @@ namespace Yaml.Drone
         private float RevPerSec;
         private float MaxOmega;
         private float MaxOmegaSqr;
-        private float MaxThrust;
-        private float MaxTorque;
+        public float MaxThrust;
+        public float MaxTorque;
         private float MaxRollTorqueBody;
         private float MaxPitchTorqueBody;
         private float MaxYawTorqueBody;
@@ -214,7 +215,7 @@ namespace Yaml.Drone
         private float ArmLengthMeters;
         
         // TODO: Out InModel? 
-        public RotorPhysicsDerived(RotorModel InModel,float InArmLengthMeters)
+        public void ComputeRotor(RotorModel InModel,float InArmLengthMeters)
         {
             Model = InModel;
             ArmLengthMeters = InArmLengthMeters;
@@ -239,6 +240,23 @@ namespace Yaml.Drone
             MaxYawTorqueBody = 4.0f * MaxTorque;
         }
 
+        public float ComputeHoverThrottle(float VehicleMassKg, int MotorCount = 4)
+        {
+            if (MotorCount <= 0 || MaxThrust <= 0.0f) return 0.5f;
+            float perMotorHoverN = (VehicleMassKg * 9.81f) / (float)MotorCount;
+            return Mathf.Clamp(perMotorHoverN / MaxThrust, 0.0f, 1.0f);
+        }
+        
+        public float ControlToThrust(float Control01, float AirDensityRatio = 1.0f)
+        {
+            return Mathf.Clamp(Control01, 0.0f, 1.0f) * MaxThrust * AirDensityRatio;
+        }
+
+        public float ControlToYawTorque(float Control01, int TurningDir, float AirDensityRatio = 1.0f)
+        {
+            return Mathf.Clamp(Control01, 0.0f, 1.0f) * MaxTorque * (float)TurningDir * AirDensityRatio;
+        }
+        
     }
     
 }

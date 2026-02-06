@@ -1,102 +1,114 @@
 using System;
-using DroneCore.Common;
 using DroneCore.Controllers;
 using DroneCore.Core;
 using DroneCore.Interfaces;
 using RobotCore;
+using SimCore;
+using SimCore.Common;
 using UnityEngine;
 using Yaml.Drone;
 
 namespace DroneCore
 {
     /// <summary>
-    /// QuadPawn is the physical drone entity - the "vehicle" that exists in the world.
-    /// It owns references to all drone subsystems (controller, sensors, thrusters, command proxy)
-    /// and provides the API that DroneManager uses to control the drone lifecycle.
-    /// 
-    /// This is NOT an ISimulatable - DroneManager iterates over QuadPawns and calls their
-    /// update methods to minimize interface overhead.
+    /// QuadPawn is the physical drone entity — the "vehicle" that exists in the world.
+    /// It owns references to all drone subsystems and orchestrates the physics step:
+    ///   Sensors → Controller → Apply Wrench to Rigidbody
+    ///
+    /// DroneManager iterates QuadPawns in PrePhysicsStep and calls PhysicsStep().
+    /// QuadPawn is NOT an ISimulatable — DroneManager drives it.
+    ///
+    /// Mirrors UE's AQuadPawn: owns the CustomPhysicsTick sequence,
+    /// buffered force application, and controller routing.
     /// </summary>
     [RequireComponent(typeof(Rigidbody))]
     [DisallowMultipleComponent]
     public sealed class QuadPawn : MonoBehaviour
     {
         // ============================================================================
-        // Serialized Fields
+        // Serialized Fields — Set in Inspector / Prefab
         // ============================================================================
-        
+
         [Header("Core Physics")]
         [SerializeField] private Rigidbody rb;
 
-        [Header("Motor Transforms (auto-found if empty)")]
+        [Header("Motor Transforms")]
         [SerializeField] private Transform motorFL;
         [SerializeField] private Transform motorFR;
         [SerializeField] private Transform motorBL;
         [SerializeField] private Transform motorBR;
 
-        [Header("Subsystem References (auto-found if empty)")]
-        [SerializeField] private ThrusterSet thrusters;
+        [Header("Subsystem References")]
         [SerializeField] private CascadedController controller;
         [SerializeField] private SensorManager sensorManager;
         [SerializeField] private FlightCommandProxy commandProxy;
 
-        [Header("Camera (stub)")]
+        [Header("Camera")]
         [SerializeField] private Transform fpvCameraPoint;
-        
+
         [Header("Visuals")]
         [SerializeField] private Transform[] propellerMeshes = new Transform[4];
-        [SerializeField] private float[] propellerRPMs = new float[4];
 
         // ============================================================================
         // Runtime State
         // ============================================================================
-        
+
         // Canonical motor order: [0]=FL, [1]=FR, [2]=BL, [3]=BR
         private readonly Transform[] _motors = new Transform[4];
-        
-        // Config applied to this drone
+        private readonly float[] _propellerRPMs = new float[4];
+
+        // Config
         private DroneConfig _config;
         private bool _configApplied;
-        
-        // Unique identifier for this drone instance
+
+        // Rotor physics derived from config (matches UE's RotorPhysics member)
+        private RotorPhysicsDerived _rotorPhysics;
+
+        // Unique identifier
         public string DroneID { get; private set; }
-        
-        // Initialization flags
+
+        // Initialization tracking
         private bool _sensorsReady;
         private bool _controllerReady;
         private bool _initialized;
+        public bool HasConfigApplied => _configApplied;
 
-        // Cached manager reference (explicitly set, not auto-found)
+        // Active controller type (matches UE's currentControllerType)
+        [Header("Controller Selection")]
+        [SerializeField] private ControllerKind currentControllerKind = ControllerKind.Cascade;
+
+        // Buffered wrench (matches UE's PhysicsState pattern)
+        // In Unity we don't need atomics since PrePhysicsStep and Physics.Simulate
+        // run on the same thread, but we keep the generation pattern for clarity.
+        private Vector3 _bufferedForce;
+        private Vector3 _bufferedTorque;
+        private uint _wrenchGeneration;
+        private uint _lastAppliedGeneration;
+
+        // Manager reference (set explicitly by DroneManager, not searched)
         private DroneManager _droneManager;
 
         // ============================================================================
         // Public Accessors
         // ============================================================================
-        
-        /// <summary>
-        /// Set the DroneManager reference. Called by DroneManager after spawning,
-        /// or can be set manually for drones placed in scene.
-        /// </summary>
-        public void SetDroneManager(DroneManager manager)
-        {
-            _droneManager = manager;
-        }
+
+        public void SetDroneManager(DroneManager manager) => _droneManager = manager;
+
         public Rigidbody Rigidbody => rb;
         public Transform[] Motors => _motors;
         public Transform MotorFL => _motors[0];
         public Transform MotorFR => _motors[1];
         public Transform MotorBL => _motors[2];
         public Transform MotorBR => _motors[3];
-        
-        public ThrusterSet Thrusters => thrusters;
+
         public CascadedController Controller => controller;
         public SensorManager Sensors => sensorManager;
         public FlightCommandProxy CommandProxy => commandProxy;
-        
+
         public DroneConfig Config => _config;
+        public RotorPhysicsDerived RotorPhysics => _rotorPhysics;
         public bool IsInitialized => _initialized;
-        public bool IsSensorsReady => _sensorsReady;
-        public bool IsControllerReady => _controllerReady;
+        public ControllerKind CurrentControllerKind => currentControllerKind;
 
         // ============================================================================
         // Unity Lifecycle
@@ -104,22 +116,41 @@ namespace DroneCore
 
         private void Reset()
         {
-            // Called when component is first added or reset in editor
+            // Editor helper: auto-grab rigidbody when component is added
             rb = GetComponent<Rigidbody>();
         }
+
         private void Awake()
         {
             DroneID = gameObject.name;
-            
-            // Wire all references
-            AutoWireIfNeeded();
-            ValidateOrThrow();
-            
-            Debug.Log($"[QuadPawn] Awake: DroneID={DroneID}");
+
+            // Auto-bind subsystem references if not set in prefab
+            if (rb == null) rb = GetComponent<Rigidbody>();
+            if (controller == null) controller = GetComponent<CascadedController>();
+            if (sensorManager == null) sensorManager = GetComponent<SensorManager>();
+            if (commandProxy == null) commandProxy = GetComponent<FlightCommandProxy>();
+
+            // Build motor array from serialized references
+            _motors[0] = motorFL;
+            _motors[1] = motorFR;
+            _motors[2] = motorBL;
+            _motors[3] = motorBR;
+
+            // Safety fallback: if motor refs weren’t assigned, try find by name
+            if (_motors[0] == null) _motors[0] = transform.Find("MotorFL");
+            if (_motors[1] == null) _motors[1] = transform.Find("MotorFR");
+            if (_motors[2] == null) _motors[2] = transform.Find("MotorBL");
+            if (_motors[3] == null) _motors[3] = transform.Find("MotorBR");
+
+            if (controller == null) Debug.LogError($"[QuadPawn] {DroneID}: Missing CascadedController!");
+            if (sensorManager == null) Debug.LogError($"[QuadPawn] {DroneID}: Missing SensorManager!");
+            if (commandProxy == null) Debug.LogError($"[QuadPawn] {DroneID}: Missing FlightCommandProxy!");
         }
+
+
         private void Start()
         {
-            // Register with DroneManager if one was injected
+            // Register with DroneManager (injected by DroneManager.SpawnDroneWithConfig)
             if (_droneManager != null)
             {
                 _droneManager.RegisterDrone(this);
@@ -127,248 +158,251 @@ namespace DroneCore
             }
             else
             {
-                // For scene-placed drones without explicit manager, try to find one
-                // This is a fallback - prefer explicit injection via SetDroneManager()
+                // Fallback for scene-placed drones — prefer explicit injection
                 _droneManager = DroneManager.Get();
                 if (_droneManager != null)
                 {
                     _droneManager.RegisterDrone(this);
-                    Debug.Log($"[QuadPawn] Registered with DroneManager (fallback find): {DroneID}");
+                    Debug.LogWarning($"[QuadPawn] {DroneID}: Registered via fallback Get(). Prefer SetDroneManager().");
                 }
                 else
                 {
-                    Debug.LogWarning($"[QuadPawn] No DroneManager set for {DroneID} - drone will not be managed");
+                    Debug.LogWarning($"[QuadPawn] {DroneID}: No DroneManager — drone will not be managed.");
                 }
             }
 
-            // Initialize subsystems if config already applied
+            // If config was applied before Start(), initialize now
             if (_configApplied)
             {
                 InitializeSubsystems();
             }
         }
+
         private void OnDestroy()
         {
-            // Unregister from DroneManager
             if (_droneManager != null)
             {
                 _droneManager.UnregisterDrone(this);
-                Debug.Log($"[QuadPawn] Unregistered from DroneManager: {DroneID}");
             }
         }
+
         // ============================================================================
-        // Wiring & Validation
+        // Configuration (called by DroneManager after spawning)
         // ============================================================================
 
         /// <summary>
-        /// Auto-wire all component references. Safe to call multiple times.
-        /// </summary>
-        public void AutoWireIfNeeded()
-        {
-            // Core physics
-            if (rb == null) rb = GetComponent<Rigidbody>();
-
-            // Motor transforms - prefer explicit, fallback to search by name
-            if (motorFL == null) motorFL = FindDeepChild(transform, "MotorFL");
-            if (motorFR == null) motorFR = FindDeepChild(transform, "MotorFR");
-            if (motorBL == null) motorBL = FindDeepChild(transform, "MotorBL");
-            if (motorBR == null) motorBR = FindDeepChild(transform, "MotorBR");
-
-            _motors[0] = motorFL;
-            _motors[1] = motorFR;
-            _motors[2] = motorBL;
-            _motors[3] = motorBR;
-
-            // Subsystems - check self first, then children
-            if (thrusters == null) thrusters = GetComponent<ThrusterSet>();
-            if (controller == null) controller = GetComponent<CascadedController>();
-            if (sensorManager == null) sensorManager = GetComponent<SensorManager>();
-            if (commandProxy == null) commandProxy = GetComponent<FlightCommandProxy>();
-            
-            // FPV camera point - search for common names
-            if (fpvCameraPoint == null)
-            {
-                fpvCameraPoint = FindDeepChild(transform, "FPVCamera") 
-                              ?? FindDeepChild(transform, "CameraPoint")
-                              ?? FindDeepChild(transform, "FPVCam");
-            }
-        }
-        /// <summary>
-        /// Validate that all required references are present. Throws if not.
-        /// </summary>
-        public void ValidateOrThrow()
-        {
-            if (rb == null)
-                throw new Exception($"{name}: QuadPawn requires a Rigidbody reference.");
-
-            for (int i = 0; i < 4; i++)
-            {
-                if (_motors[i] == null)
-                    throw new Exception($"{name}: Missing motor transform for index {i} (FL,FR,BL,BR).");
-            }
-
-            // Subsystems are warnings, not errors - they might be added later
-            if (thrusters == null)
-                Debug.LogWarning($"[QuadPawn] {name}: ThrusterSet not found.");
-            if (controller == null)
-                Debug.LogWarning($"[QuadPawn] {name}: CascadedController not found.");
-            if (sensorManager == null)
-                Debug.LogWarning($"[QuadPawn] {name}: SensorManager not found.");
-            if (commandProxy == null)
-                Debug.LogWarning($"[QuadPawn] {name}: FlightCommandProxy not found.");
-        }
-        // ============================================================================
-        // Configuration
-        // ============================================================================
-
-        /// <summary>
-        /// Apply a drone configuration. Called by DroneManager after spawning.
+        /// Apply a drone configuration. Mirrors UE's AQuadPawn::ApplyConfig.
         /// </summary>
         public void ApplyConfig(DroneConfig config)
         {
             _config = config;
             _configApplied = true;
-            
+
             Debug.Log($"[QuadPawn] {DroneID}: Applying config...");
 
-            // Apply physical properties
             ApplyPhysicalConfig();
 
-            // Apply controller gains (if controller exists)
-            ApplyControllerConfig();
-            
-            // If Start() already ran, initialize now
-            if (gameObject.activeInHierarchy && Application.isPlaying)
+            if (_config.DroneParams.Arm_Length > 0f)
             {
-                InitializeSubsystems();
+                _rotorPhysics = new RotorPhysicsDerived();
+                Debug.Log($"[QuadPawn] {DroneID}: RotorPhysics computed (arm={_config.DroneParams.Arm_Length}m)");
             }
+            InitializeSubsystems();
+
+
+            ApplyControllerConfig();
+
+  
         }
+
         private void ApplyPhysicalConfig()
         {
             if (rb == null) return;
 
-            // Apply mass from config
+            // Mass
             if (_config.DroneParams.Mass > 0.01f)
-            {
                 rb.mass = _config.DroneParams.Mass;
-            }
             else
-            {
-                rb.mass = 1.28f; // Default quad mass in kg
-            }
+                rb.mass = 1.28f; // Default
 
-            // Apply center of mass offset if specified
-            if (_config.DroneParams.CenterOfMass != Vector3.zero)
-            {
-                rb.centerOfMass = _config.DroneParams.CenterOfMass;
-            }
+            // TODO: Uncomment when body response is validated
+            // if (_config.DroneParams.CenterOfMass != Vector3.zero)
+            //     rb.centerOfMass = _config.DroneParams.CenterOfMass;
+            // if (_config.DroneParams.Inertia != Vector3.zero)
+            //     rb.inertiaTensor = _config.DroneParams.Inertia;
+            // if (_config.DroneParams.LinearDrag_Coeff >= 0)
+            //     rb.linearDamping = _config.DroneParams.LinearDrag_Coeff;
+            // if (_config.DroneParams.AngularDrag_Coeff >= 0)
+            //     rb.angularDamping = _config.DroneParams.AngularDrag_Coeff;
 
-            // Apply inertia tensor if specified
-            if (_config.DroneParams.Inertia != Vector3.zero)
-            {
-                rb.inertiaTensor = _config.DroneParams.Inertia;
-            }
-
-            // Apply drag coefficients
-            if (_config.DroneParams.LinearDrag_Coeff >= 0)
-            {
-                rb.linearDamping = _config.DroneParams.LinearDrag_Coeff;
-            }
-            if (_config.DroneParams.AngularDrag_Coeff >= 0)
-            {
-                rb.angularDamping = _config.DroneParams.AngularDrag_Coeff;
-            }
-
-            // Configure rigidbody for simulation
+            // Rigidbody setup for simulation
             rb.useGravity = true;
             rb.isKinematic = false;
             rb.interpolation = RigidbodyInterpolation.None;
             rb.collisionDetectionMode = CollisionDetectionMode.Discrete;
-            
-            // Prevent Unity's angular velocity clamping from wrecking rate control
             rb.maxAngularVelocity = 100f;
 
-            Debug.Log($"[QuadPawn] {DroneID}: Physical config applied (mass={rb.mass}kg, drag={rb.linearDamping}/{rb.angularDamping})");
+            Debug.Log($"[QuadPawn] {DroneID}: Physical config applied (mass={rb.mass}kg)");
         }
+
         private void ApplyControllerConfig()
         {
-            if (controller == null) return;
-            // Pass config to controller for PID gain application
-            controller.ApplyConfig(_config);
-            
-            Debug.Log($"[QuadPawn] {DroneID}: Controller config applied");
+            // Cascaded controller
+            if (controller != null)
+            {
+                
+                _rotorPhysics.ComputeRotor(_config.RotorParams.Model, _config.DroneParams.Arm_Length);
+                controller.SetRotorPhysics(_rotorPhysics, _config);
+                Debug.Log($"[QuadPawn] {DroneID}: CascadedController config applied");
+            }
+
+            // Future: geometric controller
+            // if (geoController != null)
+            //     geoController.ApplyConfig(_config, _rotorPhysics);
         }
 
-
         // ============================================================================
-        // Initialization (called after config applied and Start() runs)
+        // Initialization
         // ============================================================================
 
         private void InitializeSubsystems()
         {
-            if (_initialized)
-            {
-                Debug.LogWarning($"[QuadPawn] {DroneID}: Already initialized, skipping.");
-                return;
-            }
+            if (_initialized) return;
 
             Debug.Log($"[QuadPawn] {DroneID}: Initializing subsystems...");
 
-            // 1. Initialize sensors
+            // 1. Sensors
             if (sensorManager != null)
             {
-                // SensorManager initializes via ISimulatable.OnSimulationStart
-                // but we can mark ready here if it exists
+                // SensorManager.OnSimulationStart handles actual init
+                // We just verify it exists
                 _sensorsReady = true;
-                Debug.Log($"[QuadPawn] {DroneID}: SensorManager ready");
+                Debug.Log($"[QuadPawn] {DroneID}: SensorManager present");
             }
 
-            // 2. Initialize controller
+            // 2. Controller — only ready if sensors are
             if (controller != null && _sensorsReady)
             {
-                // Controller initializes via ISimulatable.OnSimulationStart
-                // but we can mark ready here if it exists
+                // Controller handles its own internal init (allocator, gains, etc.)
+                // QuadPawn just needs to know it exists and sensors are available.
+                controller.Initialize(this, _config, sensorManager);
                 _controllerReady = true;
-                Debug.Log($"[QuadPawn] {DroneID}: Controller ready");
+                Debug.Log($"[QuadPawn] {DroneID}: Controller initialized");
             }
 
-            // 3. Initialize command proxy
-            if (commandProxy != null)
-            {
-                commandProxy.ResetToSafe();
-                Debug.Log($"[QuadPawn] {DroneID}: CommandProxy reset to safe");
-            }
+            // // 3. Command proxy safe state
+            // if (commandProxy != null)
+            // {
+            //     commandProxy.ResetToSafe();
+            // }
 
             _initialized = true;
             Debug.Log($"[QuadPawn] {DroneID}: Initialization complete");
         }
+        
+        public void PhysicsStep(double dtSec, long nowNanos)
+        {
+            if (!_initialized) return;
+
+            float dt = (float)dtSec;
+
+            // --- Step 1: Update Sensors ---
+            if (sensorManager != null && _sensorsReady)
+            {
+                sensorManager.UpdateSensors(dtSec, nowNanos);
+            }
+
+            // --- Step 2: Run Active Controller ---
+            if (_controllerReady)
+            {
+                RunController(dt);
+            }
+
+            // --- Step 3: Apply Buffered Wrench to Rigidbody ---
+            ApplyBufferedForces();
+        }
+
+        private void RunController(float dt)
+        {
+            switch (currentControllerKind)
+            {
+                case ControllerKind.Cascade:
+                    if (controller != null)
+                    {
+                        controller.StepController(dt);
+                    }
+                    break;
+
+                case ControllerKind.Geometric:
+                    // Future: geoController.Update(sensorManager.Latest, dt);
+                    break;
+            }
+        }
 
         // ============================================================================
-        // Reset Functions (called by DroneManager)
+        // Buffered Force Application (mirrors UE's SetBodyWrench / ApplyBufferedForces)
         // ============================================================================
 
         /// <summary>
-        /// Full reset - position, rotation, velocities, and controller state.
+        /// Set the net wrench to apply at next physics step.
+        /// Called by controllers after computing control output.
+        /// Force is body-frame Z thrust, Torque is body-frame (X,Y,Z).
+        /// </summary>
+        public void SetBodyWrench(Vector3 netForce, Vector3 netTorque)
+        {
+            _bufferedForce = netForce;
+            _bufferedTorque = netTorque;
+            _wrenchGeneration++;
+
+            // Wake body if significant force
+            if (rb != null && (netForce.sqrMagnitude > 1f || netTorque.sqrMagnitude > 0.1f))
+            {
+                rb.WakeUp();
+            }
+        }
+
+        /// <summary>
+        /// Apply buffered wrench to rigidbody. Body-local to world transform.
+        /// Called at end of PhysicsStep, before Physics.Simulate().
+        /// </summary>
+        private void ApplyBufferedForces()
+        {
+            if (rb == null) return;
+            if (_wrenchGeneration == _lastAppliedGeneration) return;
+
+            // Transform body-local force/torque to world space
+            Vector3 worldForce = transform.TransformDirection(_bufferedForce);
+            Vector3 worldTorque = transform.TransformDirection(_bufferedTorque);
+
+            rb.AddForce(worldForce, ForceMode.Force);
+            rb.AddTorque(worldTorque, ForceMode.Force);
+
+            _lastAppliedGeneration = _wrenchGeneration;
+        }
+
+        // ============================================================================
+        // Reset Functions
+        // ============================================================================
+
+        /// <summary>
+        /// Full reset — position, physics, controller state.
         /// </summary>
         public void ResetDrone()
         {
             ResetPhysics();
             ResetControllerState();
-            
             Debug.Log($"[QuadPawn] {DroneID}: Full reset complete");
         }
 
         /// <summary>
-        /// Reset position to origin or specified location.
+        /// Reset to specific position and rotation.
         /// </summary>
         public void ResetPosition(Vector3? targetPosition = null, Quaternion? targetRotation = null)
         {
-            Vector3 pos = targetPosition ?? Vector3.up; // Default 1m above origin
+            Vector3 pos = targetPosition ?? Vector3.up;
             Quaternion rot = targetRotation ?? Quaternion.identity;
 
-            // Teleport with physics reset
             transform.SetPositionAndRotation(pos, rot);
-            
             ResetPhysics();
             ResetControllerState();
 
@@ -376,73 +410,82 @@ namespace DroneCore
         }
 
         /// <summary>
-        /// Reset rotation only, keeping position.
+        /// Level the drone (zero roll/pitch, keep yaw), zero velocities.
         /// </summary>
         public void ResetRotation()
         {
             if (rb == null) return;
 
-            // Keep yaw, zero roll/pitch
-            Vector3 currentEuler = transform.eulerAngles;
-            Quaternion uprightRotation = Quaternion.Euler(0f, currentEuler.y, 0f);
-            
-            transform.rotation = uprightRotation;
+            Vector3 euler = transform.eulerAngles;
+            transform.rotation = Quaternion.Euler(0f, euler.y, 0f);
+
             rb.angularVelocity = Vector3.zero;
             rb.linearVelocity = Vector3.zero;
-
-            Debug.Log($"[QuadPawn] {DroneID}: Rotation reset (kept yaw={currentEuler.y:F1}°)");
         }
 
         /// <summary>
-        /// Reset physics state (velocities) without moving position.
+        /// Zero all velocities without moving.
         /// </summary>
         public void ResetPhysics()
         {
             if (rb == null) return;
-
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
+
+            // Clear buffered wrench
+            _bufferedForce = Vector3.zero;
+            _bufferedTorque = Vector3.zero;
+            _wrenchGeneration = 0;
+            _lastAppliedGeneration = 0;
+
             rb.WakeUp();
         }
 
         /// <summary>
-        /// Reset all controller/PID state.
+        /// Reset all controller and command state.
         /// </summary>
         public void ResetControllerState()
         {
-            // Reset controller PIDs
+            // Opaque reset — controller handles its own internals (PIDs, allocator, etc.)
             if (controller != null)
             {
-                // CascadedController has internal reset via OnSimulationReset
-                // but we want a direct call for runtime resets
-                controller.acro?.Reset();
-                controller.zPid?.Reset();
+                controller.ResetControllerState();
             }
 
-            // Reset command proxy to safe state
-            if (commandProxy != null)
-            {
-                commandProxy.ResetToSafe();
-            }
+            // if (commandProxy != null)
+            // {
+            //     commandProxy.ResetToSafe();
+            // }
 
-            // Reset thruster commands
-            if (thrusters != null)
-            {
-                thrusters.SetAllMotorCommands01(0f, 0f, 0f, 0f);
-            }
+            // Clear any pending wrench
+            _bufferedForce = Vector3.zero;
+            _bufferedTorque = Vector3.zero;
         }
 
         // ============================================================================
-        // Update Functions (called by DroneManager each frame)
+        // Config Reload (mirrors UE)
         // ============================================================================
 
-        /// <summary>
-        /// Update visual elements (prop spin, effects). Called from DroneManager.RenderingUpdate.
-        /// </summary>
+        public void ReapplyConfig()
+        {
+            if (_configApplied)
+                ApplyConfig(_config);
+        }
+
+        public void ReloadYaml()
+        {
+            if (_droneManager != null)
+                _droneManager.ReloadCurrentDrone(false);
+        }
+
+        // ============================================================================
+        // Visual Updates (called by DroneManager from Update)
+        // ============================================================================
+
         public void UpdateVisuals(float deltaTime)
         {
             UpdatePropellerVisuals(deltaTime);
-            // Future: debug draw, effects, etc.
+            // Future: debug draw, effects
         }
 
         private void UpdatePropellerVisuals(float deltaTime)
@@ -450,17 +493,15 @@ namespace DroneCore
             if (propellerMeshes == null || propellerMeshes.Length != 4) return;
             if (controller == null) return;
 
-            // Get motor outputs from controller's last allocation
             var motorOutputs = controller.LastMotor01;
             if (motorOutputs == null || motorOutputs.Count != 4) return;
 
-            // Get thrust model params from config
-            float thrustCoef = 1e-5f;  // Default Ct
-            float propDiameter = 0.127f; // Default 5" prop in meters
+            // Thrust model params from config or defaults
+            float thrustCoef = 1e-5f;
+            float propDiameter = 0.127f;
             float airDensity = 1.225f;
-            float maxThrustPerMotor = 4.12f; // Default max thrust N
+            float maxThrustPerMotor = 4.12f;
 
-            // Read from config if available
             if (_configApplied)
             {
                 if (_config.RotorParams.Model.ThrustCoeff > 0)
@@ -468,34 +509,29 @@ namespace DroneCore
                 if (_config.RotorParams.Model.Prop_Diameter > 0)
                     propDiameter = _config.RotorParams.Model.Prop_Diameter;
                 if (_config.FlightParams.MaxThrust > 0)
-                    maxThrustPerMotor = _config.FlightParams.MaxThrust / 4f; // Divide total by 4 motors
+                    maxThrustPerMotor = _config.FlightParams.MaxThrust / 4f;
             }
 
             float denom = thrustCoef * airDensity * Mathf.Pow(propDiameter, 4);
             if (denom < 1e-10f) return;
 
-            // Spin direction: get from config rotors if available, else use default X-config
-            // FL=CW(+1), FR=CCW(-1), BL=CCW(-1), BR=CW(+1) typical X-config
+            // Spin direction from config or default X-config
             int[] spinDir = { 1, -1, -1, 1 };
             if (_configApplied && _config.RotorParams.Rotors != null && _config.RotorParams.Rotors.Length == 4)
             {
                 for (int i = 0; i < 4; i++)
-                {
                     spinDir[i] = _config.RotorParams.Rotors[i].Spin_Dir;
-                }
             }
 
             for (int i = 0; i < 4; i++)
             {
                 if (propellerMeshes[i] == null) continue;
 
-                // Calculate RPM from thrust (simplified model)
                 float thrust01 = Mathf.Max(0f, motorOutputs[i]);
                 float thrustN = thrust01 * maxThrustPerMotor;
                 float rpm = 60f * Mathf.Sqrt(thrustN / denom);
-                propellerRPMs[i] = rpm;
+                _propellerRPMs[i] = rpm;
 
-                // Rotate prop mesh
                 float direction = spinDir[i];
                 float frameRotation = (rpm / 60f) * 360f * deltaTime * direction;
                 propellerMeshes[i].Rotate(0f, frameRotation, 0f, Space.Self);
@@ -503,30 +539,21 @@ namespace DroneCore
         }
 
         // ============================================================================
-        // Camera Functions (stubs)
+        // Camera (stubs — future CameraRig component)
         // ============================================================================
 
-        /// <summary>
-        /// Force FPV camera active. Stub for now.
-        /// </summary>
         public void ForceFPVCameraActive()
         {
-            // TODO: Implement camera system
+            // TODO: CameraRig.SetMode(FPV)
             Debug.Log($"[QuadPawn] {DroneID}: ForceFPVCameraActive (stub)");
         }
 
-        /// <summary>
-        /// Cycle to next camera mode. Stub for now.
-        /// </summary>
         public void SwitchCamera()
         {
-            // TODO: Implement camera system
+            // TODO: CameraRig.CycleMode()
             Debug.Log($"[QuadPawn] {DroneID}: SwitchCamera (stub)");
         }
 
-        /// <summary>
-        /// Get the FPV camera attachment point.
-        /// </summary>
         public Transform GetFPVCameraPoint()
         {
             return fpvCameraPoint != null ? fpvCameraPoint : transform;
@@ -537,63 +564,11 @@ namespace DroneCore
         // ============================================================================
 
         /// <summary>
-        /// Get body inertia tensor in SI units (kg·m²).
+        /// Body inertia tensor in SI (kg·m²). Unity already uses SI.
         /// </summary>
         public Vector3 GetBodyInertiaSI()
         {
-            if (rb == null) return Vector3.zero;
-            return rb.inertiaTensor; // Unity uses kg·m² already
-        }
-
-        /// <summary>
-        /// Compute arm length from motor positions (average distance from CoM).
-        /// </summary>
-        public float ComputeArmLength()
-        {
-            if (rb == null) return 0f;
-
-            Vector3 com = rb.worldCenterOfMass;
-            float sum = 0f;
-            int count = 0;
-
-            for (int i = 0; i < 4; i++)
-            {
-                if (_motors[i] == null) continue;
-                
-                Vector3 motorPos = _motors[i].position;
-                Vector3 delta = motorPos - com;
-                
-                // Horizontal distance only (X-Z plane in Unity)
-                float dist = new Vector2(delta.x, delta.z).magnitude;
-                sum += dist;
-                count++;
-            }
-
-            return count > 0 ? sum / count : 0f;
-        }
-
-        // ============================================================================
-        // Utility
-        // ============================================================================
-
-        private static Transform FindDeepChild(Transform root, string childName)
-        {
-            // BFS search for stable behavior
-            var queue = new System.Collections.Generic.Queue<Transform>();
-            queue.Enqueue(root);
-            
-            while (queue.Count > 0)
-            {
-                var t = queue.Dequeue();
-                if (t.name == childName) return t;
-                
-                for (int i = 0; i < t.childCount; i++)
-                {
-                    queue.Enqueue(t.GetChild(i));
-                }
-            }
-            
-            return null;
+            return rb != null ? rb.inertiaTensor : Vector3.zero;
         }
     }
 }

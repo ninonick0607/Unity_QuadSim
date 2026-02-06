@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<xs:schema xmlns:editor="UnityEditor.UIElements" xmlns:engine="UnityEngine.UIElements" xmlns="UI.Core" elementFormDefault="qualified" targetNamespace="UnityEditor.PackageManager.UI.Internal" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+<xs:schema xmlns:editor="UnityEditor.UIElements" xmlns:engine="UnityEngine.UIElements" xmlns:AddressablesGUI="UnityEditor.AddressableAssets.GUIElements" xmlns="UI.Core" elementFormDefault="qualified" targetNamespace="UnityEditor.PackageManager.UI.Internal" xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:import schemaLocation="UnityEngine.UIElements.xsd" namespace="UnityEngine.UIElements" />
   <xs:complexType name="VersionInfoIconType">
     <xs:complexContent mixed="false">
@@ -345,39 +345,6 @@
     </xs:complexContent>
   </xs:complexType>
   <xs:element name="PackageStatusBar" substitutionGroup="engine:VisualElement" xmlns:q18="UnityEditor.PackageManager.UI.Internal" type="q18:PackageStatusBarType" />
-  <xs:complexType name="ExtendableToolbarMenuType">
-    <xs:complexContent mixed="false">
-      <xs:restriction base="engine:VisualElementType">
-        <xs:attribute default="" name="name" type="xs:string" use="optional" />
-        <xs:attribute default="true" name="enabled" type="xs:boolean" use="optional" />
-        <xs:attribute default="" name="view-data-key" type="xs:string" use="optional" />
-        <xs:attribute default="Position" name="picking-mode" type="engine:VisualElement_picking-mode_Type" use="optional" />
-        <xs:attribute default="" name="tooltip" type="xs:string" use="optional" />
-        <xs:attribute default="None" name="usage-hints" type="engine:VisualElement_usage-hints_Type" use="optional" />
-        <xs:attribute default="0" name="tabindex" type="xs:int" use="optional" />
-        <xs:attribute default="true" name="focusable" type="xs:boolean" use="optional" />
-        <xs:attribute default="Inherit" name="language-direction" type="engine:VisualElement_language-direction_Type" use="optional" />
-        <xs:attribute default="" name="data-source" type="xs:string" use="optional" />
-        <xs:attribute default="" name="data-source-path" type="xs:string" use="optional" />
-        <xs:attribute default="" name="data-source-type" type="xs:string" use="optional" />
-        <xs:attribute default="" name="binding-path" type="xs:string" use="optional" />
-        <xs:attribute default="" name="text" type="xs:string" use="optional" />
-        <xs:attribute default="true" name="enable-rich-text" type="xs:boolean" use="optional" />
-        <xs:attribute default="true" name="emoji-fallback-support" type="xs:boolean" use="optional" />
-        <xs:attribute default="false" name="parse-escape-sequences" type="xs:boolean" use="optional" />
-        <xs:attribute default="false" name="selectable" type="xs:boolean" use="optional" />
-        <xs:attribute default="true" name="double-click-selects-word" type="xs:boolean" use="optional" />
-        <xs:attribute default="true" name="triple-click-selects-line" type="xs:boolean" use="optional" />
-        <xs:attribute default="true" name="display-tooltip-when-elided" type="xs:boolean" use="optional" />
-        <xs:attribute default="" name="icon-image" type="xs:string" use="optional" />
-        <xs:attribute default="" name="content-container" type="xs:string" use="optional" />
-        <xs:attribute default="" name="class" type="xs:string" use="optional" />
-        <xs:attribute default="" name="style" type="xs:string" use="optional" />
-        <xs:anyAttribute processContents="lax" />
-      </xs:restriction>
-    </xs:complexContent>
-  </xs:complexType>
-  <xs:element name="ExtendableToolbarMenu" substitutionGroup="engine:VisualElement" xmlns:q19="UnityEditor.PackageManager.UI.Internal" type="q19:ExtendableToolbarMenuType" />
   <xs:complexType name="SelectableLabelType">
     <xs:complexContent mixed="false">
       <xs:restriction base="engine:VisualElementType">
@@ -409,7 +376,7 @@
       </xs:restriction>
     </xs:complexContent>
   </xs:complexType>
-  <xs:element name="SelectableLabel" substitutionGroup="engine:VisualElement" xmlns:q20="UnityEditor.PackageManager.UI.Internal" type="q20:SelectableLabelType" />
+  <xs:element name="SelectableLabel" substitutionGroup="engine:VisualElement" xmlns:q19="UnityEditor.PackageManager.UI.Internal" type="q19:SelectableLabelType" />
   <xs:complexType name="PackageLoadBarType">
     <xs:complexContent mixed="false">
       <xs:restriction base="engine:VisualElementType">
@@ -432,7 +399,7 @@
       </xs:restriction>
     </xs:complexContent>
   </xs:complexType>
-  <xs:element name="PackageLoadBar" substitutionGroup="engine:VisualElement" xmlns:q21="UnityEditor.PackageManager.UI.Internal" type="q21:PackageLoadBarType" />
+  <xs:element name="PackageLoadBar" substitutionGroup="engine:VisualElement" xmlns:q20="UnityEditor.PackageManager.UI.Internal" type="q20:PackageLoadBarType" />
   <xs:complexType name="PackageDetailsType">
     <xs:complexContent mixed="false">
       <xs:restriction base="engine:VisualElementType">
@@ -455,7 +422,7 @@
       </xs:restriction>
     </xs:complexContent>
   </xs:complexType>
-  <xs:element name="PackageDetails" substitutionGroup="engine:VisualElement" xmlns:q22="UnityEditor.PackageManager.UI.Internal" type="q22:PackageDetailsType" />
+  <xs:element name="PackageDetails" substitutionGroup="engine:VisualElement" xmlns:q21="UnityEditor.PackageManager.UI.Internal" type="q21:PackageDetailsType" />
   <xs:complexType name="SignInBarType">
     <xs:complexContent mixed="false">
       <xs:restriction base="engine:VisualElementType">
@@ -478,7 +445,7 @@
       </xs:restriction>
     </xs:complexContent>
   </xs:complexType>
-  <xs:element name="SignInBar" substitutionGroup="engine:VisualElement" xmlns:q23="UnityEditor.PackageManager.UI.Internal" type="q23:SignInBarType" />
+  <xs:element name="SignInBar" substitutionGroup="engine:VisualElement" xmlns:q22="UnityEditor.PackageManager.UI.Internal" type="q22:SignInBarType" />
   <xs:simpleType name="PackageListView_virtualization-method_Type">
     <xs:restriction base="xs:string">
       <xs:enumeration value="FixedHeight" />
@@ -528,10 +495,10 @@
         <xs:attribute default="" name="data-source-type" type="xs:string" use="optional" />
         <xs:attribute default="" name="binding-path" type="xs:string" use="optional" />
         <xs:attribute default="25" name="fixed-item-height" type="xs:float" use="optional" />
-        <xs:attribute default="FixedHeight" name="virtualization-method" xmlns:q24="UnityEditor.PackageManager.UI.Internal" type="q24:PackageListView_virtualization-method_Type" use="optional" />
+        <xs:attribute default="FixedHeight" name="virtualization-method" xmlns:q23="UnityEditor.PackageManager.UI.Internal" type="q23:PackageListView_virtualization-method_Type" use="optional" />
         <xs:attribute default="false" name="show-border" type="xs:boolean" use="optional" />
-        <xs:attribute default="Multiple" name="selection-type" xmlns:q25="UnityEditor.PackageManager.UI.Internal" type="q25:PackageListView_selection-type_Type" use="optional" />
-        <xs:attribute default="None" name="show-alternating-row-backgrounds" xmlns:q26="UnityEditor.PackageManager.UI.Internal" type="q26:PackageListView_show-alternating-row-backgrounds_Type" use="optional" />
+        <xs:attribute default="Multiple" name="selection-type" xmlns:q24="UnityEditor.PackageManager.UI.Internal" type="q24:PackageListView_selection-type_Type" use="optional" />
+        <xs:attribute default="None" name="show-alternating-row-backgrounds" xmlns:q25="UnityEditor.PackageManager.UI.Internal" type="q25:PackageListView_show-alternating-row-backgrounds_Type" use="optional" />
         <xs:attribute default="false" name="reorderable" type="xs:boolean" use="optional" />
         <xs:attribute default="false" name="horizontal-scrolling" type="xs:boolean" use="optional" />
         <xs:attribute default="false" name="show-foldout-header" type="xs:boolean" use="optional" />
@@ -539,9 +506,9 @@
         <xs:attribute default="false" name="show-add-remove-footer" type="xs:boolean" use="optional" />
         <xs:attribute default="true" name="allow-add" type="xs:boolean" use="optional" />
         <xs:attribute default="true" name="allow-remove" type="xs:boolean" use="optional" />
-        <xs:attribute default="Simple" name="reorder-mode" xmlns:q27="UnityEditor.PackageManager.UI.Internal" type="q27:PackageListView_reorder-mode_Type" use="optional" />
+        <xs:attribute default="Simple" name="reorder-mode" xmlns:q26="UnityEditor.PackageManager.UI.Internal" type="q26:PackageListView_reorder-mode_Type" use="optional" />
         <xs:attribute default="true" name="show-bound-collection-size" type="xs:boolean" use="optional" />
-        <xs:attribute default="Manual" name="binding-source-selection-mode" xmlns:q28="UnityEditor.PackageManager.UI.Internal" type="q28:PackageListView_binding-source-selection-mode_Type" use="optional" />
+        <xs:attribute default="Manual" name="binding-source-selection-mode" xmlns:q27="UnityEditor.PackageManager.UI.Internal" type="q27:PackageListView_binding-source-selection-mode_Type" use="optional" />
         <xs:attribute default="" name="item-template" type="xs:string" use="optional" />
         <xs:attribute default="" name="content-container" type="xs:string" use="optional" />
         <xs:attribute default="" name="class" type="xs:string" use="optional" />
@@ -550,7 +517,7 @@
       </xs:restriction>
     </xs:complexContent>
   </xs:complexType>
-  <xs:element name="PackageListView" substitutionGroup="engine:VisualElement" xmlns:q29="UnityEditor.PackageManager.UI.Internal" type="q29:PackageListViewType" />
+  <xs:element name="PackageListView" substitutionGroup="engine:VisualElement" xmlns:q28="UnityEditor.PackageManager.UI.Internal" type="q28:PackageListViewType" />
   <xs:complexType name="MainContainerOverlayType">
     <xs:complexContent mixed="false">
       <xs:restriction base="engine:VisualElementType">
@@ -573,7 +540,7 @@
       </xs:restriction>
     </xs:complexContent>
   </xs:complexType>
-  <xs:element name="MainContainerOverlay" substitutionGroup="engine:VisualElement" xmlns:q30="UnityEditor.PackageManager.UI.Internal" type="q30:MainContainerOverlayType" />
+  <xs:element name="MainContainerOverlay" substitutionGroup="engine:VisualElement" xmlns:q29="UnityEditor.PackageManager.UI.Internal" type="q29:MainContainerOverlayType" />
   <xs:complexType name="PackageListType">
     <xs:complexContent mixed="false">
       <xs:restriction base="engine:VisualElementType">
@@ -596,7 +563,7 @@
       </xs:restriction>
     </xs:complexContent>
   </xs:complexType>
-  <xs:element name="PackageList" substitutionGroup="engine:VisualElement" xmlns:q31="UnityEditor.PackageManager.UI.Internal" type="q31:PackageListType" />
+  <xs:element name="PackageList" substitutionGroup="engine:VisualElement" xmlns:q30="UnityEditor.PackageManager.UI.Internal" type="q30:PackageListType" />
   <xs:complexType name="LoadingSpinnerType">
     <xs:complexContent mixed="false">
       <xs:restriction base="engine:VisualElementType">
@@ -619,7 +586,7 @@
       </xs:restriction>
     </xs:complexContent>
   </xs:complexType>
-  <xs:element name="LoadingSpinner" substitutionGroup="engine:VisualElement" xmlns:q32="UnityEditor.PackageManager.UI.Internal" type="q32:LoadingSpinnerType" />
+  <xs:element name="LoadingSpinner" substitutionGroup="engine:VisualElement" xmlns:q31="UnityEditor.PackageManager.UI.Internal" type="q31:LoadingSpinnerType" />
   <xs:complexType name="PackagePlatformListType">
     <xs:complexContent mixed="false">
       <xs:restriction base="engine:VisualElementType">
@@ -642,7 +609,7 @@
       </xs:restriction>
     </xs:complexContent>
   </xs:complexType>
-  <xs:element name="PackagePlatformList" substitutionGroup="engine:VisualElement" xmlns:q33="UnityEditor.PackageManager.UI.Internal" type="q33:PackagePlatformListType" />
+  <xs:element name="PackagePlatformList" substitutionGroup="engine:VisualElement" xmlns:q32="UnityEditor.PackageManager.UI.Internal" type="q32:PackagePlatformListType" />
   <xs:complexType name="ProgressBarType">
     <xs:complexContent mixed="false">
       <xs:restriction base="engine:VisualElementType">
@@ -665,7 +632,7 @@
       </xs:restriction>
     </xs:complexContent>
   </xs:complexType>
-  <xs:element name="ProgressBar" substitutionGroup="engine:VisualElement" xmlns:q34="UnityEditor.PackageManager.UI.Internal" type="q34:ProgressBarType" />
+  <xs:element name="ProgressBar" substitutionGroup="engine:VisualElement" xmlns:q33="UnityEditor.PackageManager.UI.Internal" type="q33:ProgressBarType" />
   <xs:simpleType name="PackageListScrollView_mode_Type">
     <xs:restriction base="xs:string">
       <xs:enumeration value="Vertical" />
@@ -716,16 +683,16 @@
         <xs:attribute default="" name="data-source" type="xs:string" use="optional" />
         <xs:attribute default="" name="data-source-path" type="xs:string" use="optional" />
         <xs:attribute default="" name="data-source-type" type="xs:string" use="optional" />
-        <xs:attribute default="Vertical" name="mode" xmlns:q35="UnityEditor.PackageManager.UI.Internal" type="q35:PackageListScrollView_mode_Type" use="optional" />
-        <xs:attribute default="Default" name="nested-interaction-kind" xmlns:q36="UnityEditor.PackageManager.UI.Internal" type="q36:PackageListScrollView_nested-interaction-kind_Type" use="optional" />
+        <xs:attribute default="Vertical" name="mode" xmlns:q34="UnityEditor.PackageManager.UI.Internal" type="q34:PackageListScrollView_mode_Type" use="optional" />
+        <xs:attribute default="Default" name="nested-interaction-kind" xmlns:q35="UnityEditor.PackageManager.UI.Internal" type="q35:PackageListScrollView_nested-interaction-kind_Type" use="optional" />
         <xs:attribute default="false" name="show-horizontal-scroller" type="xs:boolean" use="optional" />
         <xs:attribute default="false" name="show-vertical-scroller" type="xs:boolean" use="optional" />
-        <xs:attribute default="Hidden" name="horizontal-scroller-visibility" xmlns:q37="UnityEditor.PackageManager.UI.Internal" type="q37:PackageListScrollView_horizontal-scroller-visibility_Type" use="optional" />
-        <xs:attribute default="Auto" name="vertical-scroller-visibility" xmlns:q38="UnityEditor.PackageManager.UI.Internal" type="q38:PackageListScrollView_vertical-scroller-visibility_Type" use="optional" />
+        <xs:attribute default="Hidden" name="horizontal-scroller-visibility" xmlns:q36="UnityEditor.PackageManager.UI.Internal" type="q36:PackageListScrollView_horizontal-scroller-visibility_Type" use="optional" />
+        <xs:attribute default="Auto" name="vertical-scroller-visibility" xmlns:q37="UnityEditor.PackageManager.UI.Internal" type="q37:PackageListScrollView_vertical-scroller-visibility_Type" use="optional" />
         <xs:attribute default="-1" name="horizontal-page-size" type="xs:float" use="optional" />
         <xs:attribute default="-1" name="vertical-page-size" type="xs:float" use="optional" />
         <xs:attribute default="18" name="mouse-wheel-scroll-size" type="xs:float" use="optional" />
-        <xs:attribute default="Clamped" name="touch-scroll-type" xmlns:q39="UnityEditor.PackageManager.UI.Internal" type="q39:PackageListScrollView_touch-scroll-type_Type" use="optional" />
+        <xs:attribute default="Clamped" name="touch-scroll-type" xmlns:q38="UnityEditor.PackageManager.UI.Internal" type="q38:PackageListScrollView_touch-scroll-type_Type" use="optional" />
         <xs:attribute default="0.135" name="scroll-deceleration-rate" type="xs:float" use="optional" />
         <xs:attribute default="0.1" name="elasticity" type="xs:float" use="optional" />
         <xs:attribute default="16" name="elastic-animation-interval-ms" type="xs:long" use="optional" />
@@ -736,7 +703,7 @@
       </xs:restriction>
     </xs:complexContent>
   </xs:complexType>
-  <xs:element name="PackageListScrollView" substitutionGroup="engine:VisualElement" xmlns:q40="UnityEditor.PackageManager.UI.Internal" type="q40:PackageListScrollViewType" />
+  <xs:element name="PackageListScrollView" substitutionGroup="engine:VisualElement" xmlns:q39="UnityEditor.PackageManager.UI.Internal" type="q39:PackageListScrollViewType" />
   <xs:complexType name="PackageManagerToolbarType">
     <xs:complexContent mixed="false">
       <xs:restriction base="engine:VisualElementType">
@@ -759,7 +726,7 @@
       </xs:restriction>
     </xs:complexContent>
   </xs:complexType>
-  <xs:element name="PackageManagerToolbar" substitutionGroup="engine:VisualElement" xmlns:q41="UnityEditor.PackageManager.UI.Internal" type="q41:PackageManagerToolbarType" />
+  <xs:element name="PackageManagerToolbar" substitutionGroup="engine:VisualElement" xmlns:q40="UnityEditor.PackageManager.UI.Internal" type="q40:PackageManagerToolbarType" />
   <xs:complexType name="PackageSearchBarType">
     <xs:complexContent mixed="false">
       <xs:restriction base="engine:VisualElementType">
@@ -782,7 +749,40 @@
       </xs:restriction>
     </xs:complexContent>
   </xs:complexType>
-  <xs:element name="PackageSearchBar" substitutionGroup="engine:VisualElement" xmlns:q42="UnityEditor.PackageManager.UI.Internal" type="q42:PackageSearchBarType" />
+  <xs:element name="PackageSearchBar" substitutionGroup="engine:VisualElement" xmlns:q41="UnityEditor.PackageManager.UI.Internal" type="q41:PackageSearchBarType" />
+  <xs:complexType name="ExtendableToolbarMenuType">
+    <xs:complexContent mixed="false">
+      <xs:restriction base="engine:VisualElementType">
+        <xs:attribute default="" name="name" type="xs:string" use="optional" />
+        <xs:attribute default="true" name="enabled" type="xs:boolean" use="optional" />
+        <xs:attribute default="" name="view-data-key" type="xs:string" use="optional" />
+        <xs:attribute default="Position" name="picking-mode" type="engine:VisualElement_picking-mode_Type" use="optional" />
+        <xs:attribute default="" name="tooltip" type="xs:string" use="optional" />
+        <xs:attribute default="None" name="usage-hints" type="engine:VisualElement_usage-hints_Type" use="optional" />
+        <xs:attribute default="0" name="tabindex" type="xs:int" use="optional" />
+        <xs:attribute default="true" name="focusable" type="xs:boolean" use="optional" />
+        <xs:attribute default="Inherit" name="language-direction" type="engine:VisualElement_language-direction_Type" use="optional" />
+        <xs:attribute default="" name="data-source" type="xs:string" use="optional" />
+        <xs:attribute default="" name="data-source-path" type="xs:string" use="optional" />
+        <xs:attribute default="" name="data-source-type" type="xs:string" use="optional" />
+        <xs:attribute default="" name="binding-path" type="xs:string" use="optional" />
+        <xs:attribute default="" name="text" type="xs:string" use="optional" />
+        <xs:attribute default="true" name="enable-rich-text" type="xs:boolean" use="optional" />
+        <xs:attribute default="true" name="emoji-fallback-support" type="xs:boolean" use="optional" />
+        <xs:attribute default="false" name="parse-escape-sequences" type="xs:boolean" use="optional" />
+        <xs:attribute default="false" name="selectable" type="xs:boolean" use="optional" />
+        <xs:attribute default="true" name="double-click-selects-word" type="xs:boolean" use="optional" />
+        <xs:attribute default="true" name="triple-click-selects-line" type="xs:boolean" use="optional" />
+        <xs:attribute default="true" name="display-tooltip-when-elided" type="xs:boolean" use="optional" />
+        <xs:attribute default="" name="icon-image" type="xs:string" use="optional" />
+        <xs:attribute default="" name="content-container" type="xs:string" use="optional" />
+        <xs:attribute default="" name="class" type="xs:string" use="optional" />
+        <xs:attribute default="" name="style" type="xs:string" use="optional" />
+        <xs:anyAttribute processContents="lax" />
+      </xs:restriction>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:element name="ExtendableToolbarMenu" substitutionGroup="engine:VisualElement" xmlns:q42="UnityEditor.PackageManager.UI.Internal" type="q42:ExtendableToolbarMenuType" />
   <xs:complexType name="PackageToolbarType">
     <xs:complexContent mixed="false">
       <xs:restriction base="engine:VisualElementType">

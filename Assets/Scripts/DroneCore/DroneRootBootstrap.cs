@@ -53,7 +53,6 @@ namespace DroneCore
             // DEDUPE FIRST (important - prevents multiple components)
             RemoveDuplicates<Rigidbody>(gameObject);
             RemoveDuplicates<QuadPawn>(gameObject);
-            RemoveDuplicates<ThrusterSet>(gameObject);
             RemoveDuplicates<CascadedController>(gameObject);
             RemoveDuplicates<RobotCore.SensorManager>(gameObject);
             RemoveDuplicates<RobotCore.RobotCore>(gameObject);
@@ -62,15 +61,11 @@ namespace DroneCore
             // Add required components
             var rb       = GetOrAdd<Rigidbody>(gameObject);
             var body     = GetOrAdd<QuadPawn>(gameObject);
-            var thr      = GetOrAdd<ThrusterSet>(gameObject);
             var ctrl     = GetOrAdd<CascadedController>(gameObject);
             var sensors  = GetOrAdd<RobotCore.SensorManager>(gameObject);
             var core     = GetOrAdd<RobotCore.RobotCore>(gameObject);
             var cmd      = GetOrAdd<FlightCommandProxy>(gameObject);
-
-            // Wire and validate QuadPawn
-            body.AutoWireIfNeeded();
-            body.ValidateOrThrow();
+            
 
             // Configure Rigidbody defaults
             rb.mass = 1.28f;
