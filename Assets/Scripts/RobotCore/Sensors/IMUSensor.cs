@@ -63,7 +63,7 @@ namespace RobotCore.Sensors
             Vector3 wWorld = _rb.angularVelocity;
             Vector3 wBody = _bodyTransform.InverseTransformDirection(wWorld);
             
-            LastAngVel = Frames.TransformAngularVelocity(wBody, OutputFrame);
+            LastAngVel = Frames.TransformAngularVelocity(wBody, OutputFrame); // Output is in Rad/s
         }
 
         public void SampleAttitude(double nowSec, float deltaTime)
