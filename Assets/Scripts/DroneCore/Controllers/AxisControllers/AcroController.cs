@@ -4,7 +4,7 @@ using RobotCore;
 using UnityEngine;
 using Yaml.Drone;
 
-namespace DroneCore.Controllers.Cascades
+namespace DroneCore.Controllers.AxisControllers
 {
     [System.Serializable]
     public sealed class AcroController
@@ -15,7 +15,7 @@ namespace DroneCore.Controllers.Cascades
         // Axis index: 0=roll, 1=pitch, 2=yaw, 3=throttle (pass-through)
         public int _axis { get; private set; }
         private ICommandSource _cmdGoal;
-        private float _externalGoal { get; set; }
+        private float _externalGoal;
         private SensorManager _sensorManager;
         private DroneConfig _config;
         
@@ -23,9 +23,9 @@ namespace DroneCore.Controllers.Cascades
         private bool _bUseExternalGoal;
         
         // TODO: Setting but private? We dont need outside variables setting it at all
-        private float _output { get; set; }
+        private float _output;
         
-        AcroController(DroneConfig inConfig)
+        public AcroController(DroneConfig inConfig)
         {
             _config = inConfig;
         }
@@ -41,15 +41,24 @@ namespace DroneCore.Controllers.Cascades
             _pidSet.SetGains(PID.GetPGains()[_axis], PID.GetIGains()[_axis], PID.GetDGains()[_axis]);
 
             _bInitialized = true;
+            Debug.Log("[AcroController] Initialized");
+
             // if (iLimit > 0f) pid.SetIntegralLimits(iLimit);
         }
         
         public void Update(float deltaTime)
         {
-           // if(!_bInitialized || !_sensorManager || _pidSet == null || _cmdGoal && !_bUseExternalGoal)
-            float StateRate = _sensorManager.Latest.ImuAngVel[_axis];
-            float Goal = _bUseExternalGoal ? _externalGoal :  _cmdGoal.Command[_axis];
+            if (!_bInitialized || _sensorManager == null || _pidSet == null || (_cmdGoal == null && !_bUseExternalGoal))
+            {
+                _output = 0.0f;
+                return;
+            }
 
+            
+            float StateRate = _sensorManager.Latest.ImuAngVel[_axis];
+            float Goal = _bUseExternalGoal ? _externalGoal :  _cmdGoal.GetCommandValue()[_axis];
+            Debug.Log("[AcroController] Goal: " + Goal);
+            Debug.Log("[AcroController] StateRate: " + StateRate);
             if (_axis == 3)
             {
                 _output = Goal;
@@ -79,5 +88,12 @@ namespace DroneCore.Controllers.Cascades
             _externalGoal = 0.0f;
             _bUseExternalGoal = false;
         }
+        public float GetOutput() { return _output; }
+        public float GetExternalGoal() { return _externalGoal; }
+        public QuadPIDController GetPID()
+        {
+            return _pidSet;
+        }
+        
     }
 }

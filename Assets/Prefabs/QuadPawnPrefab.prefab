@@ -14,7 +14,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 1
 --- !u!4 &4111657788187158029
 Transform:
@@ -282,53 +282,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 23c1ce4fb46143f46bc5cb5224c934f6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.RenderPipelines.HighDefinition.Runtime::UnityEngine.Rendering.HighDefinition.HDAdditionalCameraData
-  m_Version: 9
-  m_ObsoleteRenderingPath: 0
-  m_ObsoleteFrameSettings:
-    overrides: 0
-    enableShadow: 0
-    enableContactShadows: 0
-    enableShadowMask: 0
-    enableSSR: 0
-    enableSSAO: 0
-    enableSubsurfaceScattering: 0
-    enableTransmission: 0
-    enableAtmosphericScattering: 0
-    enableVolumetrics: 0
-    enableReprojectionForVolumetrics: 0
-    enableLightLayers: 0
-    enableExposureControl: 1
-    diffuseGlobalDimmer: 0
-    specularGlobalDimmer: 0
-    shaderLitMode: 0
-    enableDepthPrepassWithDeferredRendering: 0
-    enableTransparentPrepass: 0
-    enableMotionVectors: 0
-    enableObjectMotionVectors: 0
-    enableDecals: 0
-    enableRoughRefraction: 0
-    enableTransparentPostpass: 0
-    enableDistortion: 0
-    enablePostprocess: 0
-    enableOpaqueObjects: 0
-    enableTransparentObjects: 0
-    enableRealtimePlanarReflection: 0
-    enableMSAA: 0
-    enableAsyncCompute: 0
-    runLightListAsync: 0
-    runSSRAsync: 0
-    runSSAOAsync: 0
-    runContactShadowsAsync: 0
-    runVolumeVoxelizationAsync: 0
-    lightLoopSettings:
-      overrides: 0
-      enableDeferredTileAndCluster: 0
-      enableComputeLightEvaluation: 0
-      enableComputeLightVariants: 0
-      enableComputeMaterialVariants: 0
-      enableFptlForForwardOpaque: 0
-      enableBigTilePrepass: 0
-      isFptlEnabled: 0
   clearColorMode: 0
   backgroundColorHDR: {r: 0.025, g: 0.07, b: 0.19, a: 0}
   clearDepth: 1
@@ -409,6 +362,53 @@ MonoBehaviour:
       data1: 0
       data2: 0
   defaultFrameSettings: 0
+  m_Version: 9
+  m_ObsoleteRenderingPath: 0
+  m_ObsoleteFrameSettings:
+    overrides: 0
+    enableShadow: 0
+    enableContactShadows: 0
+    enableShadowMask: 0
+    enableSSR: 0
+    enableSSAO: 0
+    enableSubsurfaceScattering: 0
+    enableTransmission: 0
+    enableAtmosphericScattering: 0
+    enableVolumetrics: 0
+    enableReprojectionForVolumetrics: 0
+    enableLightLayers: 0
+    enableExposureControl: 1
+    diffuseGlobalDimmer: 0
+    specularGlobalDimmer: 0
+    shaderLitMode: 0
+    enableDepthPrepassWithDeferredRendering: 0
+    enableTransparentPrepass: 0
+    enableMotionVectors: 0
+    enableObjectMotionVectors: 0
+    enableDecals: 0
+    enableRoughRefraction: 0
+    enableTransparentPostpass: 0
+    enableDistortion: 0
+    enablePostprocess: 0
+    enableOpaqueObjects: 0
+    enableTransparentObjects: 0
+    enableRealtimePlanarReflection: 0
+    enableMSAA: 0
+    enableAsyncCompute: 0
+    runLightListAsync: 0
+    runSSRAsync: 0
+    runSSAOAsync: 0
+    runContactShadowsAsync: 0
+    runVolumeVoxelizationAsync: 0
+    lightLoopSettings:
+      overrides: 0
+      enableDeferredTileAndCluster: 0
+      enableComputeLightEvaluation: 0
+      enableComputeLightVariants: 0
+      enableComputeMaterialVariants: 0
+      enableFptlForForwardOpaque: 0
+      enableBigTilePrepass: 0
+      isFptlEnabled: 0
 --- !u!1 &9135757327438227529
 GameObject:
   m_ObjectHideFlags: 0
@@ -418,16 +418,15 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3393294561050388046}
-  - component: {fileID: 9184194430486069368}
-  - component: {fileID: 4049279432092915417}
   - component: {fileID: -6611264674519159391}
-  - component: {fileID: -2291174402783153446}
+  - component: {fileID: 4049279432092915417}
   - component: {fileID: -7805308036937349666}
   - component: {fileID: 2810733869085761176}
-  - component: {fileID: -2536970485200983006}
   - component: {fileID: -4242643215258136215}
+  - component: {fileID: -2536970485200983006}
+  - component: {fileID: 9184194430486069368}
   m_Layer: 0
-  m_Name: DroneRoot
+  m_Name: QuadPawnPrefab
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -450,7 +449,7 @@ Transform:
   - {fileID: 6433132172113635082}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &9184194430486069368
+--- !u!114 &-6611264674519159391
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -459,9 +458,24 @@ MonoBehaviour:
   m_GameObject: {fileID: 9135757327438227529}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b44c7eba3bd847a5b02240f5b52e3119, type: 3}
+  m_Script: {fileID: 11500000, guid: 3df274c536784a5e942d71580e4dcf08, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::DroneRootBootstrap
+  m_EditorClassIdentifier: Assembly-CSharp::DroneCore.DroneBody
+  rb: {fileID: 4049279432092915417}
+  motorFL: {fileID: 4111657788187158029}
+  motorFR: {fileID: 419703141765327995}
+  motorBL: {fileID: 5952494717003119130}
+  motorBR: {fileID: 7027284009040917118}
+  controller: {fileID: 0}
+  sensorManager: {fileID: 0}
+  commandProxy: {fileID: 0}
+  fpvCameraPoint: {fileID: 0}
+  propellerMeshes:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  currentControllerKind: 0
 --- !u!54 &4049279432092915417
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -489,40 +503,6 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!114 &-6611264674519159391
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9135757327438227529}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3df274c536784a5e942d71580e4dcf08, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::DroneCore.DroneBody
-  rb: {fileID: 4049279432092915417}
-  motorFL: {fileID: 4111657788187158029}
-  motorFR: {fileID: 419703141765327995}
-  motorBL: {fileID: 5952494717003119130}
-  motorBR: {fileID: 7027284009040917118}
---- !u!114 &-2291174402783153446
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9135757327438227529}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9e4ca5fecc764cd0b710b204db9608e1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::DroneCore.Common.ThrusterSet
-  body: {fileID: -6611264674519159391}
-  maxThrustPerMotorN: 4.12
-  clamp01: 1
-  yawTorquePerNewton: 0.02
-  spinDirection: 01000000ffffffffffffffff01000000
 --- !u!114 &-7805308036937349666
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -535,56 +515,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 22552b3bdbb3404880e7cb7e82b7f4e0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DroneCore.Controllers.CascadedController
-  body: {fileID: 0}
-  thrusters: {fileID: 0}
-  sensorManager: {fileID: 0}
-  commandProxy: {fileID: 0}
-  altitudeHoldEnabled: 1
-  desiredAltitudeM: 1
-  hoverThrottle01: 0.75
-  maxThrottleDelta: 0.25
-  zPid:
-    Kp: 1.5
-    Ki: 0.2
-    Kd: 0.4
-    MinOutput: -0.25
-    MaxOutput: 0.25
-    IntegralLimit: 2
-    DecayFactor: 0.99
-  acro:
-    roll:
-      Kp: 0
-      Ki: 0
-      Kd: 0
-      MinOutput: -1
-      MaxOutput: 1
-      IntegralLimit: 10
-      DecayFactor: 0.99
-    pitch:
-      Kp: 0
-      Ki: 0
-      Kd: 0
-      MinOutput: -1
-      MaxOutput: 1
-      IntegralLimit: 10
-      DecayFactor: 0.99
-    yaw:
-      Kp: 0
-      Ki: 0
-      Kd: 0
-      MinOutput: -1
-      MaxOutput: 1
-      IntegralLimit: 10
-      DecayFactor: 0.99
-  desiredRatesDeg: {x: 0, y: 0, z: 0}
-  useEffectivenessAllocator: 1
-  allocator:
-    minAuthorityRatio: 0.01
-    minMotorOutput: 0.05
-    yawTorquePerNewton: 0.02
-  maxAngleRateRad: 6
-  maxYawRateRad: 3
-  yawAuthorityScale: 0.03
 --- !u!114 &2810733869085761176
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -604,6 +534,27 @@ MonoBehaviour:
   gpsHz: 10
   logSensors: 1
   logHz: 2
+  TargetFrame: 1
+--- !u!114 &-4242643215258136215
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9135757327438227529}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e487a40b20b406784abc6b06ccca1bb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneCore.Interfaces.FlightCommandProxy
+  _command:
+    X: 0
+    Y: 0
+    Z: 0
+    W: 0
+  _mode: 0
+  _lastWriter: 0
+  _activeSource: 0
 --- !u!114 &-2536970485200983006
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -617,7 +568,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RobotCore.RobotCore
   sensors: {fileID: 0}
---- !u!114 &-4242643215258136215
+--- !u!114 &9184194430486069368
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -626,12 +577,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 9135757327438227529}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3e487a40b20b406784abc6b06ccca1bb, type: 3}
+  m_Script: {fileID: 11500000, guid: b44c7eba3bd847a5b02240f5b52e3119, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::DroneCore.Interfaces.FlightCommandProxy
-  defaultMode: 0
-  defaultSource: 0
-  useDoubleBuffer: 1
+  m_EditorClassIdentifier: Assembly-CSharp::DroneRootBootstrap
 --- !u!1001 &2217089954583739504
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -1,106 +1,47 @@
-using RobotCore.Common;
+using SimCore.Common;
 using UnityEngine;
 
 namespace DroneCore.Interfaces
 {
-    public readonly struct CommandSnapshot
-    {
-        public readonly Axis4 Command;
-        public readonly GoalMode Mode;
-        public readonly InputSource Source;
-
-        public CommandSnapshot(Axis4 cmd, GoalMode mode, InputSource source)
-        {
-            Command = cmd;
-            Mode = mode;
-            Source = source;
-        }
-    }
-
-    /// <summary>
-    /// Central command hub. Producers write commands; controllers read stable snapshots.
-    /// </summary>
-    [DisallowMultipleComponent]
     public sealed class FlightCommandProxy : MonoBehaviour, ICommandSource
     {
-        [Header("Debug / Default Safe State")]
-        [SerializeField] private GoalMode defaultMode = GoalMode.None;
-        [SerializeField] private InputSource defaultSource = InputSource.UI;
+        [SerializeField] private Axis4 _command;
+        [SerializeField] private GoalMode _mode = GoalMode.None;
+        [SerializeField] private InputSource _lastWriter = InputSource.UI;
+        [SerializeField] private InputSource _activeSource = InputSource.UI;
 
-        // "front" is what sim reads.
-        private Axis4 _frontCmd;
-        private GoalMode _frontMode;
-        private InputSource _frontSource;
+        public Axis4 GetCommandValue() => _command;
+        public GoalMode GetGoalMode() => _mode;
+        public InputSource GetActiveSource() => _activeSource;
+        public InputSource GetLastWriter() => _lastWriter;
 
-        // "back" is what UI writes (optional). If you don't need buffering,
-        // you can write directly to front by setting useDoubleBuffer=false.
-        private Axis4 _backCmd;
-        private GoalMode _backMode;
-        private InputSource _backSource;
-
-        [Tooltip("If true, writers update a back-buffer and sim swaps once per step.")]
-        [SerializeField] private bool useDoubleBuffer = true;
-
-        public Axis4 Command => _frontCmd;
-        public GoalMode Mode => _frontMode;
-        public InputSource Source => _frontSource;
-
-        
-        private void Awake()
+        public void SetActiveSource(InputSource inActive)
         {
-            Debug.Log($"[CmdProxy] Awake on {name}");
-            ResetToSafe();
+            if (_activeSource == inActive) return;
+
+            Debug.Log($"[Proxy] {GetInstanceID():X} ActiveSource: {_activeSource} -> {inActive} (LastWriter={_lastWriter})");
+            _activeSource = inActive;
         }
 
-        public void SetCommand(Axis4 cmd, GoalMode mode, InputSource source = InputSource.UI)
+        public bool SetCommand(Axis4 inCmd, GoalMode inMode, InputSource caller)
         {
-            Debug.Log($"[ControlDeck] Write Rate cmd rpy=({cmd.Roll:F2},{cmd.Pitch:F2},{cmd.Yaw:F2}) mode={GoalMode.Rate} ");
-
-            if (useDoubleBuffer)
+            if (caller != _activeSource)
             {
-                _backCmd = cmd;
-                _backMode = mode;
-                _backSource = source;
-            }
-            else
-            {
-                _frontCmd = cmd;
-                _frontMode = mode;
-                _frontSource = source;
-            }
-        }
-
-        public void ResetToSafe()
-        {
-            var safe = Axis4.ZeroValue;
-            if (useDoubleBuffer)
-            {
-                _backCmd = safe;
-                _backMode = defaultMode;
-                _backSource = defaultSource;
+                Debug.LogWarning($"[Proxy] REJECT {GetInstanceID():X} Caller={caller} Active={_activeSource} Mode={inMode} Cmd=({inCmd.X:F2} {inCmd.Y:F2} {inCmd.Z:F2} {inCmd.W:F2})");
+                return false;
             }
 
-            _frontCmd = safe;
-            _frontMode = defaultMode;
-            _frontSource = defaultSource;
+            _command = inCmd;
+            _mode = inMode;
+            _lastWriter = caller;
+            return true;
         }
 
-        /// <summary>
-        /// Call this exactly once at the start of PrePhysicsStep (or sim tick) to make inputs coherent.
-        /// </summary>
-        public void LatchForStep()
+        public void ForceSetCommand(Axis4 inCmd, GoalMode inMode, InputSource caller)
         {
-            if (!useDoubleBuffer) return;
-
-            _frontCmd = _backCmd;
-            _frontMode = _backMode;
-            _frontSource = _backSource;
-        }
-
-        public CommandSnapshot GetSnapshot()
-        {
-            // Snapshot is a value copy. Safe for the rest of the step.
-            return new CommandSnapshot(_frontCmd, _frontMode, _frontSource);
+            _command = inCmd;
+            _mode = inMode;
+            _lastWriter = caller;
         }
     }
 }

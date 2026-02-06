@@ -1,7 +1,7 @@
 using System;
 using DroneCore.Controllers;
 using DroneCore.Interfaces;
-using RobotCore.Common;
+using SimCore.Common;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -470,7 +470,8 @@ namespace UI
             // Optional: keep this during transition, but it should become redundant.
             if (cascadedController != null)
             {
-                cascadedController.desiredRatesDeg = new Vector3(roll, pitch, yaw);
+                CascadedController.CascadeTelemetrySnapshot TelemetrySnap = cascadedController.TelemetrySnapshot;
+                TelemetrySnap.DesiredRatesDeg = new Vector3(roll, pitch, yaw);
             }
         }
 

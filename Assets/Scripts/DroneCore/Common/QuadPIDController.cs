@@ -21,7 +21,7 @@ namespace DroneCore.Common
 
         public void SetGains(float p, float i, float d) { Kp = p; Ki = i; Kd = d; }
         public void SetLimits(float min, float max) { MinOutput = min; MaxOutput = max; }
-        public void SetIntegralLimits(float limit) { IntegralLimit = Mathf.Abs(limit); }
+        //public void SetIntegralLimits(float limit) { IntegralLimit = Mathf.Abs(limit); }
         public void SetDecayFactor(float decay) { DecayFactor = Mathf.Clamp01(decay); }
 
         public void Reset()

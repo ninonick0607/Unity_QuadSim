@@ -395,7 +395,7 @@ namespace UI
 
             float t = (float)s.ImuTimestampSec;
             if (t <= 0f) t = Time.realtimeSinceStartup;
-
+            CascadedController.CascadeTelemetrySnapshot TelemetrySnap = cascadedController.TelemetrySnapshot;
             switch (_mode)
             {
                 case GraphMode.Acro:
@@ -403,8 +403,10 @@ namespace UI
                     // measured body rates (rad/s) -> deg/s
                     Vector3 measDeg = s.ImuAngVel * Mathf.Rad2Deg;
 
+                    
+                    //TODO: Make sure its synced up correctly, Rad2Deg or Deg2Rag or none?
                     // desired body rates (rad/s) -> deg/s
-                    Vector3 desDeg = cascadedController.DesiredRatesRad * Mathf.Rad2Deg;
+                    Vector3 desDeg = TelemetrySnap.DesiredRatesDeg * Mathf.Rad2Deg;
 
                     _rollMeas.Push(t,  measDeg.x); _rollDes.Push(t,  desDeg.x);
                     _pitchMeas.Push(t, measDeg.y); _pitchDes.Push(t, desDeg.y);

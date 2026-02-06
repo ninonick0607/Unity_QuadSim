@@ -8,7 +8,7 @@ namespace RobotCore
 {
     [RequireComponent(typeof(QuadPawn))]
     [DisallowMultipleComponent]
-    public sealed class SensorManager : MonoBehaviour, ISimulatable
+    public sealed class SensorManager : MonoBehaviour
     {
         [Header("Refs")]
         [SerializeField] private Rigidbody rb;
@@ -26,6 +26,8 @@ namespace RobotCore
         public float logHz = 2f;
 
         private double _logAccum;
+        
+        public SimFrame TargetFrame = SimFrame.FLU; 
 
         private FrequencyLimiter _imuLimiter;
         private FrequencyLimiter _gpsLimiter;
@@ -53,7 +55,7 @@ namespace RobotCore
             ResolveRefsOrThrow();
         }
 
-        public void OnSimulationStart(SimulationManager sim)
+        public void OnStart()
         {
             ResolveRefsOrThrow();
             
@@ -74,7 +76,7 @@ namespace RobotCore
             Latest = default;
         }
 
-        public void OnSimulationReset(SimulationManager sim)
+        public void OnReset()
         {
             IMU.Reset();
             GPS.Reset();
@@ -85,7 +87,7 @@ namespace RobotCore
             Latest = default;
         }
 
-        public void PrePhysicsStep(double dtSec, long nowNanos)
+        public void UpdateSensors(double dtSec, long nowNanos)
         {
             double nowSec = nowNanos * 1e-9;
 
@@ -120,9 +122,7 @@ namespace RobotCore
             }
 
             Latest = latest;
-            
         }
-
-        public void PostPhysicsStep(double dtSec, long nowNanos) { }
+        
     }
 }
