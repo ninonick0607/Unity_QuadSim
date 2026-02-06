@@ -71,24 +71,88 @@ namespace Yaml.Drone
         public PID AcroRoll {get;set;}
         public PID AcroPitch {get;set;}
         public PID AcroYaw {get;set;}
+
+        public Vector4 GetPGains()
+        {
+            Vector4 PGains = new Vector4(AcroRoll.P, AcroPitch.P, AcroYaw.P, 0.0f);
+            return PGains;
+        }
+        public Vector4 GetIGains()
+        {
+            Vector4 IGains = new Vector4(AcroRoll.I, AcroPitch.I, AcroYaw.I, 0.0f);
+            return IGains;
+        }
+        public Vector4 GetDGains()
+        {
+            Vector4 DGains = new Vector4(AcroRoll.D, AcroPitch.D, AcroYaw.D, 0.0f);
+            return DGains;
+        }
     }
     public struct AnglePID
     {
         public PID AngleRoll {get;set;}
         public PID AnglePitch {get;set;}
         public PID AngleYaw {get;set;}
+        
+        public Vector4 GetPGains()
+        {
+            Vector4 PGains = new Vector4(AngleRoll.P, AnglePitch.P, AngleYaw.P, 0.0f);
+            return PGains;
+        }
+        public Vector4 GetIGains()
+        {
+            Vector4 IGains = new Vector4(AngleRoll.I, AnglePitch.I, AngleYaw.I, 0.0f);
+            return IGains;
+        }
+        public Vector4 GetDGains()
+        {
+            Vector4 DGains = new Vector4(AngleRoll.D, AnglePitch.D, AngleYaw.D, 0.0f);
+            return DGains;
+        }
     }
     public struct VelocityPID
     {
         public PID VelX {get;set;}
         public PID VelY {get;set;}
         public PID VelZ {get;set;}
+        
+        public Vector4 GetPGains()
+        {
+            Vector4 PGains = new Vector4(VelX.P, VelY.P,0.0f, VelZ.P);
+            return PGains;
+        }
+        public Vector4 GetIGains()
+        {
+            Vector4 IGains = new Vector4(VelX.I, VelY.I,0.0f, VelZ.I);
+            return IGains;
+        }
+        public Vector4 GetDGains()
+        {
+            Vector4 DGains = new Vector4(VelX.D, VelY.D, 0.0f, VelZ.D);
+            return DGains;
+        }
     }    
     public struct PositionPID
     {
         public PID PosX {get;set;}
         public PID PosY {get;set;}
         public PID PosZ {get;set;}
+        
+        public Vector4 GetPGains()
+        {
+            Vector4 PGains = new Vector4(PosX.P, PosY.P,0.0f, PosZ.P);
+            return PGains;
+        }
+        public Vector4 GetIGains()
+        {
+            Vector4 IGains = new Vector4(PosX.I, PosY.I,0.0f, PosZ.I);
+            return IGains;
+        }
+        public Vector4 GetDGains()
+        {
+            Vector4 DGains = new Vector4(PosX.D, PosY.D, 0.0f, PosZ.D);
+            return DGains;
+        }
     }
 
     public struct FlightParameters

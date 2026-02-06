@@ -226,12 +226,6 @@ namespace DroneCore
         /// </summary>
         public void ApplyConfig(DroneConfig config)
         {
-            if (config == null)
-            {
-                Debug.LogError($"[QuadPawn] {DroneID}: Cannot apply null config.");
-                return;
-            }
-
             _config = config;
             _configApplied = true;
             

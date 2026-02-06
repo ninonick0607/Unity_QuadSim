@@ -2,46 +2,82 @@ using DroneCore.Common;
 using DroneCore.Interfaces;
 using RobotCore;
 using UnityEngine;
+using Yaml.Drone;
 
 namespace DroneCore.Controllers.Cascades
 {
     [System.Serializable]
     public sealed class AcroController
     {
-        [SerializeField] private QuadPIDController pid = new QuadPIDController();
+        [SerializeField] private QuadPIDController _pidSet = new QuadPIDController();
+        public QuadPIDController Pid => _pidSet;
 
         // Axis index: 0=roll, 1=pitch, 2=yaw, 3=throttle (pass-through)
-        public int Axis { get; private set; }
-        private ICommandSource _cmd;
-        private SensorManager _sensors;
+        public int _axis { get; private set; }
+        private ICommandSource _cmdGoal;
+        private float _externalGoal { get; set; }
+        private SensorManager _sensorManager;
+        private DroneConfig _config;
         
-        public void Initialize(int axis, ICommandSource cmd, SensorManager sensors, float minOut, float maxOut, float kp, float ki, float kd, float iLimit = 0f)
+        private bool _bInitialized;
+        private bool _bUseExternalGoal;
+        
+        // TODO: Setting but private? We dont need outside variables setting it at all
+        private float _output { get; set; }
+        
+        AcroController(DroneConfig inConfig)
         {
-            Axis = axis;
-            _cmd = cmd;
-            _sensors = sensors;
+            _config = inConfig;
+        }
+        
+        public void Initialize(int axis, ICommandSource cmd, SensorManager sensors)
+        {
+            _axis = axis;
+            _cmdGoal = cmd;
+            _sensorManager = sensors;
+            AcroPID PID = _config.Acro;
             
-            pid.SetLimits(minOut, maxOut);
-            pid.SetGains(kp, ki, kd);
-            if (iLimit > 0f) pid.SetIntegralLimits(iLimit);
+            _pidSet.SetLimits(-_config.FlightParams.MaxPID, _config.FlightParams.MaxPID);
+            _pidSet.SetGains(PID.GetPGains()[_axis], PID.GetIGains()[_axis], PID.GetDGains()[_axis]);
+
+            _bInitialized = true;
+            // if (iLimit > 0f) pid.SetIntegralLimits(iLimit);
+        }
+        
+        public void Update(float deltaTime)
+        {
+           // if(!_bInitialized || !_sensorManager || _pidSet == null || _cmdGoal && !_bUseExternalGoal)
+            float StateRate = _sensorManager.Latest.ImuAngVel[_axis];
+            float Goal = _bUseExternalGoal ? _externalGoal :  _cmdGoal.Command[_axis];
+
+            if (_axis == 3)
+            {
+                _output = Goal;
+                return;
+            }
+        
+            float StateRateDegS = Mathf.Rad2Deg * StateRate;
+            _output = _pidSet.Calculate(Goal, StateRateDegS, deltaTime);
+        }
+        
+        public void Reset()
+        {
+            if(_pidSet!=null) _pidSet.Reset();
+            _output = 0.0f;
+            _bUseExternalGoal = false;
         }
 
-        public void Reset() => pid.Reset();
-
-        /// <summary>
-        /// desiredRateDegPerSec and measuredRateDegPerSec are deg/s (match your UE semantics).
-        /// For throttle axis (3), returns desired directly.
-        /// </summary>
-        public float Update(float deltaTime)
+        public void SetExternalGoal(float Value)
         {
-            SensorData stateData = _sensors.Latest;
-            float desiredRate = _cmd.Command[Axis];
-            float currentRate = stateData.ImuAngVel[Axis];
-            
-            if (Axis == 3) return desiredRate;
-            return pid.Calculate(desiredRate, currentRate, deltaTime);
+            _externalGoal = Value;
+            _bUseExternalGoal = true;
         }
 
-        public QuadPIDController Pid => pid;
+        public void ClearExternalGoal()
+        {
+            // TODO: Double check using this is actually needed or if its updated during runtime
+            _externalGoal = 0.0f;
+            _bUseExternalGoal = false;
+        }
     }
 }
