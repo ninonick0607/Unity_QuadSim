@@ -21,10 +21,10 @@ propulsion:
   # FRotorInstance array
   # FIX THESE
   propellers:
-    - {id: 0, x: 0.251, y: -0.255, z: 0.0, dir: 1} # FL 
-    - {id: 1, x: 0.251, y: 0.251, z: 0.022, dir: -1} # FR
-    - {id: 2, x: -0.251, y: -0.251, z: 0.022, dir: -1} # BL
-    - {id: 3, x: -0.251, y: 0.251, z: 0.022, dir: 1} # BR
+    - {id: 0, x: 0.211, y: 0.0117, z: 0.211, dir: 1} # FL 
+    - {id: 1, x: 0.211, y: 0.0117, z: -0.211, dir: -1} # FR
+    - {id: 2, x: -0.211, y: 0.0117, z: 0.211, dir: -1} # BL
+    - {id: 3, x: -0.211, y: 0.0117, z: -0.211, dir: 1} # BR
 
 controller:
   position_gains:

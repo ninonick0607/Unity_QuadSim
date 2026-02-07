@@ -111,13 +111,13 @@ namespace MathUtil
         //   (x,y,z)_body -> (x, -z, -y)_frd
 
         private static Vector3 UnityBodyToFLU_Linear(Vector3 v)
-            => new Vector3(v.x, v.z, v.y);
+            => new Vector3(v.x, v.y, v.z);
 
         private static Vector3 UnityBodyToFRD_Linear(Vector3 v)
-            => new Vector3(v.x, -v.z, -v.y);
+            => new Vector3(v.x, -v.y, -v.z);
 
         private static Vector3 UnityBodyToFLU_Accel(Vector3 a)
-            => new Vector3(a.x, a.z, a.y);
+            => new Vector3(a.x, a.y, a.z);
 
         private static Vector3 UnityBodyToFRD_Accel(Vector3 a)
             => new Vector3(a.x, -a.z, -a.y);

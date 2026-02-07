@@ -162,8 +162,7 @@ namespace DroneCore.Controls
 
                 // Axis 5: Collective thrust (along body up = +Y), divided by N
                 //   Mirrors UE: ThrustDir.Z / NumMotors  (Z is up in UE body)
-                //_effectiveness.Data[5, m] = thrustDir.y / numMotors;
-                _effectiveness.Data[5, m] = 1.0f / numMotors;
+                _effectiveness.Data[5, m] = thrustDir.y / numMotors;
 
             }
 
