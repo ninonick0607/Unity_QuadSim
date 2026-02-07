@@ -42,6 +42,7 @@ namespace SimCore
         [SerializeField] private float logIntervalSeconds = 1.0f;
 
         private List<ISimulatable> RegisteredManagers = new List<ISimulatable>(128);
+        private bool _startFired = false;
 
         // FreeRun accumulator in seconds (sim-time to execute, converted into fixed dt steps).
         private double _accumulatorSec;
@@ -72,6 +73,7 @@ namespace SimCore
         
         private void Start()
         {
+            _startFired = true;
             foreach (var s in RegisteredManagers)
                 s.OnSimulationStart(this);
         }
@@ -192,8 +194,13 @@ namespace SimCore
         /// </summary>
         public void RegisterManagers(ISimulatable manager)
         {
-            if(!RegisteredManagers.Contains(manager))
+            if (!RegisteredManagers.Contains(manager))
+            {
                 RegisteredManagers.Add(manager);
+                // If Start already ran, catch up the late registrant
+                if (_startFired)
+                    manager.OnSimulationStart(this);
+            }
         }
         public void UnRegisterManager(ISimulatable manager)
         {

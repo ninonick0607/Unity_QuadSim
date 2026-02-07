@@ -14,6 +14,8 @@ namespace DroneCore.Core
     ///   PostPhysicsStep → (reserved for future use)
     ///   Update()        → visual updates (prop spin, effects)
     /// </summary>
+    ///
+    [DefaultExecutionOrder(-500)]
     public sealed class DroneManager : MonoBehaviour, ISimulatable
     {
         // ============================================================================
@@ -109,36 +111,30 @@ namespace DroneCore.Core
         private void Awake()
         {
             _instance = this;
-
-            // Load saved default config
+    
             string savedConfig = PlayerPrefs.GetString("QuadSim.DefaultConfig", "");
             if (!string.IsNullOrEmpty(savedConfig))
-            {
                 selectedConfigName = savedConfig;
-            }
 
             Debug.Log($"[DroneManager] Awake: selectedConfig={selectedConfigName}");
-        }
 
-        private void Start()
-        {
-            // Register with SimulationManager
+            // Register with SimManager during Awake so we're in the list 
+            // before SimulationManager.Start() fires OnSimulationStart
             if (simManager == null)
             {
                 simManager = FindFirstObjectByType<SimulationManager>();
                 if (simManager != null)
                     Debug.LogWarning("[DroneManager] SimulationManager resolved via find. Prefer inspector assignment.");
             }
-
             if (simManager != null)
             {
                 simManager.RegisterManagers(this);
                 Debug.Log("[DroneManager] Registered with SimulationManager");
             }
-            else
-            {
-                Debug.LogWarning("[DroneManager] No SimulationManager found — manual update required");
-            }
+        }
+
+        private void Start()
+        {
         }
 
         private void OnDestroy()

@@ -104,8 +104,8 @@ namespace DroneCore.Controllers
         private ControlAllocator _controlAllocator = new ControlAllocator();
 
         // Limits & Constants (Cached for speed)
-        private float _maxAngleRateRad;
-        private float _maxYawRateRad;
+        private float _maxAngleRateDeg;
+        private float _maxYawRateDeg;
         private float _hoverThrottle01;
 
         // Telemetry Data
@@ -179,12 +179,8 @@ namespace DroneCore.Controllers
             _cachedConfig = config;
             _configApplied = true;
 
-            // Pull limits from config
-            if (config.FlightParams.MaxRateRollPitch > 0)
-                _maxAngleRateRad = config.FlightParams.MaxRateRollPitch * Mathf.Deg2Rad;
-            if (config.FlightParams.MaxRateYaw > 0)
-                _maxYawRateRad = config.FlightParams.MaxRateYaw * Mathf.Deg2Rad;
-
+            _maxAngleRateDeg = config.FlightParams.MaxRateRollPitch;
+            _maxYawRateDeg = config.FlightParams.MaxRateYaw;
             // Compute hover throttle from mass
             if (_body != null && _body.Rigidbody != null)
             {
@@ -540,13 +536,12 @@ namespace DroneCore.Controllers
             float pitchOut = output[1];
             float yawOut = output[2];
             float thrustOut = output[3];
+            float yawAuthorityScale = 1.0f; // Tune this
 
             // Normalize rate PID outputs to torque demands (-1 to 1)
-            float rollTorque = Mathf.Clamp(rollOut / _maxAngleRateRad, -1f, 1f);
-            float pitchTorque = Mathf.Clamp(pitchOut / _maxAngleRateRad, -1f, 1f);
-            float yawAuthorityScale = 1.0f; // Tune this
-            float yawTorque = Mathf.Clamp(yawOut / _maxYawRateRad, -1f, 1f) * yawAuthorityScale;
-
+            float rollTorque = Mathf.Clamp(rollOut / _maxAngleRateDeg, -1f, 1f);
+            float pitchTorque = Mathf.Clamp(pitchOut / _maxAngleRateDeg, -1f, 1f);
+            float yawTorque = Mathf.Clamp(yawOut / _maxYawRateDeg, -1f, 1f) * yawAuthorityScale;
             // Calculate throttle
             float throttle01 = Mathf.Clamp(thrustOut, 0f, 1f);
 

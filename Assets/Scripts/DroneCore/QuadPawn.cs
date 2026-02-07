@@ -274,10 +274,9 @@ namespace DroneCore
             // 1. Sensors
             if (sensorManager != null)
             {
-                // SensorManager.OnSimulationStart handles actual init
-                // We just verify it exists
+                sensorManager.OnStart();
                 _sensorsReady = true;
-                Debug.Log($"[QuadPawn] {DroneID}: SensorManager present");
+                Debug.Log($"[QuadPawn] {DroneID}: SensorManager initialized");
             }
 
             // 2. Controller — only ready if sensors are
