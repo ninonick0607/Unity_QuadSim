@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5041832275845641998}
   - component: {fileID: 6615807386293998892}
+  - component: {fileID: 7671760328521991184}
   m_Layer: 0
   m_Name: SimRoot
   m_TagString: Untagged
@@ -51,3 +52,21 @@ MonoBehaviour:
   startPaused: 0
   logEffectiveHz: 0
   logIntervalSeconds: 1
+--- !u!114 &7671760328521991184
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3589958785238508409}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66eca1a18f6e4731a9a8a3973fbe4e71, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneCore.Core.DroneManager
+  quadPawnPrefab: {fileID: -6611264674519159391, guid: 73493b039b7aa328aac6841c1086dcf9, type: 3}
+  defaultSpawnOrigin: {x: 0, y: 1, z: 0}
+  spawnOffset: 1.5
+  selectedConfigName: StandardDrone_Config
+  simManager: {fileID: 6615807386293998892}
+  swarmMode: 0

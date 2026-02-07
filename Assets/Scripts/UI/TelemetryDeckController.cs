@@ -406,7 +406,7 @@ namespace UI
                     
                     //TODO: Make sure its synced up correctly, Rad2Deg or Deg2Rag or none?
                     // desired body rates (rad/s) -> deg/s
-                    Vector3 desDeg = TelemetrySnap.DesiredRatesDeg * Mathf.Rad2Deg;
+                    Vector3 desDeg = TelemetrySnap.DesiredRatesDeg;
 
                     _rollMeas.Push(t,  measDeg.x); _rollDes.Push(t,  desDeg.x);
                     _pitchMeas.Push(t, measDeg.y); _pitchDes.Push(t, desDeg.y);
