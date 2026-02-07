@@ -226,20 +226,20 @@ namespace DroneCore
                 rb.mass = 1.28f; // Default
 
             // TODO: Uncomment when body response is validated
-            // if (_config.DroneParams.CenterOfMass != Vector3.zero)
-            //     rb.centerOfMass = _config.DroneParams.CenterOfMass;
+            if (_config.DroneParams.CenterOfMass != Vector3.zero)
+                rb.centerOfMass = _config.DroneParams.CenterOfMass;
             // if (_config.DroneParams.Inertia != Vector3.zero)
             //     rb.inertiaTensor = _config.DroneParams.Inertia;
-            // if (_config.DroneParams.LinearDrag_Coeff >= 0)
-            //     rb.linearDamping = _config.DroneParams.LinearDrag_Coeff;
-            // if (_config.DroneParams.AngularDrag_Coeff >= 0)
-            //     rb.angularDamping = _config.DroneParams.AngularDrag_Coeff;
+            if (_config.DroneParams.LinearDrag_Coeff >= 0)
+                rb.linearDamping = _config.DroneParams.LinearDrag_Coeff;
+            if (_config.DroneParams.AngularDrag_Coeff >= 0)
+                rb.angularDamping = _config.DroneParams.AngularDrag_Coeff;
 
             // Rigidbody setup for simulation
             rb.useGravity = true;
             rb.isKinematic = false;
-            rb.interpolation = RigidbodyInterpolation.None;
-            rb.collisionDetectionMode = CollisionDetectionMode.Discrete;
+           // rb.interpolation = RigidbodyInterpolation.None;
+           // rb.collisionDetectionMode = CollisionDetectionMode.Discrete;
             rb.maxAngularVelocity = 100f;
 
             Debug.Log($"[QuadPawn] {DroneID}: Physical config applied (mass={rb.mass}kg)");
@@ -369,6 +369,8 @@ namespace DroneCore
             if (rb == null) return;
             if (_wrenchGeneration == _lastAppliedGeneration) return;
 
+            Vector3 bodyForce = new Vector3(0, _bufferedForce.y, 0);            
+            
             // Transform body-local force/torque to world space
             Vector3 worldForce = transform.TransformDirection(_bufferedForce);
             Vector3 worldTorque = transform.TransformDirection(_bufferedTorque);

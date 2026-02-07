@@ -544,7 +544,7 @@ namespace DroneCore.Controllers
             float yawTorque = Mathf.Clamp(yawOut / _maxYawRateDeg, -1f, 1f) * yawAuthorityScale;
             // Calculate throttle
             float throttle01 = Mathf.Clamp(thrustOut, 0f, 1f);
-
+            
             // Tilt compensation
             float tiltRad = Mathf.Deg2Rad * Mathf.Sqrt(
                 _desiredAttitude.x * _desiredAttitude.x +

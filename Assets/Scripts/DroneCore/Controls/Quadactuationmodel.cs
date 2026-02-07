@@ -31,7 +31,7 @@ namespace DroneCore.Controls
 
                 Vector3 thrustMoment = Vector3.Cross(rotorLoc, forceVec);
                 Vector3 dragTorque   = new Vector3(0f, torqueNm, 0f);
-
+                Debug.Log($"[QuadActuationModel] Rotor Location: {rotorLoc}");
                 outForceBody  += forceVec;
                 outTorqueBody += thrustMoment + dragTorque;
             }
