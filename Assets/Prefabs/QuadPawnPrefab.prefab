@@ -466,15 +466,15 @@ MonoBehaviour:
   motorFR: {fileID: 419703141765327995}
   motorBL: {fileID: 5952494717003119130}
   motorBR: {fileID: 7027284009040917118}
-  controller: {fileID: 0}
-  sensorManager: {fileID: 0}
-  commandProxy: {fileID: 0}
+  controller: {fileID: -7805308036937349666}
+  sensorManager: {fileID: 2810733869085761176}
+  commandProxy: {fileID: -4242643215258136215}
   fpvCameraPoint: {fileID: 0}
   propellerMeshes:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
+  - {fileID: 4111657788187158029}
+  - {fileID: 419703141765327995}
+  - {fileID: 5952494717003119130}
+  - {fileID: 7027284009040917118}
   currentControllerKind: 0
 --- !u!54 &4049279432092915417
 Rigidbody:
@@ -548,11 +548,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DroneCore.Interfaces.FlightCommandProxy
   _command:
-    X: 0
-    Y: 0
-    Z: 0
-    W: 0
-  _mode: 0
+    X: 1
+    Y: 1
+    Z: 1
+    W: 1
+  _mode: 4
   _lastWriter: 0
   _activeSource: 0
 --- !u!114 &-2536970485200983006
@@ -567,7 +567,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0971c769762c4ea4bcedf49843aa678f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RobotCore.RobotCore
-  sensors: {fileID: 0}
+  sensors: {fileID: 2810733869085761176}
 --- !u!114 &9184194430486069368
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -135,34 +135,19 @@ namespace DroneCore.Controls
                 Vector3 pos       = Frames.TransformLinear(rotor.Location_Body,frame);
                 float   spinDir   = Frames.TransformBinary(rotor.Spin_Dir,frame);
                 Vector3 thrustDir = Frames.TransformLinear(new Vector3(0f, 1f, 0f), frame);
-
-                // ── Torque arm from cross product ──
-                Vector3 torqueArm = Vector3.Cross(pos, thrustDir);
-
+                
                 // Reactive yaw torque per unit motor command
                 float reactiveTorque = spinDir * kq;
 
-                // ── Map to 6-axis effectiveness ──
-                // Axis 0: Roll  = torque about +X (forward)
-                _effectiveness.Data[0, m] = torqueArm.x;
+                Vector3 torqueArm = Vector3.Cross(pos, thrustDir);
 
-                // Axis 1: Pitch = torque about -Z (right)
-                //   Cross gives torque about +Z (left); negate for pitch-right convention.
-                //   This is the sign flip your existing Unity code does.
-                _effectiveness.Data[1, m] = -torqueArm.z;
-
-                // Axis 2: Yaw   = torque about +Y (up) + reactive drag torque
-                _effectiveness.Data[2, m] = torqueArm.y + reactiveTorque;
-
-                // Axis 3: Fx (body-X force, zero for standard upward thrust)
+                // Direct FLU axis mapping — no manual negations needed
+                _effectiveness.Data[0, m] = torqueArm.x;                    // Roll  about FLU +X
+                _effectiveness.Data[1, m] = torqueArm.y;                    // Pitch about FLU +Y (was: -torqueArm.z)
+                _effectiveness.Data[2, m] = torqueArm.z + reactiveTorque;   // Yaw   about FLU +Z (was: torqueArm.y + reactive)
                 _effectiveness.Data[3, m] = 0f;
-
-                // Axis 4: Fy (body-Y force, zero for standard upward thrust)
                 _effectiveness.Data[4, m] = 0f;
-
-                // Axis 5: Collective thrust (along body up = +Y), divided by N
-                //   Mirrors UE: ThrustDir.Z / NumMotors  (Z is up in UE body)
-                _effectiveness.Data[5, m] = thrustDir.y / numMotors;
+                _effectiveness.Data[5, m] = thrustDir.z / numMotors;        // Thrust along FLU +Z (was: thrustDir.y)
 
             }
 

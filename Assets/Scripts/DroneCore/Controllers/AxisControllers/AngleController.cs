@@ -41,7 +41,8 @@ namespace DroneCore.Controllers.AxisControllers
 
             // if (iLimit > 0f) pid.SetIntegralLimits(iLimit);
         }
-        
+        private float _logTimer = 0f;
+        private const float LOG_INTERVAL = 1.0f;
         public void Update(float deltaTime)
         {
             if (!_bInitialized || _sensorManager == null || _pidSet == null || (_cmdGoal == null && !_bUseExternalGoal))
@@ -53,8 +54,14 @@ namespace DroneCore.Controllers.AxisControllers
             SensorData StateData = _sensorManager.Latest;
             float StateAngle = StateData.ImuAttitude[_axis];
             float Goal = _bUseExternalGoal ? _externalGoal :  _cmdGoal.GetCommandValue()[_axis];
-            Debug.Log("[AngleController] Goal: " + Goal);
-            Debug.Log("[AngleController] StateRate: " + StateAngle);
+            
+            _logTimer += deltaTime;
+            if (_logTimer >= LOG_INTERVAL)
+            {
+                Debug.Log($"[AngleController] Axis: {_axis} | Goal: {Goal} | StateAngle: {StateAngle}");
+                _logTimer = 0f;
+            }
+            
             if (_axis == 2 || _axis == 3)
             {
                 _output = Goal;
