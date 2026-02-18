@@ -68,12 +68,29 @@ namespace RobotCore.Sensors
 
         public void SampleAttitude(double nowSec, float deltaTime)
         {
-            // Euler for controller math (UE-style convention mapping)
-            Vector3 rpyDeg = _bodyTransform.rotation.eulerAngles;
-            LastAtt = Frames.TransformAttitude(rpyDeg, OutputFrame);
-
-            // Quaternion in case we need geometric math later (true basis change)
+            Vector3 euler = _bodyTransform.rotation.eulerAngles;
+    
+            // Reorder to (roll, pitch, yaw) — NO sign changes here, 
+            // TransformAttitude handles LH→RH
+            Vector3 rpyDeg = new Vector3(euler.x, euler.z, euler.y);
+    
+            Vector3 att = Frames.TransformAttitude(rpyDeg, OutputFrame);
+    
+            // Wrap to ±180 (Unity eulerAngles are [0,360), UE FRotator is [-180,180))
+            att.x = Wrap180(att.x);
+            att.y = Wrap180(att.y);
+            att.z = Wrap180(att.z);
+    
+            LastAtt = att;
             LastOrientation = Frames.TransformQuaternion(_bodyTransform.rotation, OutputFrame);
+        }
+
+        private static float Wrap180(float a)
+        {
+            a %= 360f;
+            if (a > 180f) a -= 360f;
+            if (a < -180f) a += 360f;
+            return a;
         }
 
 
