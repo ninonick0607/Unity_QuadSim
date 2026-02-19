@@ -366,17 +366,17 @@ namespace DroneCore.Controllers
                 if (_axes[0].Position != null)
                 {
                     _axes[0].Position.Update(deltaTime);
-                    vSpWorld.x = _axes[0].Position.GetOutput();
+                    vSpWorld.x = _axes[0].Position.GetOutput();  // forward → Unity world X
                 }
                 if (_axes[1].Position != null)
                 {
                     _axes[1].Position.Update(deltaTime);
-                    vSpWorld.y = _axes[1].Position.GetOutput();
+                    vSpWorld.z = _axes[1].Position.GetOutput();  // lateral → Unity world Z
                 }
                 if (_axes[3].Position != null)
                 {
                     _axes[3].Position.Update(deltaTime);
-                    vSpWorld.z = _axes[3].Position.GetOutput();
+                    vSpWorld.y = _axes[3].Position.GetOutput();  // altitude → Unity world Y
                 }
 
                 Quaternion bodyRot = _body.transform.rotation;
@@ -590,18 +590,14 @@ namespace DroneCore.Controllers
         {
             const float g = 9.81f;
 
-            Vector3 accelUE = new Vector3(accelX, accelY, 0.0f);
-            Vector3 bodyZTransformed = Frames.TransformAcceleration(accelUE, GetCurrentFrame());
-
-            Vector3 bodyZ = new Vector3(bodyZTransformed.x, bodyZTransformed.y, g);
+            Vector3 bodyZ = new Vector3(accelX, accelY, g);
             bodyZ.Normalize();
 
             float pitchRad = Mathf.Atan2(bodyZ.x, bodyZ.z);
-            float rollRad = Mathf.Atan2(bodyZ.y, bodyZ.z);
-
+            float rollRad  = Mathf.Atan2(bodyZ.y, bodyZ.z);
+            
             return new Vector2(Mathf.Rad2Deg * pitchRad, Mathf.Rad2Deg * -rollRad);
         }
-
         private SimFrame GetCurrentFrame()
         {
             if (_body != null && _sensorManager != null)

@@ -30,15 +30,15 @@ namespace DroneCore.Controllers.AxisControllers
             _cmdGoal = cmd;
             _sensorManager = sensors;
             PositionPID PID = _config.Position;
-            
-            _pidSet.SetLimits(-_config.FlightParams.MaxPID, _config.FlightParams.MaxPID);
+    
+            if (axis == 3)
+                _pidSet.SetLimits(-_config.FlightParams.MaxVelZ, _config.FlightParams.MaxVelZ);
+            else
+                _pidSet.SetLimits(-_config.FlightParams.MaxVelXY, _config.FlightParams.MaxVelXY);
+    
             _pidSet.SetGains(PID.GetPGains()[_axis], PID.GetIGains()[_axis], PID.GetDGains()[_axis]);
-
             _bInitialized = true;
-            Debug.Log("[PositionController] Initialized");
-
         }
-        
         public void Update(float deltaTime)
         {
             if (!_bInitialized || _cmdGoal == null || _sensorManager == null || _pidSet == null)
@@ -49,23 +49,23 @@ namespace DroneCore.Controllers.AxisControllers
 
             SensorData StateData = _sensorManager.Latest;
             float Goal = _cmdGoal.GetCommandValue()[_axis];
-            Debug.Log("[PositionController] Goal: " + Goal);
-            Debug.Log("[PositionController] StateRate: " + StateData);
+
             if (_axis == 2)
             {
                 _output = Goal;
                 return;
             }
-
-            if (_axis == 3)
+            
+            float State;
+            switch (_axis)
             {
-                float StateZ = StateData.GpsPosition.z;
-                _output = _pidSet.Calculate(Goal, StateZ,deltaTime);
-                return;
+                case 0: State = StateData.GpsPosition.x; break;  
+                case 1: State = StateData.GpsPosition.z; break;  
+                case 3: State = StateData.GpsPosition.y; break;  
+                default: State = 0f; break;
             }
-            float State = StateData.GpsPosition[_axis];
-            _output = _pidSet.Calculate(Goal, State, deltaTime);
 
+            _output = _pidSet.Calculate(Goal, State, deltaTime);
         }
    
         public void Reset()

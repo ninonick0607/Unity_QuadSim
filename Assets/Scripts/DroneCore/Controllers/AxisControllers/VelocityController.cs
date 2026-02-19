@@ -32,18 +32,15 @@ namespace DroneCore.Controllers.AxisControllers
             _cmdGoal = cmd;
             _sensorManager = sensors;
             VelocityPID PID = _config.Velocity;
-            
-            _pidSet.SetLimits(-_config.FlightParams.MaxPID, _config.FlightParams.MaxPID);
+
+            float maxAccelLimit = Mathf.Tan(_config.FlightParams.MaxAngle * Mathf.Deg2Rad) * 9.81f;
+            if (axis == 3)
+                maxAccelLimit = 9.81f;
+    
+            _pidSet.SetLimits(-maxAccelLimit, maxAccelLimit);
             _pidSet.SetGains(PID.GetPGains()[_axis], PID.GetIGains()[_axis], PID.GetDGains()[_axis]);
 
             _bInitialized = true;
-
-            float g = 9.81f;
-            float maxAngleDeg = _config.FlightParams.MaxAngle;
-            float maxAngleRad = Mathf.Deg2Rad * maxAngleDeg;
-            maxAcceleration = g * Mathf.Tan(maxAngleRad);
-            Debug.Log("[VelocityController] Initialized");
-            // if (iLimit > 0f) pid.SetIntegralLimits(iLimit);
         }
         
         public void Update(float deltaTime)
@@ -56,8 +53,7 @@ namespace DroneCore.Controllers.AxisControllers
 
             SensorData StateData = _sensorManager.Latest;
             float Goal = _bUseExternalGoal ? _externalGoal :  _cmdGoal.GetCommandValue()[_axis];
-            Debug.Log("[VelocityController] Goal: " + Goal);
-            Debug.Log("[VelocityController] StateRate: " + StateData);
+
             if (_axis == 2)
             {
                 _output = Goal;
@@ -67,13 +63,11 @@ namespace DroneCore.Controllers.AxisControllers
             if (_axis == 3)
             {
                 float StateZ = StateData.ImuVel.z;
-                float PIDOutZ = _pidSet.Calculate(Goal, StateZ,deltaTime);
-                _output = Mathf.Clamp(PIDOutZ,-maxAcceleration, maxAcceleration);
+                _output = _pidSet.Calculate(Goal, StateZ, deltaTime);
                 return;
             }
             float StateVel = StateData.ImuVel[_axis];
-            float PIDOutXY = _pidSet.Calculate(Goal, StateVel,deltaTime);
-            _output = Mathf.Clamp(PIDOutXY,-maxAcceleration, maxAcceleration);
+            _output = _pidSet.Calculate(Goal, StateVel, deltaTime);
             
         }
         

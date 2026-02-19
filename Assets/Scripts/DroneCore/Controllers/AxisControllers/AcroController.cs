@@ -36,8 +36,11 @@ namespace DroneCore.Controllers.AxisControllers
             _cmdGoal = cmd;
             _sensorManager = sensors;
             AcroPID PID = _config.Acro;
+            if (axis != 2 && axis != 3)
+                _pidSet.SetLimits(-_config.FlightParams.MaxRateRollPitch, _config.FlightParams.MaxRateRollPitch);
+            else if (axis == 2)
+                _pidSet.SetLimits(-_config.FlightParams.MaxRateYaw, _config.FlightParams.MaxRateYaw);
             
-            _pidSet.SetLimits(-_config.FlightParams.MaxPID, _config.FlightParams.MaxPID);
             _pidSet.SetGains(PID.GetPGains()[_axis], PID.GetIGains()[_axis], PID.GetDGains()[_axis]);
 
             _bInitialized = true;
@@ -45,9 +48,6 @@ namespace DroneCore.Controllers.AxisControllers
 
             // if (iLimit > 0f) pid.SetIntegralLimits(iLimit);
         }
-        
-        private float _logTimer = 0f;
-        private const float LOG_INTERVAL = 1.0f;
 
         public void Update(float deltaTime)
         {
@@ -60,14 +60,7 @@ namespace DroneCore.Controllers.AxisControllers
             float StateRate = _sensorManager.Latest.ImuAngVel[_axis];
             float Goal = _bUseExternalGoal ? _externalGoal : _cmdGoal.GetCommandValue()[_axis];
             float StateRateDegS = Mathf.Rad2Deg * StateRate;
-
-            _logTimer += deltaTime;
-            if (_logTimer >= LOG_INTERVAL)
-            {
-                Debug.Log($"[AcroController] Axis: {_axis} | Goal: {Goal} | StateRate: {StateRateDegS}");
-                _logTimer = 0f;
-            }
-
+            
             if (_axis == 3)
             {
                 _output = Goal;

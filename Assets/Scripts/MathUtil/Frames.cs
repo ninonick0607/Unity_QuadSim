@@ -25,13 +25,11 @@ namespace MathUtil
 
         public static float TransformBinary(float Unity, SimFrame target)
         {
-            if (target == SimFrame.FRD)
-            {
+            if (target == SimFrame.FRD || target == SimFrame.FLU)
                 return -Unity;
-            }
             return Unity;
         }
-
+        
         public static Vector3 TransformFlip(Vector3 Unity, SimFrame target)
         {
             if (target == SimFrame.FRD)
