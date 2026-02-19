@@ -32,17 +32,18 @@ namespace DroneCore.Controllers.AxisControllers
             _cmdGoal = cmd;
             _sensorManager = sensors;
             AnglePID PID = _config.Angle;
-            
-            _pidSet.SetLimits(-_config.FlightParams.MaxPID, _config.FlightParams.MaxPID);
+
+            // Angle PID output is a rate setpoint (deg/s)
+            if (axis == 2)
+                _pidSet.SetLimits(-_config.FlightParams.MaxRateYaw, _config.FlightParams.MaxRateYaw);
+            else
+                _pidSet.SetLimits(-_config.FlightParams.MaxRateRollPitch, _config.FlightParams.MaxRateRollPitch);
+
             _pidSet.SetGains(PID.GetPGains()[_axis], PID.GetIGains()[_axis], PID.GetDGains()[_axis]);
 
             _bInitialized = true;
-            Debug.Log("[AngleController] Initialized");
-
-            // if (iLimit > 0f) pid.SetIntegralLimits(iLimit);
         }
-        private float _logTimer = 0f;
-        private const float LOG_INTERVAL = 1.0f;
+        
         public void Update(float deltaTime)
         {
             if (!_bInitialized || _sensorManager == null || _pidSet == null || (_cmdGoal == null && !_bUseExternalGoal))
@@ -54,13 +55,6 @@ namespace DroneCore.Controllers.AxisControllers
             SensorData StateData = _sensorManager.Latest;
             float StateAngle = StateData.ImuAttitude[_axis];
             float Goal = _bUseExternalGoal ? _externalGoal :  _cmdGoal.GetCommandValue()[_axis];
-            
-            _logTimer += deltaTime;
-            if (_logTimer >= LOG_INTERVAL)
-            {
-                Debug.Log($"[AngleController] Axis: {_axis} | Goal: {Goal} | StateAngle: {StateAngle}");
-                _logTimer = 0f;
-            }
             
             if (_axis == 2 || _axis == 3)
             {
