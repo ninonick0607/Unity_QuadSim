@@ -425,6 +425,7 @@ GameObject:
   - component: {fileID: -4242643215258136215}
   - component: {fileID: -2536970485200983006}
   - component: {fileID: 9184194430486069368}
+  - component: {fileID: 6925635596373442636}
   m_Layer: 0
   m_Name: QuadPawnPrefab
   m_TagString: Untagged
@@ -469,6 +470,7 @@ MonoBehaviour:
   controller: {fileID: -7805308036937349666}
   sensorManager: {fileID: 2810733869085761176}
   commandProxy: {fileID: -4242643215258136215}
+  modeCoordinator: {fileID: 0}
   fpvCameraPoint: {fileID: 0}
   propellerMeshes:
   - {fileID: 4111657788187158029}
@@ -555,6 +557,10 @@ MonoBehaviour:
   _mode: 4
   _lastWriter: 0
   _activeSource: 0
+  _lastCommandTimeSec: 0
+  _rejectedCount: 0
+  _usingFallback: 0
+  staleCommandThresholdSec: 0.5
 --- !u!114 &-2536970485200983006
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -580,6 +586,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b44c7eba3bd847a5b02240f5b52e3119, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DroneRootBootstrap
+--- !u!114 &6925635596373442636
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9135757327438227529}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85dd92ea9b21485e9c3cdfd83deeddde, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneCore.Core.ModeCoordinator
+  startingMode: 1
+  startingController: 0
+  resetDynamicsOnExternalAuthority: 1
+  resetDynamicsOnAnyAuthoritySwitch: 0
 --- !u!1001 &2217089954583739504
 PrefabInstance:
   m_ObjectHideFlags: 0
