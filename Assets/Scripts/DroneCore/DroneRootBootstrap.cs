@@ -3,6 +3,7 @@ using UnityEditor;
 #endif
 using DroneCore.Common;
 using DroneCore.Controllers;
+using DroneCore.Core;
 using DroneCore.Interfaces;
 using UnityEngine;
 
@@ -57,6 +58,7 @@ namespace DroneCore
             RemoveDuplicates<RobotCore.SensorManager>(gameObject);
             RemoveDuplicates<RobotCore.RobotCore>(gameObject);
             RemoveDuplicates<FlightCommandProxy>(gameObject);
+            RemoveDuplicates<ModeCoordinator>(gameObject);
 
             // Add required components
             var rb       = GetOrAdd<Rigidbody>(gameObject);
@@ -65,7 +67,8 @@ namespace DroneCore
             var sensors  = GetOrAdd<RobotCore.SensorManager>(gameObject);
             var core     = GetOrAdd<RobotCore.RobotCore>(gameObject);
             var cmd      = GetOrAdd<FlightCommandProxy>(gameObject);
-            
+            var modeCoord = GetOrAdd<ModeCoordinator>(gameObject);
+
 
             // Configure Rigidbody defaults
             rb.mass = 1.28f;

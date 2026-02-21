@@ -42,6 +42,7 @@ namespace DroneCore
         [SerializeField] private CascadedController controller;
         [SerializeField] private SensorManager sensorManager;
         [SerializeField] private FlightCommandProxy commandProxy;
+        [SerializeField] private ModeCoordinator modeCoordinator;
 
         [Header("Camera")]
         [SerializeField] private Transform fpvCameraPoint;
@@ -104,6 +105,7 @@ namespace DroneCore
         public CascadedController Controller => controller;
         public SensorManager Sensors => sensorManager;
         public FlightCommandProxy CommandProxy => commandProxy;
+        public ModeCoordinator ModeCoordinator => modeCoordinator;
 
         public DroneConfig Config => _config;
         public RotorPhysicsDerived RotorPhysics => _rotorPhysics;
@@ -129,7 +131,7 @@ namespace DroneCore
             if (controller == null) controller = GetComponent<CascadedController>();
             if (sensorManager == null) sensorManager = GetComponent<SensorManager>();
             if (commandProxy == null) commandProxy = GetComponent<FlightCommandProxy>();
-
+            if (modeCoordinator == null) modeCoordinator = GetComponent<ModeCoordinator>();
             // Build motor array from serialized references
             _motors[0] = motorFL;
             _motors[1] = motorFR;
@@ -288,12 +290,12 @@ namespace DroneCore
                 _controllerReady = true;
                 Debug.Log($"[QuadPawn] {DroneID}: Controller initialized");
             }
-
-            // // 3. Command proxy safe state
-            // if (commandProxy != null)
-            // {
-            //     commandProxy.ResetToSafe();
-            // }
+            
+            if (modeCoordinator != null && commandProxy != null)
+            {
+                modeCoordinator.Initialize(this, commandProxy);
+                Debug.Log($"[QuadPawn] {DroneID}: ModeCoordinator initialized");
+            }
 
             _initialized = true;
             Debug.Log($"[QuadPawn] {DroneID}: Initialization complete");
@@ -323,13 +325,16 @@ namespace DroneCore
 
         private void RunController(float dt)
         {
-            switch (currentControllerKind)
+            // Use ModeCoordinator as source of truth if available, else fall back to local field
+            ControllerKind kind = modeCoordinator != null 
+                ? modeCoordinator.ActiveController 
+                : currentControllerKind;
+
+            switch (kind)
             {
                 case ControllerKind.Cascade:
                     if (controller != null)
-                    {
                         controller.StepController(dt);
-                    }
                     break;
 
                 case ControllerKind.Geometric:

@@ -27,7 +27,7 @@ namespace DroneCore.Controllers
         // ============================================================================
 
         public enum EPIDStage
-        {
+        { 
             Position,
             Velocity,
             Angle,
@@ -278,7 +278,7 @@ namespace DroneCore.Controllers
             {
                 var keepMode = _body.CommandProxy.GetGoalMode();
                 var owner = _body.CommandProxy.GetActiveSource();
-                _body.CommandProxy.SetCommand(new Axis4(), keepMode, owner);
+                _body.CommandProxy.ForceSetCommand(new Axis4(), keepMode, owner);
             }
 
             Debug.Log($"[CascadedController] {name}: State reset");

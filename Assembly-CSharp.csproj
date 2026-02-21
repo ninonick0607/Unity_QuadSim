@@ -49,6 +49,7 @@
     <Compile Include="Assets\Scripts\RobotCore\SensorManager.cs" />
     <Compile Include="Assets\Scripts\DroneCore\Interfaces\ICommandSource.cs" />
     <Compile Include="Assets\Scripts\DroneCore\Controls\ControlAllocator.cs" />
+    <Compile Include="Assets\Scripts\SimCore\ControlAuthorityManager.cs" />
     <Compile Include="Assets\Scripts\UI\ControlDeckController.cs" />
     <Compile Include="Assets\Scripts\DroneCore\Debug\DroneDebugDraw.cs" />
     <Compile Include="Assets\Scripts\DroneCore\Controllers\AxisControllers\PositionController.cs" />
@@ -71,10 +72,12 @@
     <Compile Include="Assets\Scripts\Yaml\Drone\YamlParser.cs" />
     <Compile Include="Assets\Scripts\SimCore\Common\CommonStructs.cs" />
     <Compile Include="Assets\Scripts\SimCore\SimClock.cs" />
+    <Compile Include="Assets\Scripts\DroneCore\Core\ModeCoordinator.cs" />
     <Compile Include="Assets\Scripts\RobotCore\SensorData.cs" />
     <Compile Include="Assets\Samples\Shader Graph\17.3.0\Common\Scripts\Rotate.cs" />
     <Compile Include="Assets\Scripts\DroneCore\Controls\Quadactuationmodel.cs" />
     <Compile Include="Assets\Scripts\SimCore\SimulationManager.cs" />
+    <Compile Include="Assets\Scripts\Examples\InternalRateCommandExample.cs" />
     <Compile Include="Assets\Scripts\SimCore\FrequencyLimiter.cs" />
     <Compile Include="Assets\Scripts\DroneCore\QuadPawn.cs" />
     <Compile Include="Assets\Scripts\RobotCore\Sensors\GPSSensor.cs" />
