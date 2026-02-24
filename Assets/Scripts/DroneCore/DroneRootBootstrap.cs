@@ -5,6 +5,7 @@ using DroneCore.Common;
 using DroneCore.Controllers;
 using DroneCore.Core;
 using DroneCore.Interfaces;
+using DroneCore.Api;
 using UnityEngine;
 
 namespace DroneCore
@@ -59,7 +60,7 @@ namespace DroneCore
             RemoveDuplicates<RobotCore.RobotCore>(gameObject);
             RemoveDuplicates<FlightCommandProxy>(gameObject);
             RemoveDuplicates<ModeCoordinator>(gameObject);
-
+            RemoveDuplicates<QuadSimApi>(gameObject);
             // Add required components
             var rb       = GetOrAdd<Rigidbody>(gameObject);
             var body     = GetOrAdd<QuadPawn>(gameObject);
@@ -68,7 +69,7 @@ namespace DroneCore
             var core     = GetOrAdd<RobotCore.RobotCore>(gameObject);
             var cmd      = GetOrAdd<FlightCommandProxy>(gameObject);
             var modeCoord = GetOrAdd<ModeCoordinator>(gameObject);
-
+            var api = GetOrAdd<QuadSimApi>(gameObject);
 
             // Configure Rigidbody defaults
             rb.mass = 1.28f;

@@ -7,6 +7,7 @@ using SimCore;
 using SimCore.Common;
 using UnityEngine;
 using Yaml.Drone;
+using DroneCore.Api;
 
 namespace DroneCore
 {
@@ -43,7 +44,8 @@ namespace DroneCore
         [SerializeField] private SensorManager sensorManager;
         [SerializeField] private FlightCommandProxy commandProxy;
         [SerializeField] private ModeCoordinator modeCoordinator;
-
+        [SerializeField] private QuadSimApi quadSimApi;
+        
         [Header("Camera")]
         [SerializeField] private Transform fpvCameraPoint;
 
@@ -106,7 +108,7 @@ namespace DroneCore
         public SensorManager Sensors => sensorManager;
         public FlightCommandProxy CommandProxy => commandProxy;
         public ModeCoordinator ModeCoordinator => modeCoordinator;
-
+        public QuadSimApi Api => quadSimApi;
         public DroneConfig Config => _config;
         public RotorPhysicsDerived RotorPhysics => _rotorPhysics;
         public bool IsInitialized => _initialized;
@@ -132,6 +134,8 @@ namespace DroneCore
             if (sensorManager == null) sensorManager = GetComponent<SensorManager>();
             if (commandProxy == null) commandProxy = GetComponent<FlightCommandProxy>();
             if (modeCoordinator == null) modeCoordinator = GetComponent<ModeCoordinator>();
+            if (quadSimApi == null) quadSimApi = GetComponent<QuadSimApi>();
+            
             // Build motor array from serialized references
             _motors[0] = motorFL;
             _motors[1] = motorFR;
@@ -296,7 +300,12 @@ namespace DroneCore
                 modeCoordinator.Initialize(this, commandProxy);
                 Debug.Log($"[QuadPawn] {DroneID}: ModeCoordinator initialized");
             }
-
+            
+            if (quadSimApi != null)
+            {
+                quadSimApi.Initialize(this, commandProxy, modeCoordinator, sensorManager);
+                Debug.Log($"[QuadPawn] {DroneID}: QuadSimApi initialized");
+            }
             _initialized = true;
             Debug.Log($"[QuadPawn] {DroneID}: Initialization complete");
         }

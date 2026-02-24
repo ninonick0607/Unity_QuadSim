@@ -529,7 +529,21 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 3589958785238508409, guid: 4b0405f3a40170d049d7b5009cece4a1, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1047669761}
+    - targetCorrespondingSourceObject: {fileID: 3589958785238508409, guid: 4b0405f3a40170d049d7b5009cece4a1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1047669762}
   m_SourcePrefab: {fileID: 100100000, guid: 4b0405f3a40170d049d7b5009cece4a1, type: 3}
+--- !u!114 &972601722 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6615807386293998892, guid: 4b0405f3a40170d049d7b5009cece4a1, type: 3}
+  m_PrefabInstance: {fileID: 972601721}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1047669757}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 16cb25956d3b4704aa5895ad06b796a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::QuadSim.SimCore.SimulationManager
 --- !u!1 &1047669757 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3589958785238508409, guid: 4b0405f3a40170d049d7b5009cece4a1, type: 3}
@@ -550,6 +564,20 @@ MonoBehaviour:
   defaultSource: 1
   connectionTimeoutSec: 60
   autoAcceptWhenDefault: 1
+--- !u!114 &1047669762
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1047669757}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8cb435970d9d4ccfb07ff6341656d8ec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SimCore.SimCoreApi
+  simManager: {fileID: 972601722}
+  authorityManager: {fileID: 1047669761}
 --- !u!1 &1169668955
 GameObject:
   m_ObjectHideFlags: 0
@@ -1604,8 +1632,16 @@ MonoBehaviour:
   pitchRate: 4
   yawRate: 30
   throttle: 0.41
+  forwardVel: 1
+  lateralVel: 0
+  velYawRate: 0
+  verticalVel: 0
+  rateModeDuration: 5
+  velocityModeDuration: 5
   requestAuthorityOnStart: 1
-  commandMode: 1
+  runFullDemo: 1
+  logSensorEveryNFrames: 60
+  logTelemetryEveryNFrames: 120
 --- !u!4 &1982601406
 Transform:
   m_ObjectHideFlags: 0
