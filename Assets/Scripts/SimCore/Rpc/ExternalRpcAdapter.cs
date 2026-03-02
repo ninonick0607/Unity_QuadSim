@@ -1,5 +1,5 @@
 ﻿// Assets/Scripts/SimCore/Rpc/ExternalRpcAdapter.cs
-// Phase 9a + 9b: External RPC Adapter
+// Phase 9a + 9b + 9c: External RPC Adapter
 //
 // PURPOSE:
 //   MonoBehaviour that lives on SimRoot. Bridges the background ZMQ server thread
@@ -10,16 +10,14 @@
 //   - Drain incoming requests in Update() and dispatch to method handlers
 //   - Manage External source lifecycle through SimCoreApi
 //   - Track connection state and heartbeat timeout
+//   - Publish telemetry on PUB socket at configurable rate (Phase 9c)
 //
 // PHASE 9a: connect / disconnect / heartbeat / get_status
 // PHASE 9b: set_mode, send_command, get_sensor_data, get_telemetry,
 //           set_controller, reset_all, reset_pose, reset_rotation,
 //           reset_physics, reset_controller, pause, resume, step,
 //           set_time_scale, reset_simulation
-//
-// FUTURE PHASES:
-//   - 9c: PUB telemetry streaming
-//   - 9d: Python client library
+// PHASE 9c: subscribe / unsubscribe, PUB telemetry streaming
 
 using System;
 using System.Collections.Generic;
@@ -61,6 +59,10 @@ namespace SimCore.Rpc
         [Tooltip("Maximum requests to process per frame (prevents stalling).")]
         [SerializeField] private int maxRequestsPerFrame = 10;
 
+        [Header("Telemetry Streaming (Phase 9c)")]
+        [Tooltip("Default publish rate in Hz. Client can override via subscribe. 0 = disabled.")]
+        [SerializeField] private float defaultPublishHz = 50f;
+
         // ============================================================================
         // Runtime State
         // ============================================================================
@@ -79,6 +81,12 @@ namespace SimCore.Rpc
 
         // Method dispatch table
         private Dictionary<string, Func<RpcRequest, RpcResponse>> _handlers;
+
+        // Telemetry streaming state (Phase 9c)
+        private bool _streamingActive;
+        private float _publishHz;
+        private float _publishTimer;
+        private HashSet<string> _subscribedTopics = new() { "sensors", "telemetry" };
 
         // ============================================================================
         // String ↔ Enum Maps (Phase 9b)
@@ -177,6 +185,9 @@ namespace SimCore.Rpc
 
             // Check heartbeat timeout
             CheckHeartbeatTimeout();
+
+            // Publish telemetry stream (Phase 9c)
+            PublishTick();
         }
 
         private void OnDestroy()
@@ -349,6 +360,10 @@ namespace SimCore.Rpc
                 ["step"]             = HandleStep,
                 ["set_time_scale"]   = HandleSetTimeScale,
                 ["reset_simulation"] = HandleResetSimulation,
+
+                // --- Phase 9c: Telemetry streaming ---
+                ["subscribe"]        = HandleSubscribe,
+                ["unsubscribe"]      = HandleUnsubscribe,
             };
         }
 
@@ -806,12 +821,161 @@ namespace SimCore.Rpc
         }
 
         // ============================================================================
+        // Phase 9c Handlers: Telemetry Streaming
+        // ============================================================================
+
+        // --- subscribe ---
+
+        private RpcResponse HandleSubscribe(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+
+            float hz = req.GetFloat("hz", defaultPublishHz);
+            if (hz <= 0f) hz = defaultPublishHz;
+            if (hz > 200f) hz = 200f; // Cap at 200 Hz to prevent flooding
+
+            _publishHz = hz;
+
+            // Parse optional topic list — default to both
+            _subscribedTopics.Clear();
+            string topicsStr = req.GetString("topics");
+            if (topicsStr != null)
+            {
+                // Accept comma-separated or single topic
+                foreach (var t in topicsStr.Split(','))
+                {
+                    string trimmed = t.Trim().ToLowerInvariant();
+                    if (trimmed == "sensors" || trimmed == "telemetry")
+                    {
+                        _subscribedTopics.Add(trimmed);
+                    }
+                }
+            }
+
+            // If no valid topics parsed, default to both
+            if (_subscribedTopics.Count == 0)
+            {
+                _subscribedTopics.Add("sensors");
+                _subscribedTopics.Add("telemetry");
+            }
+
+            _streamingActive = true;
+            _publishTimer = 0f;
+
+            Debug.Log($"[RpcAdapter] Streaming started: {_publishHz} Hz, " +
+                      $"topics=[{string.Join(", ", _subscribedTopics)}]");
+
+            return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
+            {
+                ["telemetry_port"] = telemetryPort,
+                ["hz"] = _publishHz,
+                ["topics"] = new List<object>(_subscribedTopics),
+            });
+        }
+
+        // --- unsubscribe ---
+
+        private RpcResponse HandleUnsubscribe(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+
+            StopStreaming();
+
+            return RpcResponse.Ok(req.RequestId);
+        }
+
+        // ============================================================================
+        // Telemetry Publishing (Phase 9c)
+        // ============================================================================
+
+        private void PublishTick()
+        {
+            if (!_streamingActive || !_clientConnected) return;
+            if (_publishHz <= 0f) return;
+
+            _publishTimer += Time.deltaTime;
+            float interval = 1f / _publishHz;
+
+            if (_publishTimer < interval) return;
+            _publishTimer -= interval;
+
+            // Clamp to prevent spiral if frame rate drops below publish rate
+            if (_publishTimer > interval) _publishTimer = 0f;
+
+            PublishTelemetry();
+        }
+
+        private void PublishTelemetry()
+        {
+            var drone = QuadSimApi.Selected();
+            if (drone == null) return;
+
+            if (_subscribedTopics.Contains("sensors"))
+            {
+                var s = drone.GetSensorData();
+                var sensorData = new Dictionary<string, object>
+                {
+                    ["imu_ang_vel"]     = Vec3ToArray(s.ImuAngVel),
+                    ["imu_attitude"]    = Vec3ToArray(s.ImuAttitude),
+                    ["imu_accel"]       = Vec3ToArray(s.ImuAccel),
+                    ["imu_vel"]         = Vec3ToArray(s.ImuVel),
+                    ["imu_orientation"] = QuatToArray(s.ImuOrientation),
+                    ["imu_timestamp"]   = s.ImuTimestampSec,
+                    ["imu_valid"]       = s.ImuValid,
+                    ["gps_position"]    = Vec3ToArray(s.GpsPosition),
+                    ["gps_timestamp"]   = s.GpsTimestampSec,
+                    ["gps_valid"]       = s.GpsValid,
+                };
+
+                byte[] frame = RpcSerializer.SerializePublish("sensors", sensorData);
+                _server.EnqueuePublish(frame);
+            }
+
+            if (_subscribedTopics.Contains("telemetry"))
+            {
+                var t = drone.GetTelemetry();
+                var telemData = new Dictionary<string, object>
+                {
+                    ["drone_id"]           = t.DroneID ?? "",
+                    ["mode"]               = GoalModeReverseMap.GetValueOrDefault(t.Mode, "unknown"),
+                    ["controller"]         = ControllerKindReverseMap.GetValueOrDefault(t.Controller, "unknown"),
+                    ["motors"]             = new object[] { t.MotorOutputs.FL, t.MotorOutputs.FR,
+                                                            t.MotorOutputs.BL, t.MotorOutputs.BR },
+                    ["desired_rates_deg"]  = Vec3ToArray(t.ControllerTelemetry.DesiredRatesDeg),
+                    ["desired_angles_deg"] = Vec3ToArray(t.ControllerTelemetry.DesiredAnglesDeg),
+                    ["desired_vel"]        = Vec3ToArray(t.ControllerTelemetry.DesiredVel),
+                    ["external_cmd"]       = new object[] { t.ControllerTelemetry.ExternalCmd.X,
+                                                            t.ControllerTelemetry.ExternalCmd.Y,
+                                                            t.ControllerTelemetry.ExternalCmd.Z,
+                                                            t.ControllerTelemetry.ExternalCmd.W },
+                };
+
+                byte[] frame = RpcSerializer.SerializePublish("telemetry", telemData);
+                _server.EnqueuePublish(frame);
+            }
+        }
+
+        private void StopStreaming()
+        {
+            if (_streamingActive)
+            {
+                Debug.Log("[RpcAdapter] Streaming stopped.");
+            }
+
+            _streamingActive = false;
+            _publishTimer = 0f;
+        }
+
+        // ============================================================================
         // Disconnect Handling
         // ============================================================================
 
         private void HandleClientDisconnect(string reason)
         {
             string name = _clientName ?? "unknown";
+
+            // Stop streaming on disconnect
+            StopStreaming();
 
             _clientConnected = false;
             _clientName = null;

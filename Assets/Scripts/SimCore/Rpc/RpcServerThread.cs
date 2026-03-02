@@ -1,10 +1,11 @@
 ﻿// Assets/Scripts/SimCore/Rpc/RpcServerThread.cs
-// Phase 9a: Background ZMQ Server Thread
+// Phase 9a + 9c: Background ZMQ Server Thread
 //
 // PURPOSE:
 //   Runs on a background thread. Owns the NetMQ REP and PUB sockets.
 //   Polls REP for incoming requests, enqueues them for the main thread,
 //   and waits for the main thread to provide responses.
+//   Drains the publish queue and sends frames on the PUB socket (Phase 9c).
 //
 // THREADING CONTRACT:
 //   - This class runs entirely on the background thread.
@@ -50,7 +51,9 @@ namespace SimCore.Rpc
     ///   3. Main thread calls TryDequeue() in Update() to get requests
     ///   4. Main thread processes request, calls SetResponse() on the QueuedRequest
     ///   5. Background thread wakes up and sends the response over ZMQ
-    ///   6. Stop() signals shutdown, joins the thread
+    ///   6. Main thread calls EnqueuePublish() to push telemetry frames (Phase 9c)
+    ///   7. Background thread drains publish queue onto PUB socket each cycle
+    ///   8. Stop() signals shutdown, joins the thread
     /// </summary>
     public sealed class RpcServerThread : IDisposable
     {
@@ -77,6 +80,12 @@ namespace SimCore.Rpc
         /// Main thread drains these in Update().
         /// </summary>
         private readonly ConcurrentQueue<(LogLevel, string)> _logQueue = new();
+
+        /// <summary>
+        /// Publish frames queued by the main thread for the PUB socket (Phase 9c).
+        /// Main thread enqueues serialized MessagePack frames, background thread sends them.
+        /// </summary>
+        private readonly ConcurrentQueue<byte[]> _publishQueue = new();
 
         public enum LogLevel { Info, Warning, Error }
 
@@ -179,6 +188,20 @@ namespace SimCore.Rpc
         }
 
         // ============================================================================
+        // PUB Socket — Phase 9c
+        // ============================================================================
+
+        /// <summary>
+        /// Enqueue a serialized MessagePack frame for publishing on the PUB socket.
+        /// Called from the main thread (ExternalRpcAdapter.PublishTelemetry).
+        /// The background thread drains this queue each poll cycle.
+        /// </summary>
+        public void EnqueuePublish(byte[] frame)
+        {
+            _publishQueue.Enqueue(frame);
+        }
+
+        // ============================================================================
         // Background Thread Entry Point
         // ============================================================================
 
@@ -209,7 +232,7 @@ namespace SimCore.Rpc
                 // Main poll loop
                 while (!_shutdownRequested)
                 {
-                    PollIteration(repSocket);
+                    PollIteration(repSocket, pubSocket);
                 }
             }
             catch (Exception ex)
@@ -232,57 +255,54 @@ namespace SimCore.Rpc
             }
         }
 
-        private void PollIteration(ResponseSocket repSocket)
+        private void PollIteration(ResponseSocket repSocket, PublisherSocket pubSocket)
         {
-            // Try to receive a request (non-blocking with timeout)
-            if (!repSocket.TryReceiveFrameBytes(TimeSpan.FromMilliseconds(_pollTimeoutMs),
+            // --- 1. Handle REP requests ---
+
+            if (repSocket.TryReceiveFrameBytes(TimeSpan.FromMilliseconds(_pollTimeoutMs),
                     out byte[] requestBytes))
             {
-                return; // No request this cycle
+                // Deserialize
+                var parsed = RpcSerializer.DeserializeRequest(requestBytes);
+                if (parsed == null)
+                {
+                    // Bad message — send error response immediately (must reply to maintain REQ/REP)
+                    var errorResponse = RpcSerializer.SerializeResponse(
+                        RpcResponse.Error("invalid_message"));
+                    repSocket.SendFrame(errorResponse);
+                }
+                else
+                {
+                    // Enqueue for main thread processing
+                    var queued = new QueuedRequest { Request = parsed.Value };
+                    _pendingRequests.Enqueue(queued);
+
+                    // Wait for main thread to process and set the response
+                    // Timeout prevents deadlock if main thread stops processing
+                    bool gotResponse = queued.ResponseReady.Wait(TimeSpan.FromSeconds(5));
+
+                    if (gotResponse && queued.ResponseBytes != null)
+                    {
+                        repSocket.SendFrame(queued.ResponseBytes);
+                    }
+                    else
+                    {
+                        // Timeout — main thread didn't respond in time
+                        Log(LogLevel.Warning, $"Response timeout for method '{parsed.Value.Method}'");
+                        var timeoutResponse = RpcSerializer.SerializeResponse(
+                            RpcResponse.Error("server_timeout"));
+                        repSocket.SendFrame(timeoutResponse);
+                    }
+                }
             }
 
-            // Deserialize
-            var parsed = RpcSerializer.DeserializeRequest(requestBytes);
-            if (parsed == null)
-            {
-                // Bad message — send error response immediately (must reply to maintain REQ/REP pattern)
-                var errorResponse = RpcSerializer.SerializeResponse(
-                    RpcResponse.Error("invalid_message"));
-                repSocket.SendFrame(errorResponse);
-                return;
-            }
+            // --- 2. Drain PUB queue (Phase 9c) ---
 
-            // Enqueue for main thread processing
-            var queued = new QueuedRequest { Request = parsed.Value };
-            _pendingRequests.Enqueue(queued);
-
-            // Wait for main thread to process and set the response
-            // Timeout prevents deadlock if main thread stops processing
-            bool gotResponse = queued.ResponseReady.Wait(TimeSpan.FromSeconds(5));
-
-            if (gotResponse && queued.ResponseBytes != null)
+            while (_publishQueue.TryDequeue(out byte[] pubFrame))
             {
-                repSocket.SendFrame(queued.ResponseBytes);
-            }
-            else
-            {
-                // Timeout — main thread didn't respond in time
-                Log(LogLevel.Warning, $"Response timeout for method '{parsed.Value.Method}'");
-                var timeoutResponse = RpcSerializer.SerializeResponse(
-                    RpcResponse.Error("server_timeout"));
-                repSocket.SendFrame(timeoutResponse);
+                pubSocket.SendFrame(pubFrame);
             }
         }
-
-        // ============================================================================
-        // PUB Socket (for future telemetry streaming — Phase 9c)
-        // ============================================================================
-
-        // PUB publishing will be added in Phase 9c.
-        // The socket is bound now so Python clients can subscribe early.
-        // The background thread will need a way to receive publish data from main thread.
-        // Design: main thread enqueues serialized frames to a ConcurrentQueue<byte[]>,
-        // background thread drains and publishes each poll cycle.
 
         // ============================================================================
         // Helpers
