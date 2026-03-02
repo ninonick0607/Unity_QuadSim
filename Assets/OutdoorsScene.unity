@@ -1638,7 +1638,7 @@ MonoBehaviour:
   verticalVel: 0
   rateModeDuration: 5
   velocityModeDuration: 5
-  requestAuthorityOnStart: 1
+  requestAuthorityOnStart: 0
   runFullDemo: 1
   logSensorEveryNFrames: 60
   logTelemetryEveryNFrames: 120

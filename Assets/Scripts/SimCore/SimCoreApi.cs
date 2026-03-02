@@ -367,7 +367,13 @@ namespace SimCore
             if (authorityManager == null) { WarnMissing("ControlAuthorityManager", "DenyExternalConnection"); return; }
             authorityManager.DenyExternalConnection();
         }
-
+        
+        /// <summary>Notify that the External client has disconnected.</summary>
+        public void NotifyExternalDisconnected()
+        {
+            if (authorityManager == null) { WarnMissing("ControlAuthorityManager", "NotifyExternalDisconnected"); return; }
+            authorityManager.NotifyExternalDisconnected();
+        }
         // ============================================================================
         // Status Snapshot
         // ============================================================================
