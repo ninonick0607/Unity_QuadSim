@@ -1,5 +1,5 @@
 ﻿// Assets/Scripts/SimCore/Rpc/ExternalRpcAdapter.cs
-// Phase 9a: External RPC Adapter (Foundation)
+// Phase 9a + 9b: External RPC Adapter
 //
 // PURPOSE:
 //   MonoBehaviour that lives on SimRoot. Bridges the background ZMQ server thread
@@ -11,20 +11,21 @@
 //   - Manage External source lifecycle through SimCoreApi
 //   - Track connection state and heartbeat timeout
 //
-// PHASE 9a SCOPE:
-//   - connect / disconnect / heartbeat / get_status
-//   - Connection lifecycle through ControlAuthorityManager
-//   - Heartbeat-based liveness detection
+// PHASE 9a: connect / disconnect / heartbeat / get_status
+// PHASE 9b: set_mode, send_command, get_sensor_data, get_telemetry,
+//           set_controller, reset_all, reset_pose, reset_rotation,
+//           reset_physics, reset_controller, pause, resume, step,
+//           set_time_scale, reset_simulation
 //
 // FUTURE PHASES:
-//   - 9b: set_mode, send_command
 //   - 9c: PUB telemetry streaming
-//   - 9d: reset, time control, on-demand queries
+//   - 9d: Python client library
 
 using System;
 using System.Collections.Generic;
 using UnityEngine;
 using SimCore.Common;
+using DroneCore.Api;
 
 namespace SimCore.Rpc
 {
@@ -78,6 +79,44 @@ namespace SimCore.Rpc
 
         // Method dispatch table
         private Dictionary<string, Func<RpcRequest, RpcResponse>> _handlers;
+
+        // ============================================================================
+        // String ↔ Enum Maps (Phase 9b)
+        // ============================================================================
+
+        private static readonly Dictionary<string, GoalMode> GoalModeMap = new()
+        {
+            ["none"]        = GoalMode.None,
+            ["position"]    = GoalMode.Position,
+            ["velocity"]    = GoalMode.Velocity,
+            ["angle"]       = GoalMode.Angle,
+            ["rate"]        = GoalMode.Rate,
+            ["passthrough"] = GoalMode.Passthrough,
+            ["wrench"]      = GoalMode.Wrench,
+        };
+
+        private static readonly Dictionary<GoalMode, string> GoalModeReverseMap = new()
+        {
+            [GoalMode.None]        = "none",
+            [GoalMode.Position]    = "position",
+            [GoalMode.Velocity]    = "velocity",
+            [GoalMode.Angle]       = "angle",
+            [GoalMode.Rate]        = "rate",
+            [GoalMode.Passthrough] = "passthrough",
+            [GoalMode.Wrench]      = "wrench",
+        };
+
+        private static readonly Dictionary<string, ControllerKind> ControllerKindMap = new()
+        {
+            ["cascade"]   = ControllerKind.Cascade,
+            ["geometric"] = ControllerKind.Geometric,
+        };
+
+        private static readonly Dictionary<ControllerKind, string> ControllerKindReverseMap = new()
+        {
+            [ControllerKind.Cascade]   = "cascade",
+            [ControllerKind.Geometric] = "geometric",
+        };
 
         // ============================================================================
         // Public Accessors
@@ -210,6 +249,13 @@ namespace SimCore.Rpc
                 {
                     if (_handlers.TryGetValue(queued.Request.Method, out var handler))
                     {
+                        // Any valid request from a connected client proves liveness —
+                        // refresh heartbeat so active clients don't time out.
+                        if (_clientConnected)
+                        {
+                            _lastHeartbeatTime = Time.unscaledTime;
+                        }
+
                         response = handler(queued.Request);
                     }
                     else
@@ -270,28 +316,54 @@ namespace SimCore.Rpc
         }
 
         // ============================================================================
-        // Method Handlers (Phase 9a)
+        // Handler Table
         // ============================================================================
 
         private void BuildHandlerTable()
         {
             _handlers = new Dictionary<string, Func<RpcRequest, RpcResponse>>
             {
-                ["connect"]    = HandleConnect,
-                ["disconnect"] = HandleDisconnect,
-                ["heartbeat"]  = HandleHeartbeat,
-                ["get_status"] = HandleGetStatus,
+                // --- Phase 9a: Connection lifecycle ---
+                ["connect"]          = HandleConnect,
+                ["disconnect"]       = HandleDisconnect,
+                ["heartbeat"]        = HandleHeartbeat,
+                ["get_status"]       = HandleGetStatus,
+
+                // --- Phase 9b: Drone control ---
+                ["set_mode"]         = HandleSetMode,
+                ["send_command"]     = HandleSendCommand,
+                ["get_sensor_data"]  = HandleGetSensorData,
+                ["get_telemetry"]    = HandleGetTelemetry,
+                ["set_controller"]   = HandleSetController,
+
+                // --- Phase 9b: Reset operations ---
+                ["reset_all"]        = HandleResetAll,
+                ["reset_pose"]       = HandleResetPose,
+                ["reset_rotation"]   = HandleResetRotation,
+                ["reset_physics"]    = HandleResetPhysics,
+                ["reset_controller"] = HandleResetController,
+
+                // --- Phase 9b: Simulation control ---
+                ["pause"]            = HandlePause,
+                ["resume"]           = HandleResume,
+                ["step"]             = HandleStep,
+                ["set_time_scale"]   = HandleSetTimeScale,
+                ["reset_simulation"] = HandleResetSimulation,
             };
         }
 
         /// <summary>
-        /// Register additional method handlers (for Phase 9b, 9c, 9d extensions).
+        /// Register additional method handlers (for Phase 9c, 9d extensions).
         /// Call this before or after server start — handlers are on the main thread.
         /// </summary>
         public void RegisterHandler(string method, Func<RpcRequest, RpcResponse> handler)
         {
             _handlers[method] = handler;
         }
+
+        // ============================================================================
+        // Phase 9a Handlers: Connection Lifecycle
+        // ============================================================================
 
         // --- connect ---
 
@@ -415,6 +487,325 @@ namespace SimCore.Rpc
         }
 
         // ============================================================================
+        // Phase 9b Handlers: Drone Control
+        // ============================================================================
+
+        // --- set_mode ---
+
+        private RpcResponse HandleSetMode(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+
+            string modeStr = req.GetString("mode");
+            if (modeStr == null)
+            {
+                return RpcResponse.Error("missing_param: mode", req.RequestId);
+            }
+
+            if (!GoalModeMap.TryGetValue(modeStr.ToLowerInvariant(), out var goalMode))
+            {
+                return RpcResponse.Error($"invalid_mode: {modeStr}", req.RequestId);
+            }
+
+            if (!TryGetSelectedDrone(req, out var drone, out var droneErr)) return droneErr;
+
+            drone.SetMode(goalMode);
+
+            return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
+            {
+                ["mode"] = GoalModeReverseMap[drone.CurrentMode],
+            });
+        }
+
+        // --- send_command ---
+
+        private RpcResponse HandleSendCommand(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+            if (!TryGetSelectedDrone(req, out var drone, out var droneErr)) return droneErr;
+
+            // Pre-check authority: QuadSimApi.SendCommand doesn't surface the proxy's
+            // rejection bool, so we check authority here to give a clear error to the client.
+            if (_sim.CurrentAuthority != InputSource.External)
+            {
+                return RpcResponse.Error("authority_rejected", req.RequestId);
+            }
+
+            // Extract Axis4 values
+            float x = req.GetFloat("x");
+            float y = req.GetFloat("y");
+            float z = req.GetFloat("z");
+            float w = req.GetFloat("w");
+            var axis4 = new Axis4(x, y, z, w);
+
+            // Optional mode override — set mode + send in one call
+            string modeStr = req.GetString("mode");
+            bool success;
+
+            if (modeStr != null)
+            {
+                if (!GoalModeMap.TryGetValue(modeStr.ToLowerInvariant(), out var goalMode))
+                {
+                    return RpcResponse.Error($"invalid_mode: {modeStr}", req.RequestId);
+                }
+
+                success = drone.SendCommand(InputSource.External, axis4, goalMode);
+            }
+            else
+            {
+                success = drone.SendCommand(InputSource.External, axis4);
+            }
+
+            if (!success)
+            {
+                // SendCommand returns false if drone isn't initialized or proxy is missing
+                return RpcResponse.Error("command_failed", req.RequestId);
+            }
+
+            return RpcResponse.Ok(req.RequestId);
+        }
+
+        // --- get_sensor_data ---
+
+        private RpcResponse HandleGetSensorData(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+            if (!TryGetSelectedDrone(req, out var drone, out var droneErr)) return droneErr;
+
+            var s = drone.GetSensorData();
+
+            return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
+            {
+                ["imu_ang_vel"]     = Vec3ToArray(s.ImuAngVel),
+                ["imu_attitude"]    = Vec3ToArray(s.ImuAttitude),
+                ["imu_accel"]       = Vec3ToArray(s.ImuAccel),
+                ["imu_vel"]         = Vec3ToArray(s.ImuVel),
+                ["imu_orientation"] = QuatToArray(s.ImuOrientation),
+                ["imu_timestamp"]   = s.ImuTimestampSec,
+                ["imu_valid"]       = s.ImuValid,
+                ["gps_position"]    = Vec3ToArray(s.GpsPosition),
+                ["gps_timestamp"]   = s.GpsTimestampSec,
+                ["gps_valid"]       = s.GpsValid,
+            });
+        }
+
+        // --- get_telemetry ---
+
+        private RpcResponse HandleGetTelemetry(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+            if (!TryGetSelectedDrone(req, out var drone, out var droneErr)) return droneErr;
+
+            var t = drone.GetTelemetry();
+
+            return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
+            {
+                ["drone_id"]           = t.DroneID ?? "",
+                ["mode"]               = GoalModeReverseMap.GetValueOrDefault(t.Mode, "unknown"),
+                ["controller"]         = ControllerKindReverseMap.GetValueOrDefault(t.Controller, "unknown"),
+                ["motors"]             = new object[] { t.MotorOutputs.FL, t.MotorOutputs.FR,
+                                                        t.MotorOutputs.BL, t.MotorOutputs.BR },
+                ["desired_rates_deg"]  = Vec3ToArray(t.ControllerTelemetry.DesiredRatesDeg),
+                ["desired_angles_deg"] = Vec3ToArray(t.ControllerTelemetry.DesiredAnglesDeg),
+                ["desired_vel"]        = Vec3ToArray(t.ControllerTelemetry.DesiredVel),
+                ["external_cmd"]       = new object[] { t.ControllerTelemetry.ExternalCmd.X,
+                                                        t.ControllerTelemetry.ExternalCmd.Y,
+                                                        t.ControllerTelemetry.ExternalCmd.Z,
+                                                        t.ControllerTelemetry.ExternalCmd.W },
+            });
+        }
+
+        // --- set_controller ---
+
+        private RpcResponse HandleSetController(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+
+            string kindStr = req.GetString("controller");
+            if (kindStr == null)
+            {
+                return RpcResponse.Error("missing_param: controller", req.RequestId);
+            }
+
+            if (!ControllerKindMap.TryGetValue(kindStr.ToLowerInvariant(), out var kind))
+            {
+                return RpcResponse.Error($"invalid_controller: {kindStr}", req.RequestId);
+            }
+
+            if (!TryGetSelectedDrone(req, out var drone, out var droneErr)) return droneErr;
+
+            drone.SetController(kind);
+
+            return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
+            {
+                ["controller"] = ControllerKindReverseMap[drone.CurrentController],
+            });
+        }
+
+        // ============================================================================
+        // Phase 9b Handlers: Reset Operations
+        // ============================================================================
+
+        // --- reset_all ---
+
+        private RpcResponse HandleResetAll(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+            if (!TryGetSelectedDrone(req, out var drone, out var droneErr)) return droneErr;
+
+            drone.ResetAll();
+
+            return RpcResponse.Ok(req.RequestId);
+        }
+
+        // --- reset_pose ---
+
+        private RpcResponse HandleResetPose(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+            if (!TryGetSelectedDrone(req, out var drone, out var droneErr)) return droneErr;
+
+            float px = req.GetFloat("x", 0f);
+            float py = req.GetFloat("y", 3f);  // default spawn height
+            float pz = req.GetFloat("z", 0f);
+            var position = new Vector3(px, py, pz);
+
+            // Quaternion defaults to identity if not provided
+            float qx = req.GetFloat("qx", 0f);
+            float qy = req.GetFloat("qy", 0f);
+            float qz = req.GetFloat("qz", 0f);
+            float qw = req.GetFloat("qw", 1f);
+            var rotation = new Quaternion(qx, qy, qz, qw);
+
+            drone.ResetPose(position, rotation);
+
+            return RpcResponse.Ok(req.RequestId);
+        }
+
+        // --- reset_rotation ---
+
+        private RpcResponse HandleResetRotation(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+            if (!TryGetSelectedDrone(req, out var drone, out var droneErr)) return droneErr;
+
+            drone.ResetRotation();
+
+            return RpcResponse.Ok(req.RequestId);
+        }
+
+        // --- reset_physics ---
+
+        private RpcResponse HandleResetPhysics(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+            if (!TryGetSelectedDrone(req, out var drone, out var droneErr)) return droneErr;
+
+            drone.ResetPhysics();
+
+            return RpcResponse.Ok(req.RequestId);
+        }
+
+        // --- reset_controller ---
+
+        private RpcResponse HandleResetController(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+            if (!TryGetSelectedDrone(req, out var drone, out var droneErr)) return droneErr;
+
+            drone.ResetController();
+
+            return RpcResponse.Ok(req.RequestId);
+        }
+
+        // ============================================================================
+        // Phase 9b Handlers: Simulation Control
+        // ============================================================================
+
+        // --- pause ---
+
+        private RpcResponse HandlePause(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+
+            _sim.Pause();
+
+            return RpcResponse.Ok(req.RequestId);
+        }
+
+        // --- resume ---
+
+        private RpcResponse HandleResume(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+
+            _sim.Resume();
+
+            return RpcResponse.Ok(req.RequestId);
+        }
+
+        // --- step ---
+
+        private RpcResponse HandleStep(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+
+            int count = req.GetInt("count", 1);
+
+            if (count <= 0)
+            {
+                return RpcResponse.Error("invalid_param: count must be > 0", req.RequestId);
+            }
+
+            if (count == 1)
+            {
+                _sim.StepOnce();
+            }
+            else
+            {
+                _sim.StepMany(count);
+            }
+
+            return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
+            {
+                ["sim_time"] = _sim.SimTimeSec,
+                ["steps_queued"] = count,
+            });
+        }
+
+        // --- set_time_scale ---
+
+        private RpcResponse HandleSetTimeScale(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+
+            float scale = req.GetFloat("scale", 1.0f);
+
+            if (scale <= 0f)
+            {
+                return RpcResponse.Error("invalid_param: scale must be > 0", req.RequestId);
+            }
+
+            _sim.SetTimeScale(scale);
+
+            return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
+            {
+                ["time_scale"] = _sim.TimeScale,
+            });
+        }
+
+        // --- reset_simulation ---
+
+        private RpcResponse HandleResetSimulation(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+
+            _sim.ResetSimulation();
+
+            return RpcResponse.Ok(req.RequestId);
+        }
+
+        // ============================================================================
         // Disconnect Handling
         // ============================================================================
 
@@ -449,6 +840,57 @@ namespace SimCore.Rpc
                 Debug.Log($"[RpcAdapter] Authority changed from External to {newAuth}. " +
                           "Client remains connected but commands will be rejected.");
             }
+        }
+
+        // ============================================================================
+        // Shared Helpers (Phase 9b)
+        // ============================================================================
+
+        /// <summary>
+        /// Guard: require the client to be connected. Returns false and sets the
+        /// error response if not connected.
+        /// </summary>
+        private bool RequireConnected(RpcRequest req, out RpcResponse errorResponse)
+        {
+            if (_clientConnected)
+            {
+                errorResponse = default;
+                return true;
+            }
+
+            errorResponse = RpcResponse.Error("not_connected", req.RequestId);
+            return false;
+        }
+
+        /// <summary>
+        /// Guard: resolve the selected drone via QuadSimApi.Selected().
+        /// Returns false and sets the error response if no drone is available.
+        /// Phase 9b is single-drone — multi-drone index parameter is a future addition.
+        /// </summary>
+        private bool TryGetSelectedDrone(RpcRequest req, out QuadSimApi drone, out RpcResponse errorResponse)
+        {
+            drone = QuadSimApi.Selected();
+
+            if (drone != null)
+            {
+                errorResponse = default;
+                return true;
+            }
+
+            errorResponse = RpcResponse.Error("no_drone", req.RequestId);
+            return false;
+        }
+
+        /// <summary>Convert Vector3 to float[] for MessagePack serialization.</summary>
+        private static object[] Vec3ToArray(Vector3 v)
+        {
+            return new object[] { v.x, v.y, v.z };
+        }
+
+        /// <summary>Convert Quaternion to float[] for MessagePack serialization.</summary>
+        private static object[] QuatToArray(Quaternion q)
+        {
+            return new object[] { q.x, q.y, q.z, q.w };
         }
     }
 }

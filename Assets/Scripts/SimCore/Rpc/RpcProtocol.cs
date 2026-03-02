@@ -1,5 +1,5 @@
 ﻿// Assets/Scripts/SimCore/Rpc/RpcProtocol.cs
-// Phase 9a: Message Protocol Definitions
+// Phase 9a + 9b: Message Protocol Definitions
 //
 // PURPOSE:
 //   Defines the wire protocol for External RPC communication.
@@ -10,6 +10,14 @@
 // PROTOCOL:
 //   Request:  { "method": "...", ...params }
 //   Response: { "status": "ok"|"error", "data": {...}, "error_msg": "..." }
+//
+// NOTE ON TYPE COERCION (Phase 9b fix):
+//   MessagePack-CSharp with ContractlessStandardResolver deserializes integers
+//   into the smallest fitting C# type:
+//     0..127      → byte
+//     -32..-1     → sbyte
+//     128..32767  → short (or int/long for larger)
+//   The GetInt/GetFloat helpers must handle ALL numeric types, not just int/long.
 //
 // DEPENDENCIES:
 //   - MessagePack-CSharp (NuGet: MessagePack)
@@ -55,32 +63,50 @@ namespace SimCore.Rpc
             return null;
         }
 
-        /// <summary>Get a float parameter, with default.</summary>
+        /// <summary>
+        /// Get a float parameter, with default.
+        /// Handles all numeric types that MessagePack may deserialize into.
+        /// </summary>
         public float GetFloat(string key, float defaultValue = 0f)
         {
             if (!Params.TryGetValue(key, out var val)) return defaultValue;
 
             return val switch
             {
-                float f => f,
-                double d => (float)d,
-                int i => i,
-                long l => l,
+                float f   => f,
+                double d  => (float)d,
+                byte b    => b,
+                sbyte sb  => sb,
+                short s   => s,
+                ushort us => us,
+                int i     => i,
+                uint ui   => ui,
+                long l    => l,
+                ulong ul  => ul,
                 _ => defaultValue
             };
         }
 
-        /// <summary>Get an int parameter, with default.</summary>
+        /// <summary>
+        /// Get an int parameter, with default.
+        /// Handles all numeric types that MessagePack may deserialize into.
+        /// </summary>
         public int GetInt(string key, int defaultValue = 0)
         {
             if (!Params.TryGetValue(key, out var val)) return defaultValue;
 
             return val switch
             {
-                int i => i,
-                long l => (int)l,
-                float f => (int)f,
-                double d => (int)d,
+                byte b    => b,
+                sbyte sb  => sb,
+                short s   => s,
+                ushort us => us,
+                int i     => i,
+                uint ui   => (int)ui,
+                long l    => (int)l,
+                ulong ul  => (int)ul,
+                float f   => (int)f,
+                double d  => (int)d,
                 _ => defaultValue
             };
         }
@@ -154,8 +180,14 @@ namespace SimCore.Rpc
                 {
                     requestId = idObj switch
                     {
-                        long l => l,
-                        int i => i,
+                        byte b    => b,
+                        sbyte sb  => sb,
+                        short s   => s,
+                        ushort us => us,
+                        int i     => i,
+                        uint ui   => ui,
+                        long l    => l,
+                        ulong ul  => (long)ul,
                         _ => 0
                     };
                 }
