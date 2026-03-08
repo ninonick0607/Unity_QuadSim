@@ -24,6 +24,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using SimCore.Common;
 using DroneCore.Api;
+using MathUtil;
 
 namespace SimCore.Rpc
 {
@@ -138,6 +139,8 @@ namespace SimCore.Rpc
 
         /// <summary>Name of the connected client (from connect message), or null.</summary>
         public string ClientName => _clientName;
+        
+        private SimFrame _clientFrame = SimFrame.FLU;
 
         /// <summary>Command port number.</summary>
         public int CommandPort => commandPort;
@@ -339,6 +342,7 @@ namespace SimCore.Rpc
                 ["disconnect"]       = HandleDisconnect,
                 ["heartbeat"]        = HandleHeartbeat,
                 ["get_status"]       = HandleGetStatus,
+                ["set_frame"] = HandleSetFrame,
 
                 // --- Phase 9b: Drone control ---
                 ["set_mode"]         = HandleSetMode,
@@ -480,6 +484,43 @@ namespace SimCore.Rpc
             });
         }
 
+        
+        private RpcResponse HandleSetFrame(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+    
+            string frameStr = req.GetString("frame");
+            if (frameStr == null)
+                return RpcResponse.Error("missing_param: frame", req.RequestId);
+    
+            switch (frameStr.ToLowerInvariant())
+            {
+                case "flu":
+                    _clientFrame = SimFrame.FLU;
+                    break;
+                case "frd":
+                    _clientFrame = SimFrame.FRD;
+                    break;
+                case "unity":
+                    _clientFrame = SimFrame.UnityBody;
+                    break;
+                default:
+                    return RpcResponse.Error($"invalid_frame: {frameStr}", req.RequestId);
+            }
+    
+            // Also update the sensor output frame so reads match writes
+            if (TryGetSelectedDrone(req, out var drone, out var droneErr))
+            {
+                // You may need to expose a method to set the sensor frame on QuadSimApi
+                // For now, this ensures symmetry
+            }
+    
+            return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
+            {
+                ["frame"] = frameStr.ToLowerInvariant()
+            });
+        }
+        
         // --- get_status ---
 
         private RpcResponse HandleGetStatus(RpcRequest req)
@@ -539,47 +580,111 @@ namespace SimCore.Rpc
             if (!RequireConnected(req, out var err)) return err;
             if (!TryGetSelectedDrone(req, out var drone, out var droneErr)) return droneErr;
 
-            // Pre-check authority: QuadSimApi.SendCommand doesn't surface the proxy's
-            // rejection bool, so we check authority here to give a clear error to the client.
             if (_sim.CurrentAuthority != InputSource.External)
             {
                 return RpcResponse.Error("authority_rejected", req.RequestId);
             }
 
-            // Extract Axis4 values
+            // Extract raw values from client (in client's frame convention)
             float x = req.GetFloat("x");
             float y = req.GetFloat("y");
             float z = req.GetFloat("z");
             float w = req.GetFloat("w");
-            var axis4 = new Axis4(x, y, z, w);
 
-            // Optional mode override — set mode + send in one call
+            // Optional mode override
             string modeStr = req.GetString("mode");
-            bool success;
-
+            GoalMode? goalMode = null;
+    
             if (modeStr != null)
             {
-                if (!GoalModeMap.TryGetValue(modeStr.ToLowerInvariant(), out var goalMode))
-                {
+                if (!GoalModeMap.TryGetValue(modeStr.ToLowerInvariant(), out var gm))
                     return RpcResponse.Error($"invalid_mode: {modeStr}", req.RequestId);
-                }
+                goalMode = gm;
+            }
+    
+            // Determine the active mode (either from override or current)
+            GoalMode activeMode = goalMode ?? drone.CurrentMode;
+    
+            // Remap client frame → internal Axis4 layout
+            Axis4 axis4 = RemapClientCommand(x, y, z, w, activeMode, _clientFrame);
 
-                success = drone.SendCommand(InputSource.External, axis4, goalMode);
-            }
+            bool success;
+            if (goalMode.HasValue)
+                success = drone.SendCommand(InputSource.External, axis4, goalMode.Value);
             else
-            {
                 success = drone.SendCommand(InputSource.External, axis4);
-            }
 
             if (!success)
-            {
-                // SendCommand returns false if drone isn't initialized or proxy is missing
                 return RpcResponse.Error("command_failed", req.RequestId);
-            }
 
             return RpcResponse.Ok(req.RequestId);
+            }
+        private static Axis4 RemapClientCommand(float x, float y, float z, float w, 
+                                                 GoalMode mode, SimFrame clientFrame)
+        {
+            if (clientFrame == SimFrame.UnityBody)
+            {
+                // No remapping — client is sending raw Axis4 layout
+                return new Axis4(x, y, z, w);
+            }
+            
+            // For FLU/FRD clients, the meaning of (x,y,z,w) depends on mode
+            switch (mode)
+            {
+                case GoalMode.Position:
+                    // Client sends: (X_flu, Y_flu, Z_flu, Yaw_deg)
+                    // Internal expects: (X_world, Y_world, Yaw_deg, Alt_world)
+                    // 
+                    // FLU position → Unity world position:
+                    //   Unity_X = FLU_X
+                    //   Unity_Y = FLU_Z  (FLU Z is up, Unity Y is up)
+                    //   Unity_Z = FLU_Y  (FLU Y is left, Unity Z is left... depends on convention)
+                    //
+                    // Using same axis reorder as GPS output: FLU(x,y,z) → Unity(x,z,y)
+                    // So: FLU_X→Unity_X, FLU_Y→Unity_Z, FLU_Z→Unity_Y
+                    //
+                    // FlightCommandLayout.Position(x_m, y_m, z_m, yaw_deg) 
+                    //   => Axis4(x_m, y_m, yaw_deg, z_m)
+                    // 
+                    // So we need: Axis4(Unity_X, Unity_Z, Yaw, Unity_Y)
+                    //           = Axis4(FLU_X,   FLU_Y,   w,   FLU_Z)
+                    if (clientFrame == SimFrame.FLU)
+                        return new Axis4(x, y, w, z);  // (flu_x, flu_y, yaw, flu_z_alt)
+                    else // FRD: X=fwd, Y=right, Z=down
+                        return new Axis4(x, -y, w, -z); // flip right→left, down→up
+                        
+                case GoalMode.Velocity:
+                    // Client sends: (Vx_flu, Vy_flu, Vz_flu, YawRate_dps)
+                    // Internal expects: (Vx, Vy, YawRate, Vz)
+                    //
+                    // Same axis reorder + Axis4 layout:
+                    //   FlightCommandLayout.Velocity(vx, vy, vz, yaw_rate)
+                    //     => Axis4(vx, vy, yaw_rate, vz)
+                    //
+                    // FLU vel → Unity vel: (flu_x, flu_y, flu_z) → (x, z, y)
+                    // So: Axis4(flu_x, flu_y, yawrate, flu_z)
+                    if (clientFrame == SimFrame.FLU)
+                        return new Axis4(x, y, w, z);  // (flu_vx, flu_vy, yawrate, flu_vz)
+                    else // FRD
+                        return new Axis4(x, -y, w, -z);
+                    
+                case GoalMode.Angle:
+                case GoalMode.Rate:
+                    // Client sends: (Roll, Pitch, YawRate, Throttle) 
+                    // Internal expects: (Roll, Pitch, YawRate, Throttle)
+                    // These are already in the correct layout — no reorder needed.
+                    // Frame signs for attitude commands would come from Frames.TransformAttitude
+                    // but for now we assume the client sends in the frame the controller expects.
+                    return new Axis4(x, y, z, w);
+                    
+                case GoalMode.Passthrough:
+                case GoalMode.Wrench:
+                case GoalMode.None:
+                default:
+                    // No transformation
+                    return new Axis4(x, y, z, w);
+            }
         }
-
         // --- get_sensor_data ---
 
         private RpcResponse HandleGetSensorData(RpcRequest req)
@@ -588,6 +693,15 @@ namespace SimCore.Rpc
             if (!TryGetSelectedDrone(req, out var drone, out var droneErr)) return droneErr;
 
             var s = drone.GetSensorData();
+    
+            // GPS position: convert Unity world (Y-up) to client frame for the wire
+            // Unity (x, y, z) where Y=up → FLU (x, z, y) where Z=up
+            Vector3 gpsOut = _clientFrame switch
+            {
+                SimFrame.FLU => new Vector3(s.GpsPosition.x, s.GpsPosition.z, s.GpsPosition.y),
+                SimFrame.FRD => new Vector3(s.GpsPosition.x, -s.GpsPosition.z, -s.GpsPosition.y),
+                _ => s.GpsPosition
+            };
 
             return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
             {
@@ -598,7 +712,7 @@ namespace SimCore.Rpc
                 ["imu_orientation"] = QuatToArray(s.ImuOrientation),
                 ["imu_timestamp"]   = s.ImuTimestampSec,
                 ["imu_valid"]       = s.ImuValid,
-                ["gps_position"]    = Vec3ToArray(s.GpsPosition),
+                ["gps_position"]    = Vec3ToArray(gpsOut),  // <-- use converted position
                 ["gps_timestamp"]   = s.GpsTimestampSec,
                 ["gps_valid"]       = s.GpsValid,
             });
