@@ -1,3 +1,17 @@
+// Assets/Scripts/DroneCore/Interfaces/FlightCommandProxy.cs
+// Phase 10 Polish — Stale Command Log Throttle
+//
+// PURPOSE:
+//   Stores the winning command for the current tick.
+//   Validates that only the authority source can write.
+//   Falls back to safe commands when the authority source goes silent.
+//
+// PHASE 10 CHANGE (Step 2a):
+//   Added _staleFallbackLogged flag to suppress repeated "Stale command detected"
+//   warnings. The warning fires once on first detection, then goes quiet until a
+//   fresh command arrives via SetCommand(). This prevents log spam after reset()
+//   where ~0.5s of stale ticks fire before the next Python command arrives.
+
 using SimCore;
 using SimCore.Common;
 using UnityEngine;
@@ -51,6 +65,14 @@ namespace DroneCore.Interfaces
         
         [Tooltip("Seconds without a command before falling back to safe. 0 = disabled.")]
         [SerializeField] private float staleCommandThresholdSec = 0.5f;
+
+        /// <summary>
+        /// Phase 10 Polish (Step 2a): Tracks whether we've already logged the stale
+        /// fallback warning. Prevents log spam when the proxy stays stale for many
+        /// ticks (e.g. after reset, before the next Python command arrives).
+        /// Reset to false in SetCommand() when a fresh command arrives.
+        /// </summary>
+        private bool _staleFallbackLogged;
 
         // ============================================================================
         // ICommandSource Implementation (read interface — unchanged for controllers)
@@ -113,6 +135,7 @@ namespace DroneCore.Interfaces
             _lastCommandTimeSec = GetSimTime();
             _rejectedCount = 0;
             _usingFallback = false;
+            _staleFallbackLogged = false;  // Phase 10: Reset log throttle on fresh command
             
             return true;
         }
@@ -131,6 +154,7 @@ namespace DroneCore.Interfaces
             _lastWriter = caller;
             _lastCommandTimeSec = GetSimTime();
             _usingFallback = false;
+            _staleFallbackLogged = false;  // Phase 10: Reset log throttle
         }
         
         // ============================================================================
@@ -165,11 +189,16 @@ namespace DroneCore.Interfaces
             _lastCommandTimeSec = GetSimTime();
             _rejectedCount = 0;
             _usingFallback = false;
+            _staleFallbackLogged = false;  // Phase 10: Reset log throttle on reset
         }
         
         /// <summary>
         /// Check if the current command is stale and inject safe fallback if needed.
         /// Called automatically on read (GetCommandValue).
+        ///
+        /// Phase 10 Polish (Step 2a): Now only logs the warning ONCE per stale episode.
+        /// Subsequent ticks while still stale are silent. The _staleFallbackLogged flag
+        /// resets when SetCommand() receives a fresh command.
         /// </summary>
         private void CheckForStaleCommand()
         {
@@ -183,9 +212,14 @@ namespace DroneCore.Interfaces
             {
                 _usingFallback = true;
                 _command = Axis4.ZeroValue; // Zero rates / zero throttle
-                
-                Debug.LogWarning($"[Proxy] Stale command detected (age={age:F2}s, threshold={staleCommandThresholdSec}s). " +
-                                 $"Falling back to safe command. Authority={_activeSource}, LastWriter={_lastWriter}");
+
+                // Phase 10: Only log once per stale episode
+                if (!_staleFallbackLogged)
+                {
+                    _staleFallbackLogged = true;
+                    Debug.LogWarning($"[Proxy] Stale command detected (age={age:F2}s, threshold={staleCommandThresholdSec}s). " +
+                                     $"Falling back to safe command. Authority={_activeSource}, LastWriter={_lastWriter}");
+                }
             }
         }
         

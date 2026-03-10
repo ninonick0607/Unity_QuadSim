@@ -335,11 +335,10 @@ namespace DroneCore.Controllers
             if (mode == GoalMode.Wrench)
             {
                 Vector3 torque = new Vector3(cmd.X, cmd.Y, cmd.Z);
-                Vector3 force = new Vector3(0, 0, cmd.W);
+                Vector3 force = new Vector3(0, cmd.W, 0); 
                 _body.SetBodyWrench(force, torque);
                 return;
             }
-
             // --- NONE MODE ---
             if (mode == GoalMode.None)
             {
@@ -514,12 +513,33 @@ namespace DroneCore.Controllers
                 output[3] = _hoverThrottle01 * (1.0f + zAccel / 9.81f);
             }
 
-            // TODO: Make this actually pass through to the motors
             if (mode == GoalMode.Passthrough)
             {
-                Axis4 safe = cmd;
-                safe.W = Mathf.Clamp(safe.W, 0.0f, 1.0f);
-                ThrustMixer(safe);
+                // Direct motor passthrough — bypass cascade and allocator entirely.
+                // cmd packing: X=FL, Y=FR, Z=BL, W=BR (matches Motor4 order)
+                float[] motor01 = new float[4];
+                motor01[0] = Mathf.Clamp01(cmd.X);  // FL
+                motor01[1] = Mathf.Clamp01(cmd.Y);  // FR
+                motor01[2] = Mathf.Clamp01(cmd.Z);  // BL
+                motor01[3] = Mathf.Clamp01(cmd.W);  // BR
+
+                // Compute body wrench from motor commands through the actuation model
+                Vector3 netForce, netTorque;
+                QuadActuationModel.ComputeBodyWrench(
+                    motor01,
+                    _cachedConfig.RotorParams.Rotors,
+                    _rotorPhysics,
+                    out netForce,
+                    out netTorque
+                );
+                _body.SetBodyWrench(netForce, netTorque);
+
+                // Store for telemetry / UI
+                for (int i = 0; i < 4; i++)
+                {
+                    _motor[i] = motor01[i];
+                    _thrusts[i] = motor01[i] * _rotorPhysics.MaxThrust;
+                }
                 return;
             }
 

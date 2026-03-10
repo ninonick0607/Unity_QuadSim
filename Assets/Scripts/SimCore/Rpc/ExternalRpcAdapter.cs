@@ -677,11 +677,18 @@ namespace SimCore.Rpc
                     // but for now we assume the client sends in the frame the controller expects.
                     return new Axis4(x, y, z, w);
                     
-                case GoalMode.Passthrough:
                 case GoalMode.Wrench:
+                    if (clientFrame == SimFrame.FLU)
+                        return new Axis4(x, z, y, w);  // (tx_fwd, tz_up→Y, ty_left→Z, thrust)
+                    else if (clientFrame == SimFrame.FRD)
+                        return new Axis4(x, -z, -y, w); // FRD: flip Y→right, Z→down
+                    else
+                        return new Axis4(x, y, z, w);  // UnityBody: no remap
+
+                case GoalMode.Passthrough:
                 case GoalMode.None:
                 default:
-                    // No transformation
+                    // No transformation — motor values and None don't need remapping
                     return new Axis4(x, y, z, w);
             }
         }
