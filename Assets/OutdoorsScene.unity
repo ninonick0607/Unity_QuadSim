@@ -564,7 +564,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4db38ead64624f68971ebc04188268a7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SimCore.ControlAuthorityManager
-  defaultSource: 2
+  defaultSource: 0
   connectionTimeoutSec: 60
   autoAcceptWhenDefault: 1
 --- !u!114 &1047669762

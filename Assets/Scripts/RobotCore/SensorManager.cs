@@ -62,10 +62,10 @@ namespace RobotCore
             IMU = new IMUSensor(rb, bodyTransform);
             GPS = new GPSSensor(rb);
             IMU.OutputFrame = outputFrame;
+            GPS.OutputFrame = outputFrame;
             IMU.Reset();
             IMU.Initialize(rb);
 
-            
             GPS.Reset();
             GPS.Initialize();
 
@@ -91,8 +91,9 @@ namespace RobotCore
         {
             double nowSec = nowNanos * 1e-9;
 
-            // keep output frame synced
+            // Keep output frame synced for both sensors
             IMU.OutputFrame = outputFrame;
+            GPS.OutputFrame = outputFrame;
 
             var latest = Latest;
 
@@ -108,21 +109,19 @@ namespace RobotCore
                 latest.ImuVel = IMU.LastVel;
                 latest.ImuTimestampSec = IMU.LastTimestampSec;
                 latest.ImuValid = IMU.IsValid;
-
             }
 
-            // GPS
+            // GPS — position is now already in OutputFrame from GPSSensor
             if (_gpsLimiter.ShouldRunAndConsume(nowNanos))
             {
                 GPS.Sample(nowSec);
 
-                latest.GpsPosition = GPS.LastPositionWorldM;
+                latest.GpsPosition = GPS.LastPosition;
                 latest.GpsTimestampSec = GPS.LastTimestampSec;
                 latest.GpsValid = GPS.HasFix;
             }
 
             Latest = latest;
         }
-        
     }
 }

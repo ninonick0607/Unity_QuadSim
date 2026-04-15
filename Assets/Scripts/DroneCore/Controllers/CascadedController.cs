@@ -360,38 +360,46 @@ namespace DroneCore.Controllers
             // 2. POSITION STAGE
             if (mode == GoalMode.Position)
             {
-                Vector3 vSpWorld = Vector3.zero;
-
+                // Position PID outputs are velocity setpoints in the output frame.
+                // Output frame convention:
+                //   .x = forward, .y = lateral, .z = altitude
+                // This holds for FLU (y=left, z=up) and FRD (y=right, z=down).
+                Vector3 vSpOutputFrame = Vector3.zero;
+ 
                 if (_axes[0].Position != null)
                 {
                     _axes[0].Position.Update(deltaTime);
-                    vSpWorld.x = _axes[0].Position.GetOutput();  // forward → Unity world X
+                    vSpOutputFrame.x = _axes[0].Position.GetOutput();  // forward
                 }
                 if (_axes[1].Position != null)
                 {
                     _axes[1].Position.Update(deltaTime);
-                    vSpWorld.z = _axes[1].Position.GetOutput();  // lateral → Unity world Z
+                    vSpOutputFrame.y = _axes[1].Position.GetOutput();  // lateral
                 }
                 if (_axes[3].Position != null)
                 {
                     _axes[3].Position.Update(deltaTime);
-                    vSpWorld.y = _axes[3].Position.GetOutput();  // altitude → Unity world Y
+                    vSpOutputFrame.z = _axes[3].Position.GetOutput();  // altitude
                 }
-
+ 
+                // Rotate horizontal components into heading frame
                 Quaternion bodyRot = _body.transform.rotation;
-                Vector3 vSpHeading = WorldVelToHeadingVel(vSpWorld, bodyRot);
-
+                Vector3 vSpHeading = OutputFrameVelToHeadingVel(vSpOutputFrame, bodyRot);
+ 
+                // Constrain velocity: XY = horizontal, Z = vertical (in output frame)
                 // TODO: DEFINE THESE IN CONFIG
                 Vector3 vSpConstrained = ConstrainVelSetpoint_HeadingFrame(vSpHeading, 4.0f, 10f, 8f);
-                Vector3 vSpCtrl = Frames.TransformLinear(vSpConstrained, GetCurrentFrame());
-
-                if (_axes[0].Velocity != null) _axes[0].Velocity.SetExternalGoal(vSpCtrl.x);
-                if (_axes[1].Velocity != null) _axes[1].Velocity.SetExternalGoal(vSpCtrl.y);
-                if (_axes[3].Velocity != null) _axes[3].Velocity.SetExternalGoal(vSpCtrl.z);
-
-                _telemetry.DesiredVel = vSpCtrl;
+ 
+                // The velocity setpoint is already in the output frame —
+                // no Frames.TransformLinear needed.
+                if (_axes[0].Velocity != null) _axes[0].Velocity.SetExternalGoal(vSpConstrained.x);
+                if (_axes[1].Velocity != null) _axes[1].Velocity.SetExternalGoal(vSpConstrained.y);
+                if (_axes[3].Velocity != null) _axes[3].Velocity.SetExternalGoal(vSpConstrained.z);
+ 
+                _telemetry.DesiredVel = vSpConstrained;
                 _telemetry.HasVelSetpoint = true;
             }
+ 
 
             // 3. VELOCITY STAGE
             if (mode == GoalMode.Position || mode == GoalMode.Velocity || mode == GoalMode.Angle)
@@ -627,12 +635,25 @@ namespace DroneCore.Controllers
             return SimFrame.FLU; // Default fallback
         }
 
-        private Vector3 WorldVelToHeadingVel(Vector3 vWorld, Quaternion bodyRot)
+        private Vector3 OutputFrameVelToHeadingVel(Vector3 vOutputFrame, Quaternion bodyRot)
         {
-            // Heading frame = yaw-unrotated (local NESW aligned with forward axis)
+            // Extract yaw angle from Unity's rotation (always around Unity Y axis)
             float yawDeg = bodyRot.eulerAngles.y;
-            Quaternion yawOnly = Quaternion.Euler(0f, yawDeg, 0f);
-            return Quaternion.Inverse(yawOnly) * vWorld;
+            float yawRad = yawDeg * Mathf.Deg2Rad;
+ 
+            // In the output frame (FLU/FRD), horizontal plane is XY.
+            // Rotate the horizontal components by -yaw to get heading-aligned frame.
+            float cosY = Mathf.Cos(yawRad);
+            float sinY = Mathf.Sin(yawRad);
+ 
+            // 2D rotation of (x, y) by -yaw:
+            //   x_heading =  cos(yaw) * x + sin(yaw) * y
+            //   y_heading = -sin(yaw) * x + cos(yaw) * y
+            float hx =  cosY * vOutputFrame.x + sinY * vOutputFrame.y;
+            float hy = -sinY * vOutputFrame.x + cosY * vOutputFrame.y;
+ 
+            // Z (altitude) passes through unchanged
+            return new Vector3(hx, hy, vOutputFrame.z);
         }
 
         private Vector3 ConstrainVelSetpoint_HeadingFrame(

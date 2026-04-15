@@ -632,59 +632,44 @@ namespace SimCore.Rpc
             switch (mode)
             {
                 case GoalMode.Position:
-                    // Client sends: (X_flu, Y_flu, Z_flu, Yaw_deg)
-                    // Internal expects: (X_world, Y_world, Yaw_deg, Alt_world)
-                    // 
-                    // FLU position → Unity world position:
-                    //   Unity_X = FLU_X
-                    //   Unity_Y = FLU_Z  (FLU Z is up, Unity Y is up)
-                    //   Unity_Z = FLU_Y  (FLU Y is left, Unity Z is left... depends on convention)
+                    // Client sends: (X, Y, Z, Yaw_deg) in client world frame
+                    // Internal Axis4 layout: (X_world, Y_world, Yaw_deg, Alt_world)
                     //
-                    // Using same axis reorder as GPS output: FLU(x,y,z) → Unity(x,z,y)
-                    // So: FLU_X→Unity_X, FLU_Y→Unity_Z, FLU_Z→Unity_Y
-                    //
-                    // FlightCommandLayout.Position(x_m, y_m, z_m, yaw_deg) 
-                    //   => Axis4(x_m, y_m, yaw_deg, z_m)
-                    // 
-                    // So we need: Axis4(Unity_X, Unity_Z, Yaw, Unity_Y)
-                    //           = Axis4(FLU_X,   FLU_Y,   w,   FLU_Z)
-                    if (clientFrame == SimFrame.FLU)
-                        return new Axis4(x, y, w, z);  // (flu_x, flu_y, yaw, flu_z_alt)
-                    else // FRD: X=fwd, Y=right, Z=down
-                        return new Axis4(x, -y, w, -z); // flip right→left, down→up
-                        
+                    // Convert position from client frame → Unity world:
+                    Vector3 posClient = new Vector3(x, y, z);
+                    Vector3 posUnity = Frames.InverseTransformWorldPosition(posClient, clientFrame);
+                    // Map into Axis4 layout: (X, Z, Yaw, Y_alt)
+                    return new Axis4(posUnity.x, posUnity.z, w, posUnity.y);
+         
                 case GoalMode.Velocity:
-                    // Client sends: (Vx_flu, Vy_flu, Vz_flu, YawRate_dps)
-                    // Internal expects: (Vx, Vy, YawRate, Vz)
+                    // Client sends: (Vx, Vy, Vz, YawRate_dps) in client body frame
+                    // Internal Axis4 layout: (Vx, Vy, YawRate, Vz)
                     //
-                    // Same axis reorder + Axis4 layout:
-                    //   FlightCommandLayout.Velocity(vx, vy, vz, yaw_rate)
-                    //     => Axis4(vx, vy, yaw_rate, vz)
-                    //
-                    // FLU vel → Unity vel: (flu_x, flu_y, flu_z) → (x, z, y)
-                    // So: Axis4(flu_x, flu_y, yawrate, flu_z)
-                    if (clientFrame == SimFrame.FLU)
-                        return new Axis4(x, y, w, z);  // (flu_vx, flu_vy, yawrate, flu_vz)
-                    else // FRD
-                        return new Axis4(x, -y, w, -z);
-                    
+                    // Convert velocity from client frame → Unity body:
+                    Vector3 velClient = new Vector3(x, y, z);
+                    Vector3 velUnity = Frames.InverseTransformLinear(velClient, clientFrame);
+                    // Map into Axis4 layout: (Vx, Vz, YawRate, Vy_alt)
+                    return new Axis4(velUnity.x, velUnity.z, w, velUnity.y);
+         
                 case GoalMode.Angle:
                 case GoalMode.Rate:
-                    // Client sends: (Roll, Pitch, YawRate, Throttle) 
-                    // Internal expects: (Roll, Pitch, YawRate, Throttle)
+                    // Client sends: (Roll, Pitch, YawRate, Throttle)
                     // These are already in the correct layout — no reorder needed.
                     // Frame signs for attitude commands would come from Frames.TransformAttitude
                     // but for now we assume the client sends in the frame the controller expects.
                     return new Axis4(x, y, z, w);
                     
                 case GoalMode.Wrench:
-                    if (clientFrame == SimFrame.FLU)
-                        return new Axis4(x, z, y, w);  // (tx_fwd, tz_up→Y, ty_left→Z, thrust)
-                    else if (clientFrame == SimFrame.FRD)
-                        return new Axis4(x, -z, -y, w); // FRD: flip Y→right, Z→down
-                    else
-                        return new Axis4(x, y, z, w);  // UnityBody: no remap
-
+                    // Client sends: (tx, ty, tz, thrust) — torques in client body frame
+                    // Thrust is a scalar along body vertical — no frame conversion needed.
+                    //
+                    // Torques are pseudovectors (same transform as angular velocity).
+                    // Use Frames.InverseTransformAngularVelocity to convert client→Unity,
+                    // which handles both the axis swap AND chirality correction.
+                    Vector3 torqueClient = new Vector3(x, y, z);
+                    Vector3 torqueUnity = Frames.InverseTransformAngularVelocity(torqueClient, clientFrame);
+                    return new Axis4(torqueUnity.x, torqueUnity.y, torqueUnity.z, w);
+         
                 case GoalMode.Passthrough:
                 case GoalMode.None:
                 default:
@@ -698,18 +683,11 @@ namespace SimCore.Rpc
         {
             if (!RequireConnected(req, out var err)) return err;
             if (!TryGetSelectedDrone(req, out var drone, out var droneErr)) return droneErr;
-
+ 
             var s = drone.GetSensorData();
-    
-            // GPS position: convert Unity world (Y-up) to client frame for the wire
-            // Unity (x, y, z) where Y=up → FLU (x, z, y) where Z=up
-            Vector3 gpsOut = _clientFrame switch
-            {
-                SimFrame.FLU => new Vector3(s.GpsPosition.x, s.GpsPosition.z, s.GpsPosition.y),
-                SimFrame.FRD => new Vector3(s.GpsPosition.x, -s.GpsPosition.z, -s.GpsPosition.y),
-                _ => s.GpsPosition
-            };
-
+ 
+            // All sensor data is already in the output frame from SensorManager.
+            // No inline frame conversion needed.
             return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
             {
                 ["imu_ang_vel"]     = Vec3ToArray(s.ImuAngVel),
@@ -719,7 +697,7 @@ namespace SimCore.Rpc
                 ["imu_orientation"] = QuatToArray(s.ImuOrientation),
                 ["imu_timestamp"]   = s.ImuTimestampSec,
                 ["imu_valid"]       = s.ImuValid,
-                ["gps_position"]    = Vec3ToArray(gpsOut),  // <-- use converted position
+                ["gps_position"]    = Vec3ToArray(s.GpsPosition),
                 ["gps_timestamp"]   = s.GpsTimestampSec,
                 ["gps_valid"]       = s.GpsValid,
             });
@@ -800,21 +778,26 @@ namespace SimCore.Rpc
         {
             if (!RequireConnected(req, out var err)) return err;
             if (!TryGetSelectedDrone(req, out var drone, out var droneErr)) return droneErr;
-
+ 
+            // Read client-frame position
             float px = req.GetFloat("x", 0f);
-            float py = req.GetFloat("y", 3f);  // default spawn height
+            float py = req.GetFloat("y", 0f);
             float pz = req.GetFloat("z", 0f);
-            var position = new Vector3(px, py, pz);
-
-            // Quaternion defaults to identity if not provided
+ 
+            // Read client-frame quaternion (defaults to identity)
             float qx = req.GetFloat("qx", 0f);
             float qy = req.GetFloat("qy", 0f);
             float qz = req.GetFloat("qz", 0f);
             float qw = req.GetFloat("qw", 1f);
-            var rotation = new Quaternion(qx, qy, qz, qw);
-
+ 
+            // Convert from client frame → Unity
+            Vector3 position = Frames.InverseTransformWorldPosition(
+                new Vector3(px, py, pz), _clientFrame);
+            Quaternion rotation = Frames.InverseTransformQuaternion(
+                new Quaternion(qx, qy, qz, qw), _clientFrame);
+ 
             drone.ResetPose(position, rotation);
-
+ 
             return RpcResponse.Ok(req.RequestId);
         }
 

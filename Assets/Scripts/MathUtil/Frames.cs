@@ -11,7 +11,9 @@ namespace MathUtil
 
     public static class Frames
     {
-        // -------- Public API (UE style) --------
+        // ====================================================================
+        // Public API — Outbound (Unity → Client Frame)
+        // ====================================================================
 
         public static Vector3 TransformLinear(Vector3 vBodyUnity, SimFrame target)
         {
@@ -34,10 +36,11 @@ namespace MathUtil
         {
             if (target == SimFrame.FRD)
             {
-                return new Vector3(0,0,Unity.z);
+                return new Vector3(0, 0, Unity.z);
             }
             return Unity;
         }
+
         public static Vector3 TransformAcceleration(Vector3 aBodyUnity, SimFrame target)
         {
             return target switch
@@ -60,52 +63,139 @@ namespace MathUtil
         
         public static Vector3 TransformAttitude(Vector3 rpyDegUnityBody, SimFrame target)
         {
-            // rpyDegUnityBody is expected to be (roll, pitch, yaw) in DEGREES,
-            // in YOUR controller convention, same as Unreal FRotator usage.
-
             return target switch
             {
-                // Match your Unreal UEToFLU_Attitude:
-                // roll stays, pitch flips, yaw flips
                 SimFrame.FLU => new Vector3(
                     -rpyDegUnityBody.x,   // roll
                     -rpyDegUnityBody.y,   // pitch
-                    rpyDegUnityBody.z    // yaw
+                    rpyDegUnityBody.z     // yaw
                 ),
-                // Match your Unreal UEToFRD_Attitude:
-                // roll stays, pitch stays, yaw flips
                 SimFrame.FRD => new Vector3(
                     rpyDegUnityBody.x,
                     rpyDegUnityBody.y,
                     -rpyDegUnityBody.z
                 ),
-
                 _ => rpyDegUnityBody
             };
         }
 
-        // -------- Implementation (UnityBody -> FLU/FRD) --------
+        /// <summary>
+        /// Convert a world-space position from Unity (Y-up) to the target frame.
+        /// Used for GPS position and any other world-frame vectors.
+        ///
+        /// Unity world: X=east(?), Y=up, Z=north(?)  — axis meaning depends on scene,
+        /// but the Y↔Z swap for up-axis is always correct.
+        ///
+        /// FLU world: same horizontal axes, Z=up  →  (x, z, y)
+        /// FRD world: same horizontal axes, Z=down → (x, -z, -y)
+        /// </summary>
+        public static Vector3 TransformWorldPosition(Vector3 posUnityWorld, SimFrame target)
+        {
+            return target switch
+            {
+                SimFrame.FLU => new Vector3(posUnityWorld.x, posUnityWorld.z, posUnityWorld.y),
+                SimFrame.FRD => new Vector3(posUnityWorld.x, -posUnityWorld.z, -posUnityWorld.y),
+                _ => posUnityWorld
+            };
+        }
+
+        public static Quaternion TransformQuaternion(Quaternion qBodyUnity, SimFrame target)
+        {
+            if (target == SimFrame.UnityBody) return qBodyUnity;
+
+            Quaternion unityFromTarget = GetUnityFromTargetBasis(target);
+            return Quaternion.Inverse(unityFromTarget) * qBodyUnity * unityFromTarget;
+        }
+
+        // ====================================================================
+        // Public API — Inbound (Client Frame → Unity)
+        // ====================================================================
+
+        /// <summary>
+        /// Convert a world-space position from client frame back to Unity (Y-up).
+        /// Inverse of TransformWorldPosition.
+        ///
+        /// FLU (x,y,z) where Z=up  →  Unity (x, z, y) where Y=up
+        /// FRD (x,y,z) where Z=down → Unity (x, -z, -y) where Y=up
+        /// </summary>
+        public static Vector3 InverseTransformWorldPosition(Vector3 posClient, SimFrame source)
+        {
+            return source switch
+            {
+                SimFrame.FLU => new Vector3(posClient.x, posClient.z, posClient.y),
+                SimFrame.FRD => new Vector3(posClient.x, -posClient.z, -posClient.y),
+                _ => posClient
+            };
+        }
+
+        /// <summary>
+        /// Convert a torque/angular-velocity vector from client frame back to Unity body.
+        /// Inverse of TransformAngularVelocity.
+        ///
+        /// This is the critical chirality fix: FLU is right-handed, Unity is left-handed.
+        /// TransformAngularVelocity (out) does: axis swap + negate all (LH→RH).
+        /// The inverse (in) is the same operation: negate all + axis swap (RH→LH).
+        /// Since negate-all commutes with axis swap, the formula is identical.
+        ///
+        /// FLU (x,y,z) → Unity (-x, -z, -y)   [negate all + swap Y↔Z]
+        /// FRD (x,y,z) → Unity (x, -z, -y)     [swap Y↔Z, negate swapped pair]
+        /// </summary>
+        public static Vector3 InverseTransformAngularVelocity(Vector3 wClient, SimFrame source)
+        {
+            return source switch
+            {
+                SimFrame.FLU => new Vector3(-wClient.x, -wClient.z, -wClient.y),
+                SimFrame.FRD => new Vector3(wClient.x, -wClient.z, -wClient.y),
+                _ => wClient
+            };
+        }
+
+        /// <summary>
+        /// Convert a quaternion from client frame back to Unity body frame.
+        /// Inverse of TransformQuaternion.
+        ///
+        /// TransformQuaternion does:   q_target = Q_basis^-1 * q_unity * Q_basis
+        /// Inverse is:                 q_unity  = Q_basis * q_target * Q_basis^-1
+        /// </summary>
+        public static Quaternion InverseTransformQuaternion(Quaternion qClient, SimFrame source)
+        {
+            if (source == SimFrame.UnityBody) return qClient;
+
+            Quaternion unityFromTarget = GetUnityFromTargetBasis(source);
+            return unityFromTarget * qClient * Quaternion.Inverse(unityFromTarget);
+        }
+
+        /// <summary>
+        /// Convert a body-frame linear vector from client frame back to Unity body.
+        /// Inverse of TransformLinear.
+        ///
+        /// The axis swap (x,z,y) is its own inverse for FLU.
+        /// FRD uses sign flips that are also self-inverse.
+        /// </summary>
+        public static Vector3 InverseTransformLinear(Vector3 vClient, SimFrame source)
+        {
+            return source switch
+            {
+                SimFrame.FLU => new Vector3(vClient.x, vClient.z, vClient.y),
+                SimFrame.FRD => new Vector3(vClient.x, -vClient.z, -vClient.y),
+                _ => vClient
+            };
+        }
+
+        // ====================================================================
+        // Implementation — UnityBody → FLU/FRD
+        // ====================================================================
         //
-        // Your UnityBody basis:
-        //   X = forward
-        //   Y = up
-        //   Z = left
+        // UnityBody basis:
+        //   X = forward, Y = up, Z = left
         //
-        // Target FLU:
-        //   X = forward
-        //   Y = left
-        //   Z = up
+        // FLU:
+        //   X = forward, Y = left, Z = up
+        //   Pure vectors: (x,y,z)_body → (x, z, y)_flu
         //
-        // Therefore for pure vectors (linear/accel):
-        //   (x,y,z)_body -> (x, z, y)_flu
-        //
-        // Target FRD:
-        //   X = forward
-        //   Y = right = -left
-        //   Z = down  = -up
-        //
-        // Therefore:
-        //   (x,y,z)_body -> (x, -z, -y)_frd
+        // FRD:
+        //   X = forward, Y = right = -left, Z = down = -up
+        //   Pure vectors: (x,y,z)_body → (x, -z, -y)_frd
 
         // Linear / Acceleration: pure axis relabel
         private static Vector3 UnityBodyToFLU_Linear(Vector3 v)
@@ -114,39 +204,25 @@ namespace MathUtil
         private static Vector3 UnityBodyToFLU_Accel(Vector3 a)
             => new Vector3(a.x, a.z, a.y);
 
-        // Angular velocity: relabel + negate all (LH → RH)
+        // Angular velocity: relabel + negate all (LH → RH chirality correction)
         private static Vector3 UnityBodyToFLU_AngularRate(Vector3 w)
             => new Vector3(-w.x, -w.z, -w.y);
+
         private static Vector3 UnityBodyToFRD_AngularRate(Vector3 w)
-        {
-            // pure vector transform body->FRD:
-            // (x,y,z)_body -> (x, -z, -y)
-            // Here +Y is RIGHT and +Z is DOWN already, matching PX4-ish semantics.
-            return new Vector3(w.x, -w.z, -w.y);
-        }
+            => new Vector3(w.x, -w.z, -w.y);
         
         private static Vector3 UnityBodyToFRD_Linear(Vector3 v)
             => new Vector3(v.x, -v.y, -v.z);
+
         private static Vector3 UnityBodyToFRD_Accel(Vector3 a)
             => new Vector3(a.x, -a.z, -a.y);
 
-        
-        public static Quaternion TransformQuaternion(Quaternion qBodyUnity, SimFrame target)
-        {
-            // True basis-change for rotations.
-            // qBodyUnity is the body orientation expressed in UnityBody basis.
-            // Returns the same physical orientation expressed in the target frame basis.
-            if (target == SimFrame.UnityBody) return qBodyUnity;
-
-            Quaternion unityFromTarget = GetUnityFromTargetBasis(target);
-            return Quaternion.Inverse(unityFromTarget) * qBodyUnity * unityFromTarget;
-        }
+        // ====================================================================
+        // Quaternion basis-change helpers
+        // ====================================================================
 
         private static Quaternion GetUnityFromTargetBasis(SimFrame target)
         {
-            // Target frame axes expressed in UnityBody coordinates (X fwd, Y up, Z left).
-            // FLU: X=fwd, Y=left, Z=up  => (x,y,z) = (X, Z, Y)
-            // FRD: X=fwd, Y=right=-left, Z=down=-up => (x,y,z) = (X, -Z, -Y)
             return target switch
             {
                 SimFrame.FLU => QuaternionFromBasis(
@@ -221,6 +297,5 @@ namespace MathUtil
                 (m.m10 - m.m01) * invSZ
             );
         }
-
     }
 }
