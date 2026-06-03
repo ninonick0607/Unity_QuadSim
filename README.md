@@ -82,7 +82,7 @@ The project includes a ready-to-go scene with SimRoot and a ground plane already
 
 QuadSim has three control sources. Only one has authority at a time.
 
-### UI (Default)
+### UI (Default, Currently WIP)
 
 Gamepad or keyboard input. This is the default if you don't change anything. Pick up a controller and fly, or use the on-screen controls.
 
