@@ -362,6 +362,7 @@ namespace SimCore.Rpc
                 ["pause"]            = HandlePause,
                 ["resume"]           = HandleResume,
                 ["step"]             = HandleStep,
+                ["step_with_command"] = HandleStepWithCommand,
                 ["set_time_scale"]   = HandleSetTimeScale,
                 ["reset_simulation"] = HandleResetSimulation,
 
@@ -427,9 +428,7 @@ namespace SimCore.Rpc
                 return RpcResponse.Error("denied", req.RequestId);
             }
 
-            // Pending approval — for Phase 9a, we auto-accept since there's no UI popup yet.
-            // Phase 10 will add the UI popup. For now, accept immediately.
-            // TODO(Phase 10): Hold the request and wait for UI approval.
+ 
             _sim.AcceptExternalConnection();
             CompleteConnection(clientName);
 
@@ -892,6 +891,18 @@ namespace SimCore.Rpc
             });
         }
 
+        private RpcResponse HandleStepWithCommand(RpcRequest req)
+        {
+            var cmdResp = HandleSendCommand(req);
+            if (!cmdResp.Success)
+                return cmdResp;
+
+            var stepResp = HandleStep(req);
+            if (!stepResp.Success)
+                return stepResp;
+            return HandleGetSensorData(req);        // reply = post-step sensor snapshot 
+        }
+        
         // --- set_time_scale ---
 
         private RpcResponse HandleSetTimeScale(RpcRequest req)

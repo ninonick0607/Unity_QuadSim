@@ -67,6 +67,10 @@ namespace SimCore
         
         private void Awake()
         {
+            Application.runInBackground = true;        // CRITICAL: Unity throttles to ~single-digit
+            QualitySettings.vSyncCount = 0;            // fps when unfocused — and you're always
+            Application.targetFrameRate = -1;          // focused on the terminal running Optuna
+            
             Physics.simulationMode = SimulationMode.Script;
             ClockFactory.Initialize(baseHz: baseHz, startNanos: 0, paused: startPaused, timeScale: timeScale);
         }
