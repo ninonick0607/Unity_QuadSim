@@ -99,12 +99,14 @@ namespace MathUtil
             };
         }
 
-        public static Quaternion TransformQuaternion(Quaternion qBodyUnity, SimFrame target)
+        public static Quaternion TransformQuaternion(Quaternion q, SimFrame target)
         {
-            if (target == SimFrame.UnityBody) return qBodyUnity;
-
-            Quaternion unityFromTarget = GetUnityFromTargetBasis(target);
-            return Quaternion.Inverse(unityFromTarget) * qBodyUnity * unityFromTarget;
+            return target switch
+            {
+                // Negate all spatial components to flip chirality, swap Y and Z
+                SimFrame.FLU => new Quaternion(-q.x, -q.z, -q.y, q.w),
+                _ => q 
+            };
         }
 
         // ====================================================================

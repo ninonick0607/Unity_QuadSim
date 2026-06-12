@@ -159,6 +159,7 @@ namespace SimCore.Rpc
 
         private void Start()
         {
+            ApplyCommandLineOverrides();
             _sim = SimCoreApi.Get();
             if (_sim == null)
             {
@@ -213,6 +214,19 @@ namespace SimCore.Rpc
         // ============================================================================
 
         /// <summary>Start the ZMQ server thread.</summary>
+        ///
+        private void ApplyCommandLineOverrides()
+        {
+            var args = Environment.GetCommandLineArgs();
+            for (int i = 0; i < args.Length - 1; i++)
+            {
+                if (args[i] == "-rpcPort" && int.TryParse(args[i + 1], out int rp))
+                    commandPort = rp;
+                if (args[i] == "-telemetryPort" && int.TryParse(args[i + 1], out int tp))
+                    telemetryPort = tp;
+            }
+            Debug.Log($"[RpcAdapter] Ports: REP={commandPort} PUB={telemetryPort}");
+        }
         public void StartServer()
         {
             if (_server != null && _server.IsRunning)

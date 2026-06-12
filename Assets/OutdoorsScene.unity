@@ -535,7 +535,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6615807386293998892, guid: 4b0405f3a40170d049d7b5009cece4a1, type: 3}
       propertyPath: logEffectiveHz
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -1707,11 +1707,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1395401634192402246, guid: e347d65c18202c249879c3d118638062, type: 3}
       propertyPath: m_LocalScale.z
-      value: 12.116564
+      value: 39.331577
       objectReference: {fileID: 0}
     - target: {fileID: 1395401634192402246, guid: e347d65c18202c249879c3d118638062, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -11.1
+      value: -3.36
       objectReference: {fileID: 0}
     - target: {fileID: 1395401634192402246, guid: e347d65c18202c249879c3d118638062, type: 3}
       propertyPath: m_LocalPosition.y
@@ -1719,7 +1719,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1395401634192402246, guid: e347d65c18202c249879c3d118638062, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -0.12
+      value: 0.41
       objectReference: {fileID: 0}
     - target: {fileID: 1395401634192402246, guid: e347d65c18202c249879c3d118638062, type: 3}
       propertyPath: m_LocalRotation.w
@@ -1751,11 +1751,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4827713012878329830, guid: e347d65c18202c249879c3d118638062, type: 3}
       propertyPath: _toggle
-      value: 1
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4827713012878329830, guid: e347d65c18202c249879c3d118638062, type: 3}
+      propertyPath: _logForces
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4827713012878329830, guid: e347d65c18202c249879c3d118638062, type: 3}
       propertyPath: _windSpeed
-      value: 5
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 8627851923250163779, guid: e347d65c18202c249879c3d118638062, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'

@@ -28,3 +28,4 @@ Assets/AddressableAssetsData/*/*.bin*
 
 # Gradle
 .gradle/
+runs/*.csv
