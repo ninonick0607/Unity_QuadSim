@@ -10,7 +10,9 @@ GameObject:
   m_Component:
   - component: {fileID: 5041832275845641998}
   - component: {fileID: 6615807386293998892}
+  - component: {fileID: -343744523309438113}
   - component: {fileID: 7671760328521991184}
+  - component: {fileID: 3517857633211225954}
   m_Layer: 0
   m_Name: SimRoot
   m_TagString: Untagged
@@ -46,12 +48,30 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::QuadSim.SimCore.SimulationManager
   baseHz: 250
-  runMode: 0
+  runMode: 1
   timeScale: 1
   maxStepsPerFrame: 1000
   startPaused: 0
   logEffectiveHz: 0
   logIntervalSeconds: 1
+--- !u!114 &-343744523309438113
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3589958785238508409}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d4cc73f361ec43ceb5698b369567ff37, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SimCore.Rpc.ExternalRpcAdapter
+  commandPort: 5555
+  telemetryPort: 5556
+  autoStart: 1
+  heartbeatTimeoutSec: 5
+  maxRequestsPerFrame: 10
+  defaultPublishHz: 50
 --- !u!114 &7671760328521991184
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -70,3 +90,18 @@ MonoBehaviour:
   selectedConfigName: StandardDrone_Config
   simManager: {fileID: 6615807386293998892}
   swarmMode: 0
+--- !u!114 &3517857633211225954
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3589958785238508409}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4db38ead64624f68971ebc04188268a7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SimCore.ControlAuthorityManager
+  defaultSource: 0
+  connectionTimeoutSec: 60
+  autoAcceptWhenDefault: 1

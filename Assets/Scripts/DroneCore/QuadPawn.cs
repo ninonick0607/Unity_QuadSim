@@ -218,7 +218,28 @@ namespace DroneCore
 
             ApplyControllerConfig();
 
-  
+            Debug.Log("==== Rotor Geometry Check ====");
+
+            for (int i = 0; i < _motors.Length; i++)
+            {
+                if (_motors[i] == null) continue;
+
+                Vector3 local = _motors[i].localPosition;
+                Vector3 world = _motors[i].position;
+
+                float armLocalXZ = new Vector2(local.x, local.z).magnitude;
+                float armWorldXZ = new Vector2(
+                    world.x - transform.position.x,
+                    world.z - transform.position.z
+                ).magnitude;
+
+                Debug.Log(
+                    $"Motor {i}: " +
+                    $"local={local} " +
+                    $"world={world} " +
+                    $"armLocal={armLocalXZ:F3}m " +
+                    $"armWorld={armWorldXZ:F3}m");
+            }
         }
 
         private void ApplyPhysicalConfig()
@@ -234,8 +255,8 @@ namespace DroneCore
             // TODO: Uncomment when body response is validated
             if (_config.DroneParams.CenterOfMass != Vector3.zero)
                 rb.centerOfMass = _config.DroneParams.CenterOfMass;
-            // if (_config.DroneParams.Inertia != Vector3.zero)
-            //     rb.inertiaTensor = _config.DroneParams.Inertia;
+            if (_config.DroneParams.Inertia != Vector3.zero)
+                 rb.inertiaTensor = _config.DroneParams.Inertia;
             if (_config.DroneParams.LinearDrag_Coeff >= 0)
                 rb.linearDamping = _config.DroneParams.LinearDrag_Coeff;
             if (_config.DroneParams.AngularDrag_Coeff >= 0)
@@ -549,8 +570,7 @@ namespace DroneCore
 
                 float direction = spinDir[i];
                 float frameRotation = (rpm / 60f) * 360f * deltaTime * direction;
-                propellerMeshes[i].Rotate(0f, frameRotation, 0f, Space.Self);
-            }
+                propellerMeshes[i].Rotate(0f, 0f, frameRotation, Space.Self);            }
         }
 
         // ============================================================================
