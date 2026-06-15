@@ -148,6 +148,8 @@ namespace SimCore.Rpc
         /// <summary>Telemetry port number.</summary>
         public int TelemetryPort => telemetryPort;
 
+        public event Action<Dictionary<string, object>> OnVizPayload;
+
         // ============================================================================
         // Unity Lifecycle
         // ============================================================================
@@ -379,7 +381,9 @@ namespace SimCore.Rpc
                 ["step_with_command"] = HandleStepWithCommand,
                 ["set_time_scale"]   = HandleSetTimeScale,
                 ["reset_simulation"] = HandleResetSimulation,
-
+                
+                ["set_wind"]         = HandleSetWind,
+                
                 // --- Phase 9c: Telemetry streaming ---
                 ["subscribe"]        = HandleSubscribe,
                 ["unsubscribe"]      = HandleUnsubscribe,
@@ -770,6 +774,45 @@ namespace SimCore.Rpc
         }
 
         // ============================================================================
+        // Environment Handlers: Plant / Disturbance
+        // ============================================================================
+
+        // --- set_wind ---
+        // Toggles (and optionally re-speeds) every WindModule in the scene. Wind is
+        // plant configuration, not vehicle control, so it requires a connected client
+        // but NOT External drone authority — same tier as pause / set_time_scale.
+        private RpcResponse HandleSetWind(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+
+            bool enabled = req.GetBool("enabled", true);
+
+            // wind_speed is optional — only overridden if the client sent it.
+            bool hasSpeed = req.Params.ContainsKey("wind_speed");
+            float windSpeed = req.GetFloat("wind_speed", 0f);
+
+            int n = 0;
+            foreach (var w in Experimental.WindModule.Active)
+            {
+                if (w == null) continue;
+                w.SetEnabled(enabled);
+                if (hasSpeed) w.SetWindSpeed(windSpeed);
+                n++;
+            }
+
+            if (n == 0)
+                Debug.LogWarning("[RpcAdapter] set_wind: no WindModule in scene — nothing toggled.");
+            else
+                Debug.Log($"[RpcAdapter] set_wind: enabled={enabled}" +
+                          (hasSpeed ? $", wind_speed={windSpeed}" : "") + $" -> {n} module(s).");
+
+            var data = new Dictionary<string, object> { ["enabled"] = enabled, ["modules"] = n };
+            if (hasSpeed) data["wind_speed"] = windSpeed;
+            return RpcResponse.Ok(req.RequestId, data);
+        }
+        
+        
+        // ============================================================================
         // Phase 9b Handlers: Reset Operations
         // ============================================================================
 
@@ -908,13 +951,14 @@ namespace SimCore.Rpc
         private RpcResponse HandleStepWithCommand(RpcRequest req)
         {
             var cmdResp = HandleSendCommand(req);
-            if (!cmdResp.Success)
-                return cmdResp;
+            if (!cmdResp.Success) return cmdResp;
 
             var stepResp = HandleStep(req);
-            if (!stepResp.Success)
-                return stepResp;
-            return HandleGetSensorData(req);        // reply = post-step sensor snapshot 
+            if (!stepResp.Success) return stepResp;
+            
+            OnVizPayload?.Invoke(req.Params);
+
+            return HandleGetSensorData(req);   // reply = post-step sensor snapshot
         }
         
         // --- set_time_scale ---

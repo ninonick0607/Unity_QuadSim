@@ -64,6 +64,15 @@ namespace Experimental
         {
             _boxCollider = GetComponent<BoxCollider>();
 
+            // ---- Debug logging for exact dimensions and center/origin ----
+            Vector3 worldSize = Vector3.Scale(_boxCollider.size, transform.lossyScale);
+            Vector3 worldCenter = transform.TransformPoint(_boxCollider.center);
+            
+            Debug.Log($"[WindModule] Awake - Windzone Initialized.\n" +
+                      $"Dimensions (World Size): X:{worldSize.x:F3}, Y:{worldSize.y:F3}, Z:{worldSize.z:F3}\n" +
+                      $"Origin/Center (World Position): {worldCenter}\n" +
+                      $"Collider Center (Local Offset): {_boxCollider.center}");
+
             if (_logForces)
             {
                 string dir = Path.Combine(Application.dataPath, "../runs");
@@ -90,7 +99,27 @@ namespace Experimental
             _log?.Flush();
             _log?.Dispose();
         }
+        // ============================================================================
+        // Runtime registry + control API
+        //   Self-registering so the RPC layer never scans the scene. _toggle is the
+        //   force gate (see OnTriggerStay); SetEnabled flips it live so one build can
+        //   serve the wind-OFF gain study and the wind-ON net study without a rebuild.
+        // ============================================================================
 
+        private static readonly List<WindModule> _active = new();
+        public static IReadOnlyList<WindModule> Active => _active;
+
+        private void OnEnable()  { if (!_active.Contains(this)) _active.Add(this); }
+        private void OnDisable() { _active.Remove(this); }
+
+        public bool  IsEnabled => _toggle;
+        public float WindSpeed => _windSpeed;
+
+        /// <summary>Turn the disturbance force on/off at runtime.</summary>
+        public void SetEnabled(bool on) => _toggle = on;
+
+        /// <summary>Override fan jet speed (m/s) at runtime. Clamped non-negative.</summary>
+        public void SetWindSpeed(float metersPerSecond) => _windSpeed = Mathf.Max(0f, metersPerSecond);
         private void OnTriggerStay(Collider other)
         {
             var rb = other.attachedRigidbody;
@@ -202,6 +231,29 @@ namespace Experimental
             _pendingRows.Clear();
         }
 
+        // ---- Always draw the windzone outline ----
+        private void OnDrawGizmos()
+        {
+            if (_boxCollider == null) _boxCollider = GetComponent<BoxCollider>();
+            if (_boxCollider == null) return;
+
+            // Save the original matrix and color to restore later
+            Matrix4x4 oldMatrix = Gizmos.matrix;
+            Color oldColor = Gizmos.color;
+
+            // Align the Gizmo drawing space with the Transform's local space (handles rotation/scale)
+            Gizmos.matrix = transform.localToWorldMatrix;
+            
+            // Draw the box outline (semi-transparent green)
+            Gizmos.color = new Color(0f, 1f, 0f, 0.4f);
+            Gizmos.DrawWireCube(_boxCollider.center, _boxCollider.size);
+
+            // Restore previous Gizmo states
+            Gizmos.matrix = oldMatrix;
+            Gizmos.color = oldColor;
+        }
+
+        // ---- Draw the internal directional rays only when selected ----
         private void OnDrawGizmosSelected()
         {
             if (_boxCollider == null) _boxCollider = GetComponent<BoxCollider>();

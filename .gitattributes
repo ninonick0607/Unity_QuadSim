@@ -1,3 +1,4 @@
+Assets/** filter=lfs diff=lfs merge=lfs -text
 *.cs !text !filter !merge !diff
 *.meta !text !filter !merge !diff
 *.unity !text !filter !merge !diff

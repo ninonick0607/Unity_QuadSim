@@ -9,7 +9,7 @@ namespace Yaml.Drone
     {
         public static string GetConfigDirectory()
         {
-            return Path.Combine(Application.dataPath, "Configs", "Drones");
+            return Path.Combine(Application.streamingAssetsPath, "Configs", "Drones");
         }
         
         public static List<string> GetAvailableConfigs()

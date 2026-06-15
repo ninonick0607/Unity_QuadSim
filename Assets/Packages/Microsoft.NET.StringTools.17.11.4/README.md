@@ -1,5 +1,3 @@
-# Microsoft.NET.StringTools
-
-This package contains the Microsoft.NET.StringTools assembly which implements common string-related functionality such as weak interning.
-
-At this time, this is primarily an internal implementation detail of MSBuild and Visual Studio and we do not expect other consumers of the package. If you think you might like to use it, please start a discussion at https://github.com/dotnet/msbuild/discussions to let us know your use cases.
+version https://git-lfs.github.com/spec/v1
+oid sha256:42648a4a19994baf0f8b0cd3be0afecfd1c29db526548f981d62824c6caaaa05
+size 461
