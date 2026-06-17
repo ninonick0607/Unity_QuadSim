@@ -43,7 +43,6 @@ namespace RobotCore.Sensors
             LastTimestampSec = 0;
             IsValid = false;
         }
-
         public void Initialize(Rigidbody rb)
         {
             if (rb == null)
@@ -56,8 +55,7 @@ namespace RobotCore.Sensors
             _hasPrev = true;
             IsValid = true;
         }
-
-
+        
         public void SampleAngularVelocity(double nowSec, float deltaTime)
         {
             Vector3 wWorld = _rb.angularVelocity;
@@ -65,7 +63,6 @@ namespace RobotCore.Sensors
             
             LastAngVel = Frames.TransformAngularVelocity(wBody, OutputFrame); // Output is in Rad/s
         }
-
         public void SampleAttitude(double nowSec, float deltaTime)
         {
             Vector3 euler = _bodyTransform.rotation.eulerAngles;
@@ -84,7 +81,6 @@ namespace RobotCore.Sensors
             LastAtt = att;
             LastOrientation = Frames.TransformQuaternion(_bodyTransform.rotation, OutputFrame);
         }
-
         private static float Wrap180(float a)
         {
             a %= 360f;
@@ -92,9 +88,6 @@ namespace RobotCore.Sensors
             if (a < -180f) a += 360f;
             return a;
         }
-
-
-        
         public void SampleAcceleration(double nowSec, float deltaTime)
         {
             Vector3 vWorld = _rb.linearVelocity;
@@ -112,7 +105,6 @@ namespace RobotCore.Sensors
             
             LastLinAcc = Frames.TransformAcceleration(aBody, OutputFrame);
         }
-
         public void SampleVelocity(double nowSec, float deltaTime)
         {
             Vector3 vWorld = _rb.linearVelocity;

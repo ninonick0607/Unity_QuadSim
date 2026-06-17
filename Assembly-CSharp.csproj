@@ -58,6 +58,7 @@
     <Compile Include="Assets/Scripts/DroneCore/Debug/DroneDebugDraw.cs" />
     <Compile Include="Assets/Scripts/DroneCore/Controllers/AxisControllers/PositionController.cs" />
     <Compile Include="Assets/Scripts/RobotCore/RobotCore.cs" />
+    <Compile Include="Assets/Scripts/RobotCore/Sensors/BaroSensor.cs" />
     <Compile Include="Assets/Scripts/UI/Core/TelemetryRingBuffer.cs" />
     <Compile Include="Assets/Scripts/UI/DockableWindowController.cs" />
     <Compile Include="Assets/Scripts/SimCore/Common/FlightCommandLayout.cs" />
@@ -76,6 +77,7 @@
     <Compile Include="Assets/Scripts/UI/TelemetryDeckController.cs" />
     <Compile Include="Assets/Scripts/DroneCore/Common/QuadPIDController.cs" />
     <Compile Include="Assets/Scripts/DroneCore/Api/QuadSimApi.cs" />
+    <Compile Include="Assets/Scripts/RobotCore/Sensors/MagSensor.cs" />
     <Compile Include="Assets/Scripts/Yaml/Drone/DroneConfigStructs.cs" />
     <Compile Include="Assets/Scripts/Yaml/Drone/YamlParser.cs" />
     <Compile Include="Assets/Scripts/SimCore/Common/CommonStructs.cs" />
