@@ -52,7 +52,7 @@ namespace RobotCore.Sensors
             _bodyTransform = bodyTransform;
         }
         
-        public void Reset()
+        //public void Reset()
         
     }
 }
