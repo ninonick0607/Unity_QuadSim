@@ -10,8 +10,11 @@ namespace DroneCore
         [Header("Draw")]
         public bool drawUnityBodyAxes = true;
         public bool drawSelectedFrameAxes = true;
+        [Header("Frame Source")]
+        [Tooltip("ON: highlighted triad follows the live SensorManager.outputFrame. OFF: uses frameToDraw below (inspect-only, doesn't change output).")]
+        public bool followOutputFrame = true;
         public SimFrame frameToDraw = SimFrame.FLU;
-
+        
         public bool drawMotorAxes = false;
         public float axisLength = 0.25f;
 
@@ -42,10 +45,14 @@ namespace DroneCore
             {
                 DrawAxisTriplet(origin, Xb, Yb, Zb, axisLength, unityBodyBrightness);
             }
-
+            
+            SimFrame activeFrame = frameToDraw;
+            if (followOutputFrame && body.Sensors != null)
+                activeFrame = body.Sensors.outputFrame;
+            
             if (drawSelectedFrameAxes)
             {
-                GetFrameAxesWorld(frameToDraw, Xb, Yb, Zb, out Vector3 Xf, out Vector3 Yf, out Vector3 Zf);
+                GetFrameAxesWorld(activeFrame, Xb, Yb, Zb, out Vector3 Xf, out Vector3 Yf, out Vector3 Zf);
                 DrawAxisTriplet(origin, Xf, Yf, Zf, axisLength, 1.0f);
             }
 
@@ -73,34 +80,12 @@ namespace DroneCore
         }
 
         private static void GetFrameAxesWorld(SimFrame frame, Vector3 Xb, Vector3 Yb, Vector3 Zb,
-                                              out Vector3 Xf, out Vector3 Yf, out Vector3 Zf)
+            out Vector3 Xf, out Vector3 Yf, out Vector3 Zf)
         {
-            // Inputs are UnityBody axes in world space:
-            // Xb = forward, Yb = up, Zb = left
-
-            switch (frame)
-            {
-                case SimFrame.FLU:
-                    // FLU: X forward, Y left, Z up
-                    Xf = Xb;
-                    Yf = Zb;
-                    Zf = Yb;
-                    break;
-
-                case SimFrame.FRD:
-                    // FRD: X forward, Y right, Z down
-                    Xf = Xb;
-                    Yf = -Zb;
-                    Zf = -Yb;
-                    break;
-
-                case SimFrame.UnityBody:
-                default:
-                    Xf = Xb;
-                    Yf = Yb;
-                    Zf = Zb;
-                    break;
-            }
+            Frames.GetTargetBasisInUnity(frame, out var ax, out var ay, out var az);
+            Xf = ax.x * Xb + ax.y * Yb + ax.z * Zb;
+            Yf = ay.x * Xb + ay.y * Yb + ay.z * Zb;
+            Zf = az.x * Xb + az.y * Yb + az.z * Zb;
         }
     }
 }

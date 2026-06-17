@@ -15,6 +15,29 @@ namespace MathUtil
         // Public API — Outbound (Unity → Client Frame)
         // ====================================================================
 
+        public static void GetTargetBasisInUnity(SimFrame target,
+            out Vector3 xAxis, out Vector3 yAxis, out Vector3 zAxis)
+        {
+            switch (target)
+            {
+                case SimFrame.FLU: // X=forward, Y=left(+Z), Z=up(+Y)
+                    xAxis = new Vector3(1f, 0f, 0f);
+                    yAxis = new Vector3(0f, 0f, 1f);
+                    zAxis = new Vector3(0f, 1f, 0f);
+                    break;
+                case SimFrame.FRD: // X=forward, Y=right(-Z), Z=down(-Y)
+                    xAxis = new Vector3(1f, 0f, 0f);
+                    yAxis = new Vector3(0f, 0f, -1f);
+                    zAxis = new Vector3(0f, -1f, 0f);
+                    break;
+                default: // UnityBody
+                    xAxis = new Vector3(1f, 0f, 0f);
+                    yAxis = new Vector3(0f, 1f, 0f);
+                    zAxis = new Vector3(0f, 0f, 1f);
+                    break;
+            }
+        }
+        
         public static Vector3 TransformLinear(Vector3 vBodyUnity, SimFrame target)
         {
             return target switch
@@ -147,7 +170,7 @@ namespace MathUtil
             return source switch
             {
                 SimFrame.FLU => new Vector3(-wClient.x, -wClient.z, -wClient.y),
-                SimFrame.FRD => new Vector3(wClient.x, -wClient.z, -wClient.y),
+                SimFrame.FRD => new Vector3(-wClient.x, wClient.z, wClient.y),
                 _ => wClient
             };
         }
@@ -202,20 +225,20 @@ namespace MathUtil
         // Linear / Acceleration: pure axis relabel
         private static Vector3 UnityBodyToFLU_Linear(Vector3 v)
             => new Vector3(v.x, v.z, v.y);
+        private static Vector3 UnityBodyToFRD_Linear(Vector3 v)
+            => new Vector3(v.x, -v.z, -v.y);
 
-        private static Vector3 UnityBodyToFLU_Accel(Vector3 a)
-            => new Vector3(a.x, a.z, a.y);
 
         // Angular velocity: relabel + negate all (LH → RH chirality correction)
         private static Vector3 UnityBodyToFLU_AngularRate(Vector3 w)
             => new Vector3(-w.x, -w.z, -w.y);
 
         private static Vector3 UnityBodyToFRD_AngularRate(Vector3 w)
-            => new Vector3(w.x, -w.z, -w.y);
+            => new Vector3(-w.x, w.z, w.y);
         
-        private static Vector3 UnityBodyToFRD_Linear(Vector3 v)
-            => new Vector3(v.x, -v.y, -v.z);
 
+        private static Vector3 UnityBodyToFLU_Accel(Vector3 a)
+            => new Vector3(a.x, a.z, a.y);
         private static Vector3 UnityBodyToFRD_Accel(Vector3 a)
             => new Vector3(a.x, -a.z, -a.y);
 
@@ -225,20 +248,8 @@ namespace MathUtil
 
         private static Quaternion GetUnityFromTargetBasis(SimFrame target)
         {
-            return target switch
-            {
-                SimFrame.FLU => QuaternionFromBasis(
-                    xAxisUnityBody: new Vector3(1f, 0f, 0f),
-                    yAxisUnityBody: new Vector3(0f, 0f, 1f),
-                    zAxisUnityBody: new Vector3(0f, 1f, 0f)
-                ),
-                SimFrame.FRD => QuaternionFromBasis(
-                    xAxisUnityBody: new Vector3(1f, 0f, 0f),
-                    yAxisUnityBody: new Vector3(0f, 0f, -1f),
-                    zAxisUnityBody: new Vector3(0f, -1f, 0f)
-                ),
-                _ => Quaternion.identity
-            };
+            GetTargetBasisInUnity(target, out var x, out var y, out var z);
+            return QuaternionFromBasis(x, y, z);
         }
 
         private static Quaternion QuaternionFromBasis(Vector3 xAxisUnityBody, Vector3 yAxisUnityBody, Vector3 zAxisUnityBody)

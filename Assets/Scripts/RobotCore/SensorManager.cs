@@ -40,7 +40,14 @@ namespace RobotCore
 
         public int ExecutionOrder => 50;
         public string DebugName => name;
-
+        
+        [ContextMenu("Toggle Output Frame  FLU <-> FRD")]
+        public void ToggleOutputFrame()
+        {
+            outputFrame = (outputFrame == SimFrame.FRD) ? SimFrame.FLU : SimFrame.FRD;
+            Debug.Log($"[SensorManager] outputFrame → {outputFrame}");
+        }
+        
         private void ResolveRefsOrThrow()
         {
             if (rb == null) rb = GetComponentInParent<Rigidbody>();
