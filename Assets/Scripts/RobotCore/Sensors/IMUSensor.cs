@@ -15,7 +15,7 @@ namespace RobotCore.Sensors
         private bool _hasPrev;
         
         public SimFrame OutputFrame = SimFrame.FLU;
-        public bool RemoveGravity = true;
+        public bool RemoveGravity = false;
 
         public Vector3 LastAngVel { get; private set; }      // rad/s in OutputFrame
         public Vector3 LastAtt { get; private set; }         // degrees (Euler) in OutputFrame
@@ -101,15 +101,14 @@ namespace RobotCore.Sensors
             Vector3 aWorld = (vWorld - _prevVelWorld) / deltaTime;
             _prevVelWorld = vWorld;
 
+            // Specific force (what a real accelerometer / PX4 HIL_SENSOR wants):
+            //   f = a_coordinate - g    (g = Physics.gravity = (0,-9.81,0))
+            // At rest a=0  -> f = -g = (0,+9.81,0) world (up) -> FRD (0,0,-9.81)
+            // Free-fall    -> f = 0
+            if (!RemoveGravity)
+                aWorld -= Physics.gravity;
+
             Vector3 aBody = _bodyTransform.InverseTransformDirection(aWorld);
-            
-            if (RemoveGravity)
-            {
-                Vector3 gWorld = Physics.gravity;              
-                Vector3 gBody = _bodyTransform.InverseTransformDirection(gWorld);
-                aBody = aBody - gBody;
-            }
-            
             LastLinAcc = Frames.TransformAcceleration(aBody, OutputFrame);
         }
         public void SampleVelocity(double nowSec, float deltaTime)

@@ -25,6 +25,7 @@ using UnityEngine;
 using SimCore.Common;
 using DroneCore.Api;
 using MathUtil;
+using RobotCore;
 
 namespace SimCore.Rpc
 {
@@ -701,39 +702,7 @@ namespace SimCore.Rpc
             if (!TryGetSelectedDrone(req, out var drone, out var droneErr)) return droneErr;
  
             var s = drone.GetSensorData();
- 
-            // All sensor data is already in the output frame from SensorManager.
-            // No inline frame conversion needed.
-            return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
-            {
-                ["imu_ang_vel"]     = Vec3ToArray(s.ImuAngVel),
-                ["imu_attitude"]    = Vec3ToArray(s.ImuAttitude),
-                ["imu_accel"]       = Vec3ToArray(s.ImuAccel),
-                ["imu_vel"]         = Vec3ToArray(s.ImuVel),
-                ["imu_orientation"] = QuatToArray(s.ImuOrientation),
-                ["imu_timestamp"]   = s.ImuTimestampSec,
-                ["imu_valid"]       = s.ImuValid,
-                ["gps_position"]    = Vec3ToArray(s.GpsPosition),
-                ["gps_timestamp"]   = s.GpsTimestampSec,
-                ["gps_valid"]       = s.GpsValid,
-                ["mag_field"]       = Vec3ToArray(s.MagField),
-                ["mag_heading_deg"]        = s.MagHeadingDeg,
-                ["mag_declination_deg"] =  s.MagDeclinationDeg,
-                ["mag_timestamp"] =  s.MagTimestampSec,
-                ["mag_valid"] =   s.MagValid,
-                ["baro_pressure_pa"] = s.BaroPressurePa,
-                ["baro_pressure_hpa"] = s.BaroPressureHPa,
-                ["baro_temperature_c"] = s.BaroTemperatureC,
-                ["baro_altitude_msl"] = s.BaroAltitudeMSL,
-                ["baro_pressure_altitude"] = s.BaroPressureAltitude,
-                ["baro_timestamp"] = s.BaroTimestampSec,
-                ["baro_valid"] = s.BaroValid,
-                ["gps_lat"] = s.GpsLatDeg,
-                ["gps_lon"] = s.GpsLonDeg,
-                ["gps_alt"] = s.GpsAltM,
-                ["gps_vel_ned"] = Vec3ToArray(s.GpsVelNED),
-                
-            });
+            return RpcResponse.Ok(req.RequestId, SensorDataToDict(s));
         }
 
         // --- get_telemetry ---
@@ -1027,6 +996,37 @@ namespace SimCore.Rpc
 
         // --- subscribe ---
 
+        private static Dictionary<string, object> SensorDataToDict(SensorData s) => new Dictionary<string, object>
+        {
+            ["imu_ang_vel"]     = Vec3ToArray(s.ImuAngVel),
+            ["imu_attitude"]    = Vec3ToArray(s.ImuAttitude),
+            ["imu_accel"]       = Vec3ToArray(s.ImuAccel),
+            ["imu_vel"]         = Vec3ToArray(s.ImuVel),
+            ["imu_orientation"] = QuatToArray(s.ImuOrientation),
+            ["imu_timestamp"]   = s.ImuTimestampSec,
+            ["imu_valid"]       = s.ImuValid,
+            ["gps_position"]    = Vec3ToArray(s.GpsPosition),
+            ["gps_timestamp"]   = s.GpsTimestampSec,
+            ["gps_valid"]       = s.GpsValid,
+            ["mag_field"]            = Vec3ToArray(s.MagField),
+            ["mag_heading_deg"]      = s.MagHeadingDeg,
+            ["mag_declination_deg"]  = s.MagDeclinationDeg,
+            ["mag_timestamp"]        = s.MagTimestampSec,
+            ["mag_valid"]            = s.MagValid,
+            ["baro_pressure_pa"]       = s.BaroPressurePa,
+            ["baro_pressure_hpa"]      = s.BaroPressureHPa,
+            ["baro_temperature_c"]     = s.BaroTemperatureC,
+            ["baro_altitude_msl"]      = s.BaroAltitudeMSL,
+            ["baro_pressure_altitude"] = s.BaroPressureAltitude,
+            ["baro_timestamp"]         = s.BaroTimestampSec,
+            ["baro_valid"]             = s.BaroValid,
+            ["gps_lat"]     = s.GpsLatDeg,
+            ["gps_lon"]     = s.GpsLonDeg,
+            ["gps_alt"]     = s.GpsAltM,
+            ["gps_vel_ned"] = Vec3ToArray(s.GpsVelNED),
+        };
+        
+        
         private RpcResponse HandleSubscribe(RpcRequest req)
         {
             if (!RequireConnected(req, out var err)) return err;
@@ -1114,21 +1114,7 @@ namespace SimCore.Rpc
             if (_subscribedTopics.Contains("sensors"))
             {
                 var s = drone.GetSensorData();
-                var sensorData = new Dictionary<string, object>
-                {
-                    ["imu_ang_vel"]     = Vec3ToArray(s.ImuAngVel),
-                    ["imu_attitude"]    = Vec3ToArray(s.ImuAttitude),
-                    ["imu_accel"]       = Vec3ToArray(s.ImuAccel),
-                    ["imu_vel"]         = Vec3ToArray(s.ImuVel),
-                    ["imu_orientation"] = QuatToArray(s.ImuOrientation),
-                    ["imu_timestamp"]   = s.ImuTimestampSec,
-                    ["imu_valid"]       = s.ImuValid,
-                    ["gps_position"]    = Vec3ToArray(s.GpsPosition),
-                    ["gps_timestamp"]   = s.GpsTimestampSec,
-                    ["gps_valid"]       = s.GpsValid,
-                };
-
-                byte[] frame = RpcSerializer.SerializePublish("sensors", sensorData);
+                byte[] frame = RpcSerializer.SerializePublish("sensors", SensorDataToDict(s));
                 _server.EnqueuePublish(frame);
             }
 

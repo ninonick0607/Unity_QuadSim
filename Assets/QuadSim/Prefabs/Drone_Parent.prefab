@@ -1488,17 +1488,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RobotCore.SensorManager
   rb: {fileID: 9081266204741351977}
   bodyTransform: {fileID: 0}
-  outputFrame: 1
+  outputFrame: 2
   imuHz: 250
   gpsHz: 10
   baroHz: 50
+  magHz: 50
   enableNoise: 0
-  originLatDeg: 30.4636
-  originLonDeg: -86.5533
+  originLatDeg: 30.436435538854322
+  originLonDeg: -86.60133451754567
   originHeightM: 0
   logSensors: 1
   logHz: 2
-  TargetFrame: 1
+  TargetFrame: 2
   noiseSeed: 12345
 --- !u!114 &6811317342754036549
 MonoBehaviour:
