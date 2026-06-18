@@ -28,6 +28,14 @@ namespace RobotCore.Sensors
         public float LatLonNoiseStdDev = 0.5f;  // m, horizontal (X,Y)
         public float AltNoiseStdDev    = 1.0f;  // m, vertical (Z)
         private readonly GaussianRng _rng;
+        GeoReferencingSystem _geo;
+        
+        public double  LastLatDeg { get; private set; }
+        public double  LastLonDeg { get; private set; }
+        public double  LastAltM   { get; private set; }   // ellipsoidal
+        public Vector3 LastVelNED { get; private set; } 
+        public bool    IsValid          { get; private set; }
+
         
         public GPSSensor(Rigidbody inRb, int noiseSeed = 2)
         {
@@ -42,8 +50,10 @@ namespace RobotCore.Sensors
             HasFix = false;
         }
 
-        public void Initialize()
+        public void Initialize(GeoReferencingSystem inGeo )
         {
+            _geo = inGeo;
+            IsValid = (_geo != null && _rb != null);
             HasFix = true;
         }
 
@@ -63,7 +73,24 @@ namespace RobotCore.Sensors
                 pos.y += _rng.Next() * LatLonNoiseStdDev;  // horizontal
                 pos.z += _rng.Next() * AltNoiseStdDev;     // vertical (Z is the up/down axis in FLU and FRD)
             }
+            
+            if (_geo != null)
+            {
+                // FLU world == ENU — identical to MagSensor.UpdateEarthMagField()
+                Vector3 flu = Frames.TransformWorldPosition(_rb.position, SimFrame.FLU);
+                _geo.EnuToGeodetic(flu.x, flu.y, flu.z,
+                    out double lat, out double lon, out double h);
+                LastLatDeg = lat;
+                LastLonDeg = lon;
+                LastAltM   = h;
 
+                // Unity world is X=East, Y=Up, Z=North (Mag's own convention comment),
+                // so NED = (N, E, D) = (vz, vx, -vy). No Frames call needed, and this
+                // avoids any origin-offset ambiguity in transforming a velocity vector.
+                Vector3 v = _rb.linearVelocity;          // _rb.linearVelocity on Unity 6+
+                LastVelNED = new Vector3(v.z, v.x, -v.y);
+            }
+            
             LastPosition     = pos;
             LastTimestampSec = nowSec;
             HasFix = true;

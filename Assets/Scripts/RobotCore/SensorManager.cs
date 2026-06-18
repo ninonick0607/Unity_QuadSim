@@ -85,7 +85,9 @@ namespace RobotCore
             IMU  = new IMUSensor(rb, bodyTransform, noiseSeed + 1);
             GPS  = new GPSSensor(rb, noiseSeed + 2);
 
-            Geo  = new GeoReferencingSystem(originLatDeg, originLonDeg, originHeightM);
+            Geo = SimCoreApi.Get().Geo;
+            Geo.SetOrigin(originLatDeg, originLonDeg,originHeightM);
+            
             Baro = new BaroSensor(rb, bodyTransform, noiseSeed + 3);
             
             Mag = new MagSensor(rb, bodyTransform, noiseSeed + 4);
@@ -99,7 +101,7 @@ namespace RobotCore
             IMU.Initialize(rb);
 
             GPS.Reset();
-            GPS.Initialize();
+            GPS.Initialize(Geo);
 
             Baro.Reset();           
             Baro.Initialize(Geo);  
@@ -121,13 +123,16 @@ namespace RobotCore
         public void OnReset()
         {
             IMU.Reset();
-            GPS.Reset();
-
             IMU.Initialize(rb);
-            GPS.Initialize();
+            
+            GPS.Reset();
+            GPS.Initialize(Geo);
 
             Baro.Reset();
             Baro.Initialize(Geo);
+            
+            Mag.Reset();
+            Mag.Initialize(Geo);
             
             Latest = default;
         }
@@ -139,6 +144,7 @@ namespace RobotCore
             // Keep output frame synced for both sensors
             IMU.OutputFrame = outputFrame;
             GPS.OutputFrame = outputFrame;
+            Mag.OutputFrame = outputFrame;
 
             var latest = Latest;
 
@@ -159,11 +165,16 @@ namespace RobotCore
             // GPS — position is now already in OutputFrame from GPSSensor
             if (_gpsLimiter.ShouldRunAndConsume(nowNanos))
             {
-                GPS.Sample(nowSec, enableNoise);                 // was: GPS.Sample(nowSec);
+                GPS.Sample(nowSec, enableNoise);
 
-                latest.GpsPosition = GPS.LastPosition;
+                latest.GpsPosition     = GPS.LastPosition;
                 latest.GpsTimestampSec = GPS.LastTimestampSec;
-                latest.GpsValid = GPS.HasFix;
+                latest.GpsValid        = GPS.HasFix;
+
+                latest.GpsLatDeg = GPS.LastLatDeg;
+                latest.GpsLonDeg = GPS.LastLonDeg;
+                latest.GpsAltM   = GPS.LastAltM;
+                latest.GpsVelNED = GPS.LastVelNED;
             }
 
             // Baro

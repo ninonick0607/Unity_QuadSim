@@ -22,6 +22,7 @@
 //   - Manage source state machines (ControlAuthorityManager)
 
 using System;
+using RobotCore.Core_Utils;
 using UnityEngine;
 using SimCore.Common;
 
@@ -56,7 +57,9 @@ namespace SimCore
         [Header("Core References (auto-resolved if not set)")]
         [SerializeField] private SimulationManager simManager;
         [SerializeField] private ControlAuthorityManager authorityManager;
+        public GeoReferencingSystem Geo { get; private set; }
 
+        
         private bool _initialized;
 
         // ============================================================================
@@ -117,6 +120,10 @@ namespace SimCore
         private void Awake()
         {
             _instance = this;
+            Geo = new GeoReferencingSystem(
+                47.397742,
+                8.545594,
+                488.0);
             ResolveReferences();
         }
 

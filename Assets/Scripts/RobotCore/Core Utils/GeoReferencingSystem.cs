@@ -1,4 +1,6 @@
+using UnityEngine;
 using System;
+using System.Collections;
 
 namespace RobotCore.Core_Utils
 {
@@ -28,7 +30,7 @@ namespace RobotCore.Core_Utils
 
         private double _x0, _y0, _z0;       // origin in ECEF
         private double _sinLat, _cosLat, _sinLon, _cosLon;
-
+        
         public GeoReferencingSystem(double originLatDeg, double originLonDeg, double originHeightM)
             => SetOrigin(originLatDeg, originLonDeg, originHeightM);
 

@@ -24,7 +24,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using SimCore.Common;
 using DroneCore.Api;
-using RobotCore.Core_Utils;
 using MathUtil;
 
 namespace SimCore.Rpc
@@ -71,7 +70,6 @@ namespace SimCore.Rpc
 
         private RpcServerThread _server;
         private SimCoreApi _sim;
-        private GeoReferencingSystem _geo;
 
         // Connection tracking
         private bool _clientConnected;
@@ -733,7 +731,8 @@ namespace SimCore.Rpc
                 ["gps_lat"] = s.GpsLatDeg,
                 ["gps_lon"] = s.GpsLonDeg,
                 ["gps_alt"] = s.GpsAltM,
-                ["gps_vel_ned"] = s.GpsVelNED,
+                ["gps_vel_ned"] = Vec3ToArray(s.GpsVelNED),
+                
             });
         }
 
@@ -836,7 +835,7 @@ namespace SimCore.Rpc
             float lon = req.GetFloat("lon", -86.5533f);
             float alt = req.GetFloat("alt", 0.0f);
             
-            _geo.SetOrigin(lat, lon, alt);
+            _sim.Geo.SetOrigin(lat, lon, alt);
             
             return RpcResponse.Ok(req.RequestId);
         }
