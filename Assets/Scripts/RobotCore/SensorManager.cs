@@ -3,6 +3,7 @@ using MathUtil;
 using RobotCore.Sensors;
 using SimCore;
 using UnityEngine;
+using RobotCore.Core_Utils;
 
 namespace RobotCore
 {
@@ -20,7 +21,17 @@ namespace RobotCore
         [Header("Rates (Hz)")]
         public double imuHz = 250.0;
         public double gpsHz = 10.0;
+        public double baroHz = 50.0;  
+        public double magHz = 50.0;
+        
+        [Header("Noise")]
+        public bool enableNoise = false;   // set TRUE for PX4 SITL/HIL. NOTE: baro-only today.
 
+        [Header("Georeferencing (PX4 origin)")]
+        public double originLatDeg  = 47.397742;  // PX4 SITL default home (Zurich)
+        public double originLonDeg  = 8.545594;
+        public double originHeightM = 488.0;
+        
         [Header("Debug Logging")]
         public bool logSensors = true;
         public float logHz = 2f;
@@ -28,16 +39,21 @@ namespace RobotCore
         private double _logAccum;
         
         public SimFrame TargetFrame = SimFrame.FLU; 
-
         private FrequencyLimiter _imuLimiter;
         private FrequencyLimiter _gpsLimiter;
+        private FrequencyLimiter _baroLimiter;
+        private FrequencyLimiter _magLimiter;
         private FrequencyLimiter _logLimiter;
 
+        public GeoReferencingSystem Geo { get; private set; }
         public IMUSensor IMU { get; private set; }
         public GPSSensor GPS { get; private set; }
+        public BaroSensor Baro { get; private set; }
+        public MagSensor Mag { get; private set; }
+        
 
         public SensorData Latest { get; private set; }
-
+        public int noiseSeed = 12345; 
         public int ExecutionOrder => 50;
         public string DebugName => name;
         
@@ -65,21 +81,40 @@ namespace RobotCore
         public void OnStart()
         {
             ResolveRefsOrThrow();
+
+            IMU  = new IMUSensor(rb, bodyTransform, noiseSeed + 1);
+            GPS  = new GPSSensor(rb, noiseSeed + 2);
+
+            Geo  = new GeoReferencingSystem(originLatDeg, originLonDeg, originHeightM);
+            Baro = new BaroSensor(rb, bodyTransform, noiseSeed + 3);
             
-            IMU = new IMUSensor(rb, bodyTransform);
-            GPS = new GPSSensor(rb);
+            Mag = new MagSensor(rb, bodyTransform, noiseSeed + 4);
+
+            
             IMU.OutputFrame = outputFrame;
             GPS.OutputFrame = outputFrame;
+            Mag.OutputFrame = outputFrame;
+
             IMU.Reset();
             IMU.Initialize(rb);
 
             GPS.Reset();
             GPS.Initialize();
 
-            long now = 0; 
-            _imuLimiter = new FrequencyLimiter(imuHz, now);
-            _gpsLimiter = new FrequencyLimiter(gpsHz, now);
-            _logLimiter = new FrequencyLimiter(logHz <= 0 ? 1e-6 : logHz, now);
+            Baro.Reset();           
+            Baro.Initialize(Geo);  
+
+            Mag.Reset();
+            Mag.Initialize(Geo);
+            
+            long now = 0;
+            _imuLimiter  = new FrequencyLimiter(imuHz, now);
+            _gpsLimiter  = new FrequencyLimiter(gpsHz, now);
+            _baroLimiter = new FrequencyLimiter(baroHz, now);   
+            _magLimiter = new FrequencyLimiter(magHz, now);
+
+            _logLimiter  = new FrequencyLimiter(logHz <= 0 ? 1e-6 : logHz, now);
+
             Latest = default;
         }
 
@@ -91,6 +126,9 @@ namespace RobotCore
             IMU.Initialize(rb);
             GPS.Initialize();
 
+            Baro.Reset();
+            Baro.Initialize(Geo);
+            
             Latest = default;
         }
 
@@ -107,7 +145,7 @@ namespace RobotCore
             // IMU
             if (_imuLimiter.ShouldRunAndConsume(nowNanos))
             {
-                IMU.Sample(nowSec, (float)dtSec);
+                IMU.Sample(nowSec, (float)dtSec, enableNoise);   // was: IMU.Sample(nowSec, (float)dtSec);
 
                 latest.ImuAngVel = IMU.LastAngVel;
                 latest.ImuAttitude = IMU.LastAtt;
@@ -121,13 +159,47 @@ namespace RobotCore
             // GPS — position is now already in OutputFrame from GPSSensor
             if (_gpsLimiter.ShouldRunAndConsume(nowNanos))
             {
-                GPS.Sample(nowSec);
+                GPS.Sample(nowSec, enableNoise);                 // was: GPS.Sample(nowSec);
 
                 latest.GpsPosition = GPS.LastPosition;
                 latest.GpsTimestampSec = GPS.LastTimestampSec;
                 latest.GpsValid = GPS.HasFix;
             }
 
+            // Baro
+            if (_baroLimiter.ShouldRunAndConsume(nowNanos))
+            {
+                Baro.Sample(nowSec, enableNoise);
+
+                latest.BaroPressurePa       = Baro.LastPressure;
+                latest.BaroPressureHPa      = Baro.LastPressureHPa;
+                latest.BaroTemperatureC     = Baro.LastTemperature;
+                latest.BaroAltitudeMSL      = Baro.EstimatedAltitude;
+                latest.BaroPressureAltitude = Baro.PressureAltitude;
+                latest.BaroTimestampSec     = Baro.LastTimestampSec;
+                latest.BaroValid            = Baro.IsValid;
+            }
+            // Mag
+            if (_magLimiter.ShouldRunAndConsume(nowNanos))
+            {
+                Mag.Sample(nowSec, (float)dtSec, enableNoise);
+
+                latest.MagField          = Mag.LastMagField;
+                latest.MagHeadingDeg     = Mag.MagneticHeading;
+                latest.MagDeclinationDeg = Mag.MagneticDeclination;
+                latest.MagTimestampSec   = Mag.LastTimestampSec;
+                latest.MagValid          = Mag.IsValid;
+            }
+            // Altitude log
+            if (logSensors && _logLimiter.ShouldRunAndConsume(nowNanos))
+            {
+                Debug.Log(
+                    $"[Baro] truthAlt={Baro.EstimatedAltitude:F2}m  believedAlt={Baro.PressureAltitude:F2}m  " +
+                    $"P={Baro.LastPressureHPa:F2}hPa  T={Baro.LastTemperature:F1}C  " +
+                    $"| [Mag] |B|={Mag.LastMagField.magnitude:F3}G  decl={Mag.MagneticDeclination:F2}deg  " +
+                    $"hdg={Mag.MagneticHeading:F1}  noise={enableNoise}");
+            }
+            
             Latest = latest;
         }
     }

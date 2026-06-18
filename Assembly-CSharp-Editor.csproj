@@ -44,6 +44,7 @@
   <ItemGroup>
     <Analyzer Include="/home/ninonick0426/Documents/GitHub/Unity_QuadSim/Assets/Packages/MessagePackAnalyzer.3.1.4/analyzers/roslyn4.3/cs/MessagePack.SourceGenerator.dll" />
     <Analyzer Include="/home/ninonick0426/Documents/GitHub/Unity_QuadSim/Assets/Packages/MessagePackAnalyzer.3.1.4/analyzers/roslyn4.3/cs/MessagePack.Analyzers.CodeFixes.dll" />
+    <Analyzer Include="/home/ninonick0426/Documents/GitHub/Unity_QuadSim/Packages/com.cesium.unity/Reinterop.dll" />
     <Analyzer Include="/home/ninonick0426/Unity/Hub/Editor/6000.4.10f1/Editor/Data/Tools/BuildPipeline/Unity.SourceGenerators/Unity.SourceGenerators.dll" />
     <Analyzer Include="/home/ninonick0426/Unity/Hub/Editor/6000.4.10f1/Editor/Data/Tools/BuildPipeline/Unity.SourceGenerators/Unity.Properties.SourceGenerator.dll" />
     <Analyzer Include="/home/ninonick0426/Unity/Hub/Editor/6000.4.10f1/Editor/Data/Tools/BuildPipeline/Unity.SourceGenerators/Unity.UIToolkit.SourceGenerator.dll" />
@@ -1124,6 +1125,10 @@
     <ProjectReference Include="Unity.RenderPipelines.Core.Samples.Runtime.csproj">
       <Project>{d8cec12f-7102-f9b6-5331-f29110464208}</Project>
       <Name>Unity.RenderPipelines.Core.Samples.Runtime</Name>
+    </ProjectReference>
+    <ProjectReference Include="CesiumForUnity.csproj">
+      <Project>{14a8f299-54d3-37cd-ee27-366435f675f5}</Project>
+      <Name>CesiumForUnity</Name>
     </ProjectReference>
     <ProjectReference Include="Unity.PathTracing.Runtime.csproj">
       <Project>{f85e8415-be88-9422-07a2-4b1121fcb55e}</Project>

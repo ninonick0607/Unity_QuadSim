@@ -24,6 +24,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using SimCore.Common;
 using DroneCore.Api;
+using RobotCore.Core_Utils;
 using MathUtil;
 
 namespace SimCore.Rpc
@@ -70,6 +71,7 @@ namespace SimCore.Rpc
 
         private RpcServerThread _server;
         private SimCoreApi _sim;
+        private GeoReferencingSystem _geo;
 
         // Connection tracking
         private bool _clientConnected;
@@ -381,9 +383,8 @@ namespace SimCore.Rpc
                 ["step_with_command"] = HandleStepWithCommand,
                 ["set_time_scale"]   = HandleSetTimeScale,
                 ["reset_simulation"] = HandleResetSimulation,
-                
                 ["set_wind"]         = HandleSetWind,
-                
+                ["set_geo_origin"] = HandleSetGeoOrigin,
                 // --- Phase 9c: Telemetry streaming ---
                 ["subscribe"]        = HandleSubscribe,
                 ["unsubscribe"]      = HandleUnsubscribe,
@@ -717,6 +718,22 @@ namespace SimCore.Rpc
                 ["gps_position"]    = Vec3ToArray(s.GpsPosition),
                 ["gps_timestamp"]   = s.GpsTimestampSec,
                 ["gps_valid"]       = s.GpsValid,
+                ["mag_field"]       = Vec3ToArray(s.MagField),
+                ["mag_heading_deg"]        = s.MagHeadingDeg,
+                ["mag_declination_deg"] =  s.MagDeclinationDeg,
+                ["mag_timestamp"] =  s.MagTimestampSec,
+                ["mag_valid"] =   s.MagValid,
+                ["baro_pressure_pa"] = s.BaroPressurePa,
+                ["baro_pressure_hpa"] = s.BaroPressureHPa,
+                ["baro_temperature_c"] = s.BaroTemperatureC,
+                ["baro_altitude_msl"] = s.BaroAltitudeMSL,
+                ["baro_pressure_altitude"] = s.BaroPressureAltitude,
+                ["baro_timestamp"] = s.BaroTimestampSec,
+                ["baro_valid"] = s.BaroValid,
+                ["gps_lat"] = s.GpsLatDeg,
+                ["gps_lon"] = s.GpsLonDeg,
+                ["gps_alt"] = s.GpsAltM,
+                ["gps_vel_ned"] = s.GpsVelNED,
             });
         }
 
@@ -810,7 +827,19 @@ namespace SimCore.Rpc
             if (hasSpeed) data["wind_speed"] = windSpeed;
             return RpcResponse.Ok(req.RequestId, data);
         }
-        
+
+
+        private RpcResponse HandleSetGeoOrigin(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+            float lat = req.GetFloat("lat", 30.4636f);
+            float lon = req.GetFloat("lon", -86.5533f);
+            float alt = req.GetFloat("alt", 0.0f);
+            
+            _geo.SetOrigin(lat, lon, alt);
+            
+            return RpcResponse.Ok(req.RequestId);
+        }
         
         // ============================================================================
         // Phase 9b Handlers: Reset Operations

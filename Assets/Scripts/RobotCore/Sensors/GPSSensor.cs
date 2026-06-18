@@ -1,4 +1,5 @@
 using MathUtil;
+using RobotCore.Core_Utils;
 using UnityEngine;
 
 namespace RobotCore.Sensors
@@ -24,11 +25,16 @@ namespace RobotCore.Sensors
         public double LastTimestampSec { get; private set; }
         public bool HasFix { get; private set; }
 
-        public GPSSensor(Rigidbody inRb)
+        public float LatLonNoiseStdDev = 0.5f;  // m, horizontal (X,Y)
+        public float AltNoiseStdDev    = 1.0f;  // m, vertical (Z)
+        private readonly GaussianRng _rng;
+        
+        public GPSSensor(Rigidbody inRb, int noiseSeed = 2)
         {
             _rb = inRb;
+            _rng = new GaussianRng(noiseSeed);
         }
-
+        
         public void Reset()
         {
             LastPosition = Vector3.zero;
@@ -41,7 +47,7 @@ namespace RobotCore.Sensors
             HasFix = true;
         }
 
-        public void Sample(double nowSec)
+        public void Sample(double nowSec, bool addNoise = false)
         {
             if (_rb == null)
             {
@@ -49,10 +55,16 @@ namespace RobotCore.Sensors
                 return;
             }
 
-            // Raw Unity world position (Y-up) → convert to output frame
-            Vector3 rawUnity = _rb.position;
-            LastPosition = Frames.TransformWorldPosition(rawUnity, OutputFrame);
+            Vector3 pos = Frames.TransformWorldPosition(_rb.position, OutputFrame);
 
+            if (addNoise)
+            {
+                pos.x += _rng.Next() * LatLonNoiseStdDev;  // horizontal
+                pos.y += _rng.Next() * LatLonNoiseStdDev;  // horizontal
+                pos.z += _rng.Next() * AltNoiseStdDev;     // vertical (Z is the up/down axis in FLU and FRD)
+            }
+
+            LastPosition     = pos;
             LastTimestampSec = nowSec;
             HasFix = true;
         }

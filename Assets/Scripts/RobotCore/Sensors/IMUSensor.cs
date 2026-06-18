@@ -1,4 +1,5 @@
 using MathUtil;
+using RobotCore.Core_Utils;
 using UnityEngine;
 
 namespace RobotCore.Sensors
@@ -25,10 +26,16 @@ namespace RobotCore.Sensors
         public double LastTimestampSec { get; private set; }
         public bool IsValid { get; private set; }
 
-        public IMUSensor(Rigidbody rb, Transform bodyTransform)
+        public float AccelNoiseStdDev = 0.05f;   // m/s^2
+        public float GyroNoiseStdDev  = 0.002f;  // rad/s (also drives attitude noise, converted to deg)
+        public float VelNoiseStdDev   = 0.02f;   // m/s
+        private readonly GaussianRng _rng;
+        
+        public IMUSensor(Rigidbody rb, Transform bodyTransform, int noiseSeed = 1)
         {
             _rb = rb;
             _bodyTransform = bodyTransform;
+            _rng = new GaussianRng(noiseSeed);
         }
         
         public void Reset()
@@ -113,7 +120,7 @@ namespace RobotCore.Sensors
             LastVel = Frames.TransformLinear(vBody, OutputFrame);
         }
         // Call from SensorManager.PrePhysicsStep() using deterministic dt.
-        public void Sample(double nowSec, float deltaTime)
+        public void Sample(double nowSec, float deltaTime, bool addNoise = false)
         {
             if (_rb == null || _bodyTransform == null || deltaTime <= 0f)
             {
@@ -131,6 +138,16 @@ namespace RobotCore.Sensors
             SampleAngularVelocity(nowSec, deltaTime);
             SampleAttitude(nowSec, deltaTime);
             SampleVelocity(nowSec, deltaTime);
+
+            if (addNoise)
+            {
+                LastLinAcc += new Vector3(_rng.Next(), _rng.Next(), _rng.Next()) * AccelNoiseStdDev;
+                LastAngVel += new Vector3(_rng.Next(), _rng.Next(), _rng.Next()) * GyroNoiseStdDev;
+                LastVel    += new Vector3(_rng.Next(), _rng.Next(), _rng.Next()) * VelNoiseStdDev;
+
+                float attStdDeg = GyroNoiseStdDev * Mathf.Rad2Deg;
+                LastAtt += new Vector3(_rng.Next(), _rng.Next(), _rng.Next()) * attStdDeg;
+            }
 
             LastTimestampSec = nowSec;
             IsValid = true;
