@@ -43,7 +43,13 @@ namespace DroneCore.Core
         [Header("Swarm")]
         [Tooltip("Enable swarm mode (all drones receive same commands).")]
         [SerializeField] private bool swarmMode = false;
-
+        
+        [Header("Scene Env")]
+        [SerializeField] private int     masterSeed       = 12345;
+        [SerializeField] private bool    enableSensorNoise = false;
+        [SerializeField] private double  originLat        = 30.4636;
+        [SerializeField] private double  originLon        = -86.5533;
+        [SerializeField] private double  originAlt        = 0.0;
         // ============================================================================
         // Runtime State
         // ============================================================================
@@ -274,7 +280,10 @@ namespace DroneCore.Core
             }
 
             newDrone.name = $"Drone_{_registeredDrones.Count:D2}";
-
+            
+            if (newDrone.Sensors != null)
+                newDrone.Sensors.Configure(masterSeed, enableSensorNoise, originLat, originLon, originAlt);
+            
             // Inject manager reference BEFORE Start() runs
             newDrone.SetDroneManager(this);
 
@@ -409,6 +418,12 @@ namespace DroneCore.Core
             Debug.Log($"[DroneManager] Selected config: {configName}");
         }
 
+        public void SetSceneEnv(int seed, bool noise, double lat, double lon, double alt)
+        {
+            masterSeed = seed; enableSensorNoise = noise;
+            originLat = lat; originLon = lon; originAlt = alt;
+        }
+        
         public List<string> GetAvailableConfigs()
         {
             return DroneConfigLoader.GetAvailableConfigs();

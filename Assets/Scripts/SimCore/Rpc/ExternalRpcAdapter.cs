@@ -148,7 +148,13 @@ namespace SimCore.Rpc
 
         /// <summary>Telemetry port number.</summary>
         public int TelemetryPort => telemetryPort;
-
+        
+        /// <summary>Set ports before StartServer(). CLI overrides still win (applied in Start).</summary>
+        public void ConfigurePorts(int cmd, int tel)
+        {
+            commandPort = cmd;
+            telemetryPort = tel;
+        }
         public event Action<Dictionary<string, object>> OnVizPayload;
 
         // ============================================================================

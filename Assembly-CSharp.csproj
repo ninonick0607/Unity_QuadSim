@@ -86,6 +86,7 @@
     <Compile Include="Assets/Scripts/Yaml/Drone/DroneConfigStructs.cs" />
     <Compile Include="Assets/Scripts/Yaml/Drone/YamlParser.cs" />
     <Compile Include="Assets/Scripts/SimCore/Common/CommonStructs.cs" />
+    <Compile Include="Assets/Scripts/SimCore/QuadSimEnvironmentBootstrap.cs" />
     <Compile Include="Assets/Scripts/SimCore/SimClock.cs" />
     <Compile Include="Assets/Scripts/DroneCore/Core/ModeCoordinator.cs" />
     <Compile Include="Assets/Scripts/RobotCore/SensorData.cs" />
@@ -100,6 +101,7 @@
     <Compile Include="Assets/Scripts/DroneCore/Controllers/AxisControllers/AngleController.cs" />
     <Compile Include="Assets/Scripts/DroneCore/Controllers/AxisControllers/AcroController.cs" />
     <Compile Include="Assets/Scripts/UI/SimHUDController.cs" />
+    <Compile Include="Assets/Scripts/SimCore/QuadSimSceneConfig.cs" />
     <Compile Include="Assets/Scripts/DroneCore/Core/DroneManager.cs" />
     <Compile Include="Assets/ExternalAssets/PBR Racing Drone/Scripts/DroneAnimator.cs" />
     <Compile Include="Assets/Scripts/RobotCore/Sensors/IMUSensor.cs" />

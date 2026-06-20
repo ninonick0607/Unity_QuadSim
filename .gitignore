@@ -29,3 +29,7 @@ Assets/AddressableAssetsData/*/*.bin*
 # Gradle
 .gradle/
 runs/*.csv
+
+# Cesium
+Packages/com.cesium.unity/
+Assets/CesiumSettings/
