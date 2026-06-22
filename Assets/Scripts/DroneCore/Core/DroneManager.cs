@@ -278,7 +278,7 @@ namespace DroneCore.Core
                 Debug.LogError("[DroneManager] Failed to instantiate QuadPawn prefab");
                 return null;
             }
-
+            
             newDrone.name = $"Drone_{_registeredDrones.Count:D2}";
             
             if (newDrone.Sensors != null)
