@@ -105,6 +105,47 @@ namespace DroneCore.Controls
             _effectiveness.Clear();
         }
         
+        public float AllocateWrench(
+            float thrustN, float torqueXNm, float torqueYNm, float torqueZNm,
+            float maxThrust, float minMotorOutput, float[] outMotor01)
+        {
+            int numMotors = _effectiveness.NumMotors;
+            if (numMotors <= 0 || maxThrust <= 1e-6f)
+            {
+                if (outMotor01 != null) Array.Clear(outMotor01, 0, outMotor01.Length);
+                return 0f;
+            }
+
+            // Total-thrust row makes this the fraction of all-motors-full.
+            float thrust01 = thrustN / (numMotors * maxThrust);
+
+            // Per-axis round-trip gains: g_a = maxThrust * Σ Data[a,m]*PInv[m,a].
+            float gRoll  = AxisGain(0, maxThrust);
+            float gPitch = AxisGain(1, maxThrust);
+            float gYaw   = AxisGain(2, maxThrust);
+
+            float roll01  = (Mathf.Abs(gRoll)  > 1e-9f) ? torqueXNm / gRoll  : 0f;
+            float pitch01 = (Mathf.Abs(gPitch) > 1e-9f) ? torqueYNm / gPitch : 0f;
+            float yaw01   = (Mathf.Abs(gYaw)   > 1e-9f) ? torqueZNm / gYaw   : 0f;
+
+            return AllocateYawLimited(roll01, pitch01, yaw01, thrust01,
+                                      minMotorOutput, outMotor01);
+        }
+
+        /// <summary>
+        /// Physical torque produced on `axis` per unit normalized demand, by
+        /// probing the live pseudo-inverse and effectiveness rows. Auto-tracks
+        /// geometry and the authority clamp in ComputePseudoInverse.
+        /// </summary>
+        private float AxisGain(int axis, float maxThrust)
+        {
+            int n = _effectiveness.NumMotors;
+            float s = 0f;
+            for (int m = 0; m < n; m++)
+                s += _effectiveness.Data[axis, m] * _effectiveness.PseudoInverse[m, axis];
+            return maxThrust * s;
+        }
+        
         public void RebuildEffectiveness(RotorInstance[] rotors,RotorPhysicsDerived  rotorPhysics, SimFrame frame)
         {
             if (rotors == null)

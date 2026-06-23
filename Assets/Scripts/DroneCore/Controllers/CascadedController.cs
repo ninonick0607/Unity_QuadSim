@@ -122,6 +122,13 @@ namespace DroneCore.Controllers
 
         private bool _initialized;
 
+        // ── Plant / actuation (external-wrench allocated path) ──
+        [Header("Plant / Actuation")]
+        [SerializeField] private bool  enableMotorLag      = false;   // inspector toggle
+        [SerializeField] private float motorLagTauSeconds  = 0.020f;
+        [SerializeField] private float allocatedMinIdle01  = 0.0f;    // 0 lets motors reach 0 at loop apex
+        private readonly MotorLagFilter _motorLag = new MotorLagFilter();
+        
         // ============================================================================
         // Public Accessors
         // ============================================================================
@@ -271,6 +278,7 @@ namespace DroneCore.Controllers
             {
                 _thrusts[i] = 0f;
                 _motor[i] = 0f;
+                _motorLag.Reset(4);
             }
 
             // Preserve mode/source, just zero the command
@@ -339,6 +347,47 @@ namespace DroneCore.Controllers
                 _body.SetBodyWrench(force, torque);
                 return;
             }
+            // --- WRENCH (ALLOCATED) MODE ---
+            // External FLU body wrench (Mx,My,Mz, f) routed through the
+            // effectiveness-matrix allocator: projected onto the real per-motor
+            // [0..1] feasible set, then rebuilt into a body wrench by the
+            // actuation model. The FLU->Unity mapping is implicit in the
+            // FLU effectiveness matrix -> motor01 -> Unity actuation round trip.
+            if (mode == GoalMode.WrenchAllocated)
+            {
+                float[] motor01 = new float[4];
+
+                _controlAllocator.AllocateWrench(
+                    cmd.W,                          // f  : total thrust (N), FLU +Z
+                    cmd.X, cmd.Y, cmd.Z,            // M  : body torque (N·m), FLU
+                    _rotorPhysics.MaxThrust,
+                    allocatedMinIdle01,
+                    motor01);
+
+                // Plant: optional first-order motor lag (live toggle), then actuate.
+                _motorLag.Enabled    = enableMotorLag;
+                _motorLag.TauSeconds = motorLagTauSeconds;
+                _motorLag.Apply(motor01, deltaTime);
+
+                QuadActuationModel.ComputeBodyWrench(
+                    motor01, _cachedConfig.RotorParams.Rotors, _rotorPhysics,
+                    out Vector3 netForce, out Vector3 netTorque);
+                _body.SetBodyWrench(netForce, netTorque);
+                
+                Vector3 mFlu = new Vector3(cmd.X, cmd.Y, cmd.Z);
+                Vector3 directWould = Frames.InverseTransformAngularVelocity(mFlu, GetCurrentFrame());
+                Debug.Log($"[Alloc] M_FLU={mFlu} " +
+                          $"motors=[{motor01[0]:F2},{motor01[1]:F2},{motor01[2]:F2},{motor01[3]:F2}] " +
+                          $"netTau={netTorque}  directWould={directWould}");
+                
+                for (int i = 0; i < 4; i++)
+                {
+                    _motor[i]   = motor01[i];
+                    _thrusts[i] = motor01[i] * _rotorPhysics.MaxThrust;
+                }
+                return;
+            }
+            
             // --- NONE MODE ---
             if (mode == GoalMode.None)
             {
@@ -530,7 +579,11 @@ namespace DroneCore.Controllers
                 motor01[1] = Mathf.Clamp01(cmd.Y);  // FR
                 motor01[2] = Mathf.Clamp01(cmd.Z);  // BL
                 motor01[3] = Mathf.Clamp01(cmd.W);  // BR
-
+                
+                _motorLag.Enabled    = enableMotorLag;
+                _motorLag.TauSeconds = motorLagTauSeconds;
+                _motorLag.Apply(motor01, deltaTime);
+                
                 // Compute body wrench from motor commands through the actuation model
                 Vector3 netForce, netTorque;
                 QuadActuationModel.ComputeBodyWrench(
@@ -550,15 +603,16 @@ namespace DroneCore.Controllers
                 }
                 return;
             }
-
-            ThrustMixer(output);
+    
+            
+            ThrustMixer(output, deltaTime);
         }
 
         // ============================================================================
         // Thrust Mixer
         // ============================================================================
 
-        private void ThrustMixer(Axis4 output)
+        private void ThrustMixer(Axis4 output, float deltaTime)
         {
             float rollOut = output[0];
             float pitchOut = output[1];
@@ -596,7 +650,11 @@ namespace DroneCore.Controllers
                 motor01 = new float[4];
                 for (int i = 0; i < 4; i++) motor01[i] = throttle01;
             }
-
+            
+            _motorLag.Enabled    = enableMotorLag;
+            _motorLag.TauSeconds = motorLagTauSeconds;
+            _motorLag.Apply(motor01, deltaTime);
+            
             // Compute body wrench
             Vector3 netForce, netTorque;
             QuadActuationModel.ComputeBodyWrench(motor01,_cachedConfig.RotorParams.Rotors,_rotorPhysics,out netForce,out netTorque);

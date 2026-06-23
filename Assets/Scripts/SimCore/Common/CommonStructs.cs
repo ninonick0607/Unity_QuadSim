@@ -37,7 +37,7 @@ namespace SimCore.Common
     /// Which stage of the cascade to enter at. None = motors off.
     /// Geometric controller ignores this entirely.
     /// </summary>
-    public enum GoalMode : byte { None, Position, Velocity, Angle, Rate, Passthrough, Wrench }
+    public enum GoalMode : byte { None, Position, Velocity, Angle, Rate, Passthrough, Wrench, WrenchAllocated}
     
     // ==================== Command Payloads ==================== //
     

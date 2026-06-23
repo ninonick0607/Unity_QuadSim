@@ -103,6 +103,8 @@ namespace SimCore.Rpc
             ["rate"]        = GoalMode.Rate,
             ["passthrough"] = GoalMode.Passthrough,
             ["wrench"]      = GoalMode.Wrench,
+            ["wrench_allocated"] = GoalMode.WrenchAllocated,
+
         };
 
         private static readonly Dictionary<GoalMode, string> GoalModeReverseMap = new()
@@ -114,6 +116,7 @@ namespace SimCore.Rpc
             [GoalMode.Rate]        = "rate",
             [GoalMode.Passthrough] = "passthrough",
             [GoalMode.Wrench]      = "wrench",
+            [GoalMode.WrenchAllocated] = "wrench_allocated",
         };
 
         private static readonly Dictionary<string, ControllerKind> ControllerKindMap = new()
@@ -692,7 +695,14 @@ namespace SimCore.Rpc
                     Vector3 torqueClient = new Vector3(x, y, z);
                     Vector3 torqueUnity = Frames.InverseTransformAngularVelocity(torqueClient, clientFrame);
                     return new Axis4(torqueUnity.x, torqueUnity.y, torqueUnity.z, w);
-         
+                case GoalMode.WrenchAllocated:
+                    // External wrench routed through the effectiveness-matrix
+                    // allocator (built in the FLU internal frame). The FLU->Unity
+                    // mapping happens implicitly inside the allocate->actuate round
+                    // trip, so — unlike GoalMode.Wrench — do NOT convert here.
+                    // Assumes clientFrame == allocator build frame (FLU). If you add
+                    // FRD clients, convert torque client->FLU at this point.
+                    return new Axis4(x, y, z, w);   // (Mx, My, Mz, f), FLU passthrough
                 case GoalMode.Passthrough:
                 case GoalMode.None:
                 default:

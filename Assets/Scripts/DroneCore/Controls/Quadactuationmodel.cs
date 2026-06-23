@@ -3,6 +3,34 @@ using Yaml.Drone;
 
 namespace DroneCore.Controls
 {
+    
+    public sealed class MotorLagFilter
+    {
+        public bool  Enabled    = false;
+        public float TauSeconds = 0.020f;   // ~20 ms typical small-quad motor+ESC
+
+        private float[] _state;
+
+        public void Reset(int n) => _state = new float[n];
+
+        /// In-place: overwrites motor01 with the lagged actual output.
+        public void Apply(float[] motor01, float dt)
+        {
+            if (!Enabled || motor01 == null) return;
+            if (_state == null || _state.Length != motor01.Length)
+                _state = (float[])motor01.Clone();   // first tick: start at command
+
+            float tau   = Mathf.Max(1e-4f, TauSeconds);
+            float alpha = 1f - Mathf.Exp(-Mathf.Max(0f, dt) / tau);
+            
+            for (int i = 0; i < motor01.Length; i++)
+            {
+                _state[i] += (motor01[i] - _state[i]) * alpha;
+                motor01[i] = _state[i];
+            }
+        }
+    }
+    
     public static class QuadActuationModel
     {
         private const int SanityCap = 64;

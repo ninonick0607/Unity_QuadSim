@@ -15,11 +15,11 @@ MonoBehaviour:
   droneConfigName: flightmare_quad
   commandPort: 5555
   telemetryPort: 5556
-  originLatitudeDeg: 40.7589
-  originLongitudeDeg: -73.98513
-  originAltitudeM: 0
+  originLatitudeDeg: 33.49414
+  originLongitudeDeg: -117.7391
+  originAltitudeM: 5
   masterSeed: 12345
   enableSensorNoise: 0
-  windEnabled: 1
-  windSpeed: 0
+  windEnabled: 0
+  windSpeed: 10
   windHeadingDeg: 0
