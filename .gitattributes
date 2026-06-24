@@ -16,3 +16,5 @@
 *.asset !text !filter !merge !diff
 *.mat !text !filter !merge !diff
 *.txt !text !filter !merge !diff
+*.fbx filter=lfs diff=lfs merge=lfs -text
+*.bytes filter=lfs diff=lfs merge=lfs -text
