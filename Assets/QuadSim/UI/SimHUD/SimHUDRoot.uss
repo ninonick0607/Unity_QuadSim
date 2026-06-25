@@ -1,3 +1,10 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:da20c273ff8cbfdf7b4bcc9b5b34b2ab6cc2f30db14b75bbad4aa01eccbdec03
-size 235
+.hud-root {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+}
+
+/* Utility */
+.is-hidden { display: none; }
+.row { flex-direction: row; align-items: center; }
+.col { flex-direction: column; }
+.spacer { flex-grow: 1; }

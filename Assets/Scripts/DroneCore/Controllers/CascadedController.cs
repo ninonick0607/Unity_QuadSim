@@ -359,7 +359,7 @@ namespace DroneCore.Controllers
 
                 _controlAllocator.AllocateWrench(
                     cmd.W,                          // f  : total thrust (N), FLU +Z
-                    cmd.X, cmd.Y, cmd.Z,            // M  : body torque (N·m), FLU
+                    cmd.X, cmd.Z, cmd.Y,            // M  : body torque (N·m), FLU
                     _rotorPhysics.MaxThrust,
                     allocatedMinIdle01,
                     motor01);
@@ -378,7 +378,7 @@ namespace DroneCore.Controllers
                 Vector3 directWould = Frames.InverseTransformAngularVelocity(mFlu, GetCurrentFrame());
                 Debug.Log($"[Alloc] M_FLU={mFlu} " +
                           $"motors=[{motor01[0]:F2},{motor01[1]:F2},{motor01[2]:F2},{motor01[3]:F2}] " +
-                          $"netTau={netTorque}  directWould={directWould}");
+                          $"netTau={netTorque}  directWould={mFlu}");
                 
                 for (int i = 0; i < 4; i++)
                 {

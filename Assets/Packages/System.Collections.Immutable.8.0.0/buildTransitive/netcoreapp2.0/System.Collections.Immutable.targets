@@ -1,3 +1,6 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:6030ce322e6b3dc79a52772a87f244f08a990c07f323a5f5a3f72c0b5b6f8941
-size 652
+<Project InitialTargets="NETStandardCompatError_System_Collections_Immutable_net6_0">
+  <Target Name="NETStandardCompatError_System_Collections_Immutable_net6_0"
+          Condition="'$(SuppressTfmSupportBuildWarnings)' == ''">
+    <Warning Text="System.Collections.Immutable 8.0.0 doesn't support $(TargetFramework) and has not been tested with it. Consider upgrading your TargetFramework to net6.0 or later. You may also set &lt;SuppressTfmSupportBuildWarnings&gt;true&lt;/SuppressTfmSupportBuildWarnings&gt; in the project file to ignore this warning and attempt to run in this unsupported configuration at your own risk." />
+  </Target>
+</Project>

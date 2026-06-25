@@ -252,7 +252,6 @@ namespace DroneCore
             else
                 rb.mass = 1.28f; // Default
 
-            // TODO: Uncomment when body response is validated
             if (_config.DroneParams.CenterOfMass != Vector3.zero)
                 rb.centerOfMass = _config.DroneParams.CenterOfMass;
             if (_config.DroneParams.Inertia != Vector3.zero)
