@@ -194,6 +194,25 @@ namespace DroneCore.Controllers
                 float currentMass = _body.Rigidbody.mass;
                 _hoverThrottle01 = _rotorPhysics.ComputeHoverThrottle(currentMass, 4);
 
+                // --- FIX 1: Math/Physics Alignment ---
+                Vector3 centroid = Vector3.zero;
+                var rotors = _cachedConfig.RotorParams.Rotors;
+                
+                for (int i = 0; i < rotors.Length; i++)
+                    centroid += rotors[i].Location_Body;
+                
+                if (rotors.Length > 0) centroid /= rotors.Length;
+
+                // Shift Unity's physics pivot
+                _body.Rigidbody.centerOfMass = centroid;
+
+                // Shift mathematical pivot. This satisfies the Allocator's 
+                // decoupled pseudo-inverse requirement (Sum of positions = 0)
+                for (int i = 0; i < rotors.Length; i++)
+                {
+                    rotors[i].Location_Body -= centroid;
+                }
+                
                 float totalMaxThrust = _rotorPhysics.MaxThrust * 4.0f;
                 float hoverForce = currentMass * 9.81f;
                 float twr = (hoverForce > 0.0f) ? totalMaxThrust / hoverForce : 0.0f;
@@ -356,13 +375,8 @@ namespace DroneCore.Controllers
             if (mode == GoalMode.WrenchAllocated)
             {
                 float[] motor01 = new float[4];
-
-                _controlAllocator.AllocateWrench(
-                    cmd.W,                          // f  : total thrust (N), FLU +Z
-                    cmd.X, cmd.Z, cmd.Y,            // M  : body torque (N·m), FLU
-                    _rotorPhysics.MaxThrust,
-                    allocatedMinIdle01,
-                    motor01);
+                Vector3 mFlu = new Vector3(cmd.X, cmd.Y, cmd.Z);
+                _controlAllocator.AllocateWrench( cmd.W, mFlu.x, mFlu.y, mFlu.z, _rotorPhysics.MaxThrust, allocatedMinIdle01, motor01);
 
                 // Plant: optional first-order motor lag (live toggle), then actuate.
                 _motorLag.Enabled    = enableMotorLag;
@@ -373,12 +387,6 @@ namespace DroneCore.Controllers
                     motor01, _cachedConfig.RotorParams.Rotors, _rotorPhysics,
                     out Vector3 netForce, out Vector3 netTorque);
                 _body.SetBodyWrench(netForce, netTorque);
-                
-                Vector3 mFlu = new Vector3(cmd.X, cmd.Y, cmd.Z);
-                Vector3 directWould = Frames.InverseTransformAngularVelocity(mFlu, GetCurrentFrame());
-                Debug.Log($"[Alloc] M_FLU={mFlu} " +
-                          $"motors=[{motor01[0]:F2},{motor01[1]:F2},{motor01[2]:F2},{motor01[3]:F2}] " +
-                          $"netTau={netTorque}  directWould={mFlu}");
                 
                 for (int i = 0; i < 4; i++)
                 {

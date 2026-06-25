@@ -64,7 +64,15 @@ namespace SimCore
             timeScale = ts;
             ClockFactory.SetTimeScale(timeScale);
         }
-        
+        /// <summary>
+        /// Run N fixed steps immediately on the main thread.
+        /// Use this for lockstep RPC calls that must return post-step sensors.
+        /// </summary>
+        public void StepImmediate(int steps)
+        {
+            if (steps <= 0) return;
+            RunFixedSteps(steps);
+        }
         private void Awake()
         {
             Application.runInBackground = true;        // CRITICAL: Unity throttles to ~single-digit

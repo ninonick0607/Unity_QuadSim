@@ -194,7 +194,69 @@ namespace DroneCore.Controls
 
             ComputePseudoInverse();
         }
+        // Control axes routed through the allocator: Roll, Pitch, Yaw, Thrust.
+        // (Fx/Fy rows are unused for a standard quad and stay zero.)
+        private static readonly int[] ControlAxes = { 0, 1, 2, 5 };
+
+        /// <summary>
+        /// Build the true minimum-norm pseudo-inverse  M = Aᵀ (A Aᵀ)⁻¹  of the
+        /// control-axis rows, where A = Data[ControlAxes, :].
+        ///
+        /// This solves  A · motor = demand  exactly while minimising the motor
+        /// norm. Unlike the previous normalized-transpose, it cross-couples the
+        /// axes, so a pure-thrust demand on an *unbalanced* frame (e.g. rotors
+        /// not symmetric about the CoM) still yields zero residual roll/pitch/yaw
+        /// — no thrust→torque bleed. Falls back to the normalized transpose if the
+        /// geometry Gram matrix is singular.
+        /// </summary>
         private void ComputePseudoInverse()
+        {
+            int numMotors = _effectiveness.NumMotors;
+            Array.Clear(_effectiveness.PseudoInverse, 0, _effectiveness.PseudoInverse.Length);
+
+            if (numMotors <= 0) return;
+
+            int nC = ControlAxes.Length;
+
+            // Gram = A Aᵀ   (nC × nC),  A[i,m] = Data[ControlAxes[i], m]
+            double[,] gram = new double[nC, nC];
+            for (int i = 0; i < nC; i++)
+            {
+                for (int j = 0; j < nC; j++)
+                {
+                    double s = 0.0;
+                    for (int m = 0; m < numMotors; m++)
+                        s += (double)_effectiveness.Data[ControlAxes[i], m] *
+                                     _effectiveness.Data[ControlAxes[j], m];
+                    gram[i, j] = s;
+                }
+            }
+
+            if (!TryInvertSquare(gram, nC, out double[,] gramInv))
+            {
+                // Degenerate geometry — fall back to the normalized transpose.
+                ComputePseudoInverseTranspose();
+                return;
+            }
+
+            // M[m, ControlAxes[i]] = Σ_j Data[ControlAxes[j], m] · gramInv[j, i]
+            for (int m = 0; m < numMotors; m++)
+            {
+                for (int i = 0; i < nC; i++)
+                {
+                    double s = 0.0;
+                    for (int j = 0; j < nC; j++)
+                        s += (double)_effectiveness.Data[ControlAxes[j], m] * gramInv[j, i];
+                    _effectiveness.PseudoInverse[m, ControlAxes[i]] = (float)s;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Legacy normalized-transpose with authority clamping. Retained as a
+        /// fallback for degenerate geometries where the Gram matrix is singular.
+        /// </summary>
+        private void ComputePseudoInverseTranspose()
         {
             int numMotors = _effectiveness.NumMotors;
             int numAxes = EffectivenessMatrix.NumAxes;
@@ -232,7 +294,61 @@ namespace DroneCore.Controls
                 }
             }
         }
-        
+
+        /// <summary>
+        /// In-place Gauss-Jordan inverse of an n×n matrix with partial pivoting.
+        /// Returns false (leaving <paramref name="inv"/> null) if singular.
+        /// </summary>
+        private static bool TryInvertSquare(double[,] a, int n, out double[,] inv)
+        {
+            inv = null;
+
+            // Augmented [A | I]
+            double[,] m = new double[n, 2 * n];
+            for (int r = 0; r < n; r++)
+            {
+                for (int c = 0; c < n; c++) m[r, c] = a[r, c];
+                m[r, n + r] = 1.0;
+            }
+
+            for (int col = 0; col < n; col++)
+            {
+                // Partial pivot: largest magnitude in this column.
+                int piv = col;
+                double best = Math.Abs(m[col, col]);
+                for (int r = col + 1; r < n; r++)
+                {
+                    double v = Math.Abs(m[r, col]);
+                    if (v > best) { best = v; piv = r; }
+                }
+                if (best < 1e-12) return false;   // singular
+
+                if (piv != col)
+                {
+                    for (int c = 0; c < 2 * n; c++)
+                    {
+                        double t = m[col, c]; m[col, c] = m[piv, c]; m[piv, c] = t;
+                    }
+                }
+
+                double diag = m[col, col];
+                for (int c = 0; c < 2 * n; c++) m[col, c] /= diag;
+
+                for (int r = 0; r < n; r++)
+                {
+                    if (r == col) continue;
+                    double f = m[r, col];
+                    if (f == 0.0) continue;
+                    for (int c = 0; c < 2 * n; c++) m[r, c] -= f * m[col, c];
+                }
+            }
+
+            inv = new double[n, n];
+            for (int r = 0; r < n; r++)
+                for (int c = 0; c < n; c++) inv[r, c] = m[r, n + c];
+            return true;
+        }
+
         public float AllocateYawLimited(float rollTorque01,float pitchTorque01,float yawTorque01,float thrustZ01,float minMotorOutput, float[] outMotor01)
         {
             int numMotors = _effectiveness.NumMotors;

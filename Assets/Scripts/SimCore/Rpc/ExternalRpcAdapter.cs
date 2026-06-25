@@ -939,25 +939,18 @@ namespace SimCore.Rpc
             if (!RequireConnected(req, out var err)) return err;
 
             int count = req.GetInt("count", 1);
-
             if (count <= 0)
-            {
                 return RpcResponse.Error("invalid_param: count must be > 0", req.RequestId);
-            }
 
-            if (count == 1)
-            {
-                _sim.StepOnce();
-            }
-            else
-            {
-                _sim.StepMany(count);
-            }
+            if (_sim == null || _sim.SimManager == null)
+                return RpcResponse.Error("simulation_manager_missing", req.RequestId);
+
+            _sim.SimManager.StepImmediate(count);
 
             return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
             {
                 ["sim_time"] = _sim.SimTimeSec,
-                ["steps_queued"] = count,
+                ["steps_ran"] = count,
             });
         }
 

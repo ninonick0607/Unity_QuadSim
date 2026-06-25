@@ -437,13 +437,35 @@ namespace DroneCore
             Vector3 pos = targetPosition ?? Vector3.up;
             Quaternion rot = targetRotation ?? Quaternion.identity;
 
+            if (rb == null)
+                rb = GetComponent<Rigidbody>();
+
+            if (rb != null)
+            {
+                // Rigidbody is authoritative for physics + sensors.
+                rb.position = pos;
+                rb.rotation = rot;
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+
+                // Clear sleeping/contact weirdness after teleport.
+                rb.Sleep();
+                rb.WakeUp();
+            }
+
+            // Keep Transform synchronized too.
             transform.SetPositionAndRotation(pos, rot);
+            Physics.SyncTransforms();
+
+            // Clear buffered wrench/controller state.
             ResetPhysics();
             ResetControllerState();
 
-            Debug.Log($"[QuadPawn] {DroneID}: Position reset to {pos}");
-        }
+            if (sensorManager != null)
+                sensorManager.OnReset();
 
+            Debug.Log($"[QuadPawn] {DroneID}: Position reset to {pos}, rb.position={(rb != null ? rb.position.ToString() : "NULL")}");
+        }
         /// <summary>
         /// Level the drone (zero roll/pitch, keep yaw), zero velocities.
         /// </summary>

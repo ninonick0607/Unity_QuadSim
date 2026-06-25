@@ -1474,7 +1474,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 22552b3bdbb3404880e7cb7e82b7f4e0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DroneCore.Controllers.CascadedController
-  enableMotorLag: 1
+  enableMotorLag: 0
   motorLagTauSeconds: 0.02
   allocatedMinIdle01: 0
 --- !u!114 &5865032621723652560

@@ -144,6 +144,14 @@ namespace RobotCore
             Mag.Reset();
             Mag.Initialize(Geo);
             
+            long now = ClockFactory.Clock.NowNanos;
+
+            _imuLimiter?.Reset(now);
+            _gpsLimiter?.Reset(now);
+            _baroLimiter?.Reset(now);
+            _magLimiter?.Reset(now);
+            _logLimiter?.Reset(now);
+
             Latest = default;
         }
 

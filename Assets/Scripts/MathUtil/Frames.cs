@@ -182,14 +182,17 @@ namespace MathUtil
         /// TransformQuaternion does:   q_target = Q_basis^-1 * q_unity * Q_basis
         /// Inverse is:                 q_unity  = Q_basis * q_target * Q_basis^-1
         /// </summary>
-        public static Quaternion InverseTransformQuaternion(Quaternion qClient, SimFrame source)
+        public static Quaternion InverseTransformQuaternion(Quaternion qClient,
+            SimFrame source)
         {
-            if (source == SimFrame.UnityBody) return qClient;
-
-            Quaternion unityFromTarget = GetUnityFromTargetBasis(source);
-            return unityFromTarget * qClient * Quaternion.Inverse(unityFromTarget);
+            return source switch
+            {
+                SimFrame.FLU => new Quaternion(-qClient.x, -qClient.z, -qClient.y,
+                    qClient.w),
+                _ => qClient
+            };
         }
-
+        
         /// <summary>
         /// Convert a body-frame linear vector from client frame back to Unity body.
         /// Inverse of TransformLinear.
