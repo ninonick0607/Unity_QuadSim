@@ -98,7 +98,7 @@ namespace DroneCore.Controls
         // ── Public accessors ───────────────────────────────────────
         public int                      NumMotors       => _effectiveness.NumMotors;
         public EffectivenessMatrix      Effectiveness   => _effectiveness;
-
+        private int _allocDebugTick;
         // ── Reset ──────────────────────────────────────────────────
         public void Reset()
         {
@@ -128,8 +128,8 @@ namespace DroneCore.Controls
             float pitch01 = (Mathf.Abs(gPitch) > 1e-9f) ? torqueYNm / gPitch : 0f;
             float yaw01   = (Mathf.Abs(gYaw)   > 1e-9f) ? torqueZNm / gYaw   : 0f;
 
-            return AllocateYawLimited(roll01, pitch01, yaw01, thrust01,
-                                      minMotorOutput, outMotor01);
+            
+            return AllocateYawLimited(roll01, pitch01, yaw01, thrust01, minMotorOutput, outMotor01);
         }
 
         /// <summary>
@@ -388,8 +388,19 @@ namespace DroneCore.Controls
 
             // ── 3) Compute max yaw scale based on headroom ──
 
-            float sMax = ComputeYawScaleFromHeadroom(baseMotor,yawDirSigned,numMotors,minMotorOutput, 1f, 0f);       // safetyMargin — match UE default
-            float yawApplied01 = yawTorque01 * sMax;
+            float sMax = ComputeYawScaleFromHeadroom(
+                baseMotor,
+                yawDirSigned,
+                numMotors,
+                minMotorOutput,
+                1f,
+                0f
+            );
+
+            // sMax is an absolute allowed yaw magnitude in allocator units,
+            // not a fractional multiplier.
+            float yawAbs = Mathf.Abs(yawTorque01);
+            float yawApplied01 = Mathf.Sign(yawTorque01) * Mathf.Min(yawAbs, sMax);
 
             // ── 4) Final allocation with applied yaw ──
 
@@ -407,7 +418,8 @@ namespace DroneCore.Controls
 
             PostProcessMotorOutputs(outMotor01, numMotors, minMotorOutput);
 
-            return sMax;
+            return (yawAbs > 1e-6f) ? Mathf.Min(1f, sMax / yawAbs) : 1f;
+            
         }
 
         // ────────────────────────────────────────────────────────────

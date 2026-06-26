@@ -119,7 +119,7 @@ namespace DroneCore.Controllers
         // Motor outputs
         private readonly float[] _motor = new float[4];
         private readonly float[] _thrusts = new float[4];
-
+        private int _waDebugTick;
         private bool _initialized;
 
         // ── Plant / actuation (external-wrench allocated path) ──
@@ -376,7 +376,16 @@ namespace DroneCore.Controllers
             {
                 float[] motor01 = new float[4];
                 Vector3 mFlu = new Vector3(cmd.X, cmd.Y, cmd.Z);
-                _controlAllocator.AllocateWrench( cmd.W, mFlu.x, mFlu.y, mFlu.z, _rotorPhysics.MaxThrust, allocatedMinIdle01, motor01);
+
+                float sMax = _controlAllocator.AllocateWrench(
+                    cmd.W,
+                    mFlu.x,
+                    mFlu.y,
+                    mFlu.z,
+                    _rotorPhysics.MaxThrust,
+                    allocatedMinIdle01,
+                    motor01
+                );
 
                 // Plant: optional first-order motor lag (live toggle), then actuate.
                 _motorLag.Enabled    = enableMotorLag;
@@ -384,15 +393,21 @@ namespace DroneCore.Controllers
                 _motorLag.Apply(motor01, deltaTime);
 
                 QuadActuationModel.ComputeBodyWrench(
-                    motor01, _cachedConfig.RotorParams.Rotors, _rotorPhysics,
-                    out Vector3 netForce, out Vector3 netTorque);
-                _body.SetBodyWrench(netForce, netTorque);
+                    motor01,
+                    _cachedConfig.RotorParams.Rotors,
+                    _rotorPhysics,
+                    out Vector3 netForce,
+                    out Vector3 netTorque
+                );
                 
+                _body.SetBodyWrench(netForce, netTorque);
+
                 for (int i = 0; i < 4; i++)
                 {
                     _motor[i]   = motor01[i];
                     _thrusts[i] = motor01[i] * _rotorPhysics.MaxThrust;
                 }
+
                 return;
             }
             

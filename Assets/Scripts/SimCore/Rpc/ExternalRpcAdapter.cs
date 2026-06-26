@@ -954,19 +954,34 @@ namespace SimCore.Rpc
             });
         }
 
+        private int _px4ProfileCount;
+        private double _px4CmdMs;
+        private double _px4StepMs;
+        private double _px4VizMs;
+        private double _px4SensorMs;
+        private double _px4TotalMs;
+
+        private static double TicksToMs(long ticks)
+        {
+            return ticks * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        }
+
         private RpcResponse HandleStepWithCommand(RpcRequest req)
         {
+
             var cmdResp = HandleSendCommand(req);
             if (!cmdResp.Success) return cmdResp;
 
             var stepResp = HandleStep(req);
             if (!stepResp.Success) return stepResp;
-            
+
             OnVizPayload?.Invoke(req.Params);
 
-            return HandleGetSensorData(req);   // reply = post-step sensor snapshot
+            var sensorResp = HandleGetSensorData(req);
+
+
+            return sensorResp;
         }
-        
         // --- set_time_scale ---
 
         private RpcResponse HandleSetTimeScale(RpcRequest req)
