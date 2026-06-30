@@ -7,6 +7,12 @@
       "dependencies": {},
       "hash": "c2af83c9d4f8cdaada9d4a0e94de2f195d8e1d01"
     },
+    "com.nino.quadsim": {
+      "version": "file:com.nino.quadsim",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.unity.addressables": {
       "version": "2.9.1",
       "depth": 0,
