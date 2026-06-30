@@ -37,7 +37,18 @@ namespace SimCore.Common
     /// Which stage of the cascade to enter at. None = motors off.
     /// Geometric controller ignores this entirely.
     /// </summary>
-    public enum GoalMode : byte { None, Position, Velocity, Angle, Rate, Passthrough, Wrench, WrenchAllocated}
+    public enum GoalMode : byte
+    {
+        None = 0,
+        Position = 1,
+        Velocity = 2,
+        Angle = 3,
+        Rate = 4,
+        Passthrough = 5,
+        Wrench = 6,
+        WrenchBypassed = 7,
+        Acceleration = 8
+    }
     
     // ==================== Command Payloads ==================== //
     
@@ -73,6 +84,7 @@ namespace SimCore.Common
     /// 4-axis command payload. Interpretation depends on GoalMode:
     ///   Position:    X=X_m,      Y=Y_m,         Z=Yaw_deg,       W=Alt_m
     ///   Velocity:    X=Vx_mps,   Y=Vy_mps,      Z=YawRate_dps,   W=Vz_mps
+    ///   Acceleration:X=Ax_mps2,Y=Ay_mps2,     Z=YawRate_dps,   W=Az_mps2
     ///   Angle:       X=Roll_deg, Y=Pitch_deg,    Z=YawRate_dps,   W=Throttle_01
     ///   Rate:        X=RollRate, Y=PitchRate,    Z=YawRate_dps,   W=Throttle_01
     ///   Passthrough: X=M0,       Y=M1,           Z=M2,            W=M3

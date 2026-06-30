@@ -99,11 +99,13 @@ namespace SimCore.Rpc
             ["none"]        = GoalMode.None,
             ["position"]    = GoalMode.Position,
             ["velocity"]    = GoalMode.Velocity,
+            ["acceleration"] = GoalMode.Acceleration,
+            ["accel"]       = GoalMode.Acceleration,
             ["angle"]       = GoalMode.Angle,
             ["rate"]        = GoalMode.Rate,
             ["passthrough"] = GoalMode.Passthrough,
             ["wrench"]      = GoalMode.Wrench,
-            ["wrench_allocated"] = GoalMode.WrenchAllocated,
+            ["wrench_bypassed"] = GoalMode.WrenchBypassed,
 
         };
 
@@ -112,11 +114,12 @@ namespace SimCore.Rpc
             [GoalMode.None]        = "none",
             [GoalMode.Position]    = "position",
             [GoalMode.Velocity]    = "velocity",
+            [GoalMode.Acceleration] = "acceleration",
             [GoalMode.Angle]       = "angle",
             [GoalMode.Rate]        = "rate",
             [GoalMode.Passthrough] = "passthrough",
             [GoalMode.Wrench]      = "wrench",
-            [GoalMode.WrenchAllocated] = "wrench_allocated",
+            [GoalMode.WrenchBypassed] = "wrench_bypassed",
         };
 
         private static readonly Dictionary<string, ControllerKind> ControllerKindMap = new()
@@ -393,6 +396,7 @@ namespace SimCore.Rpc
                 ["reset_simulation"] = HandleResetSimulation,
                 ["set_wind"]         = HandleSetWind,
                 ["set_geo_origin"] = HandleSetGeoOrigin,
+                ["update_viz"] = HandleUpdateViz,
                 // --- Phase 9c: Telemetry streaming ---
                 ["subscribe"]        = HandleSubscribe,
                 ["unsubscribe"]      = HandleUnsubscribe,
@@ -676,6 +680,15 @@ namespace SimCore.Rpc
                     Vector3 velUnity = Frames.InverseTransformLinear(velClient, clientFrame);
                     // Map into Axis4 layout: (Vx, Vz, YawRate, Vy_alt)
                     return new Axis4(velUnity.x, velUnity.z, w, velUnity.y);
+
+                case GoalMode.Acceleration:
+                    // Client sends: (Ax, Ay, Az, YawRate_dps) in client body/output frame.
+                    // Internal Axis4 layout: (Ax, Ay, YawRate, Az).
+                    // Acceleration is a true vector, so it uses the same linear transform
+                    // as body-frame velocity.
+                    Vector3 accelClient = new Vector3(x, y, z);
+                    Vector3 accelUnity = Frames.InverseTransformLinear(accelClient, clientFrame);
+                    return new Axis4(accelUnity.x, accelUnity.z, w, accelUnity.y);
          
                 case GoalMode.Angle:
                 case GoalMode.Rate:
@@ -685,7 +698,7 @@ namespace SimCore.Rpc
                     // but for now we assume the client sends in the frame the controller expects.
                     return new Axis4(x, y, z, w);
                     
-                case GoalMode.Wrench:
+                case GoalMode.WrenchBypassed:
                     // Client sends: (tx, ty, tz, thrust) — torques in client body frame
                     // Thrust is a scalar along body vertical — no frame conversion needed.
                     //
@@ -695,7 +708,7 @@ namespace SimCore.Rpc
                     Vector3 torqueClient = new Vector3(x, y, z);
                     Vector3 torqueUnity = Frames.InverseTransformAngularVelocity(torqueClient, clientFrame);
                     return new Axis4(torqueUnity.x, torqueUnity.y, torqueUnity.z, w);
-                case GoalMode.WrenchAllocated:
+                case GoalMode.Wrench:
                     // External wrench routed through the effectiveness-matrix
                     // allocator (built in the FLU internal frame). The FLU->Unity
                     // mapping happens implicitly inside the allocate->actuate round
@@ -740,10 +753,13 @@ namespace SimCore.Rpc
                 ["desired_rates_deg"]  = Vec3ToArray(t.ControllerTelemetry.DesiredRatesDeg),
                 ["desired_angles_deg"] = Vec3ToArray(t.ControllerTelemetry.DesiredAnglesDeg),
                 ["desired_vel"]        = Vec3ToArray(t.ControllerTelemetry.DesiredVel),
+                ["desired_accel"]      = Vec3ToArray(t.ControllerTelemetry.DesiredAccel),
                 ["external_cmd"]       = new object[] { t.ControllerTelemetry.ExternalCmd.X,
                                                         t.ControllerTelemetry.ExternalCmd.Y,
                                                         t.ControllerTelemetry.ExternalCmd.Z,
                                                         t.ControllerTelemetry.ExternalCmd.W },
+                ["motor_thrusts"]      = new object[] { t.MotorThrusts.FL, t.MotorThrusts.FR,
+                    t.MotorThrusts.BL, t.MotorThrusts.BR },
             });
         }
 
@@ -968,20 +984,21 @@ namespace SimCore.Rpc
 
         private RpcResponse HandleStepWithCommand(RpcRequest req)
         {
-
             var cmdResp = HandleSendCommand(req);
             if (!cmdResp.Success) return cmdResp;
 
             var stepResp = HandleStep(req);
             if (!stepResp.Success) return stepResp;
 
-            OnVizPayload?.Invoke(req.Params);
-
-            var sensorResp = HandleGetSensorData(req);
-
-
-            return sensorResp;
+            return HandleGetSensorData(req);
         }
+        
+        private RpcResponse HandleUpdateViz(RpcRequest req)
+        {
+            OnVizPayload?.Invoke(req.Params);
+            return RpcResponse.Ok(req.RequestId);
+        }
+        
         // --- set_time_scale ---
 
         private RpcResponse HandleSetTimeScale(RpcRequest req)
@@ -1155,6 +1172,7 @@ namespace SimCore.Rpc
                     ["desired_rates_deg"]  = Vec3ToArray(t.ControllerTelemetry.DesiredRatesDeg),
                     ["desired_angles_deg"] = Vec3ToArray(t.ControllerTelemetry.DesiredAnglesDeg),
                     ["desired_vel"]        = Vec3ToArray(t.ControllerTelemetry.DesiredVel),
+                    ["desired_accel"]      = Vec3ToArray(t.ControllerTelemetry.DesiredAccel),
                     ["external_cmd"]       = new object[] { t.ControllerTelemetry.ExternalCmd.X,
                                                             t.ControllerTelemetry.ExternalCmd.Y,
                                                             t.ControllerTelemetry.ExternalCmd.Z,

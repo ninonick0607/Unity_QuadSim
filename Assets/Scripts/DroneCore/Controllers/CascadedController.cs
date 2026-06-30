@@ -67,9 +67,11 @@ namespace DroneCore.Controllers
             public GoalMode Mode;
             public Axis4 ExternalCmd;
             public Vector3 DesiredVel;
+            public Vector3 DesiredAccel;
             public Vector3 DesiredAnglesDeg;
             public Vector3 DesiredRatesDeg;
             public bool HasVelSetpoint;
+            public bool HasAccelSetpoint;
             public bool HasAngleSetpoint;
             public bool HasRateSetpoint;
         }
@@ -359,20 +361,16 @@ namespace DroneCore.Controllers
             TelemetryInit(mode, cmd);
 
             // --- WRENCH MODE ---
-            if (mode == GoalMode.Wrench)
+            // This is to bypass directly to the rigid body
+            if (mode == GoalMode.WrenchBypassed)
             {
                 Vector3 torque = new Vector3(cmd.X, cmd.Y, cmd.Z);
                 Vector3 force = new Vector3(0, cmd.W, 0); 
                 _body.SetBodyWrench(force, torque);
                 return;
             }
-            // --- WRENCH (ALLOCATED) MODE ---
-            // External FLU body wrench (Mx,My,Mz, f) routed through the
-            // effectiveness-matrix allocator: projected onto the real per-motor
-            // [0..1] feasible set, then rebuilt into a body wrench by the
-            // actuation model. The FLU->Unity mapping is implicit in the
-            // FLU effectiveness matrix -> motor01 -> Unity actuation round trip.
-            if (mode == GoalMode.WrenchAllocated)
+
+            if (mode == GoalMode.Wrench)
             {
                 float[] motor01 = new float[4];
                 Vector3 mFlu = new Vector3(cmd.X, cmd.Y, cmd.Z);
@@ -473,7 +471,19 @@ namespace DroneCore.Controllers
             }
  
 
-            // 3. VELOCITY STAGE
+            // 3. ACCELERATION STAGE
+            // Acceleration mode bypasses Position and Velocity PID. The external
+            // command is a desired acceleration setpoint in the output/body frame:
+            //   X = ax [m/s^2], Y = ay [m/s^2], Z = yaw-rate [deg/s], W = az [m/s^2].
+            Vector3 accelCmd = Vector3.zero;
+            if (mode == GoalMode.Acceleration)
+            {
+                accelCmd = new Vector3(cmd.X, cmd.Y, cmd.W);
+                _telemetry.DesiredAccel = accelCmd;
+                _telemetry.HasAccelSetpoint = true;
+            }
+
+            // 4. VELOCITY STAGE
             if (mode == GoalMode.Position || mode == GoalMode.Velocity || mode == GoalMode.Angle)
             {
                 if (mode == GoalMode.Velocity)
@@ -497,7 +507,7 @@ namespace DroneCore.Controllers
                 }
             }
 
-            // 4. ANGLE STAGE
+            // 5. ANGLE STAGE
             if (mode != GoalMode.Rate)
             {
                 if (mode == GoalMode.Angle)
@@ -526,9 +536,25 @@ namespace DroneCore.Controllers
                     _telemetry.DesiredAnglesDeg.y = attCmd.y;
                     _telemetry.HasAngleSetpoint = true;
                 }
+                else if (mode == GoalMode.Acceleration)
+                {
+                    Vector2 attCmd = AccelerationToAttitude(accelCmd.x, accelCmd.y);
+
+                    _axes[1].Angle.SetExternalGoal(attCmd.x);
+                    _axes[0].Angle.SetExternalGoal(attCmd.y);
+
+                    _telemetry.DesiredAnglesDeg.x = attCmd.x;
+                    _telemetry.DesiredAnglesDeg.y = attCmd.y;
+                    _telemetry.HasAngleSetpoint = true;
+                }
 
                 for (int axis = 0; axis < 3; axis++)
                 {
+                    // Acceleration mode commands yaw-rate directly, so do not let
+                    // the yaw-angle PID integrate against a meaningless yaw angle.
+                    if (mode == GoalMode.Acceleration && axis == 2)
+                        continue;
+
                     if (_axes[axis].Angle != null)
                         _axes[axis].Angle.Update(deltaTime);
                 }
@@ -539,7 +565,7 @@ namespace DroneCore.Controllers
                     float angleOutput = _axes[axis].Angle != null ? _axes[axis].Angle.GetOutput() : 0f;
 
                     // In gamepad Angle mode: yaw should be a RATE setpoint from Cmd.Z (deg/s)
-                    if (bGamepadAngle && axis == 2)
+                    if ((bGamepadAngle || mode == GoalMode.Acceleration) && axis == 2)
                     {
                         angleOutput = cmd.Z;
                     }
@@ -565,7 +591,7 @@ namespace DroneCore.Controllers
                 }
             }
 
-            // 5. RATE STAGE
+            // 6. RATE STAGE
             if (mode == GoalMode.Rate)
             {
                 _telemetry.DesiredRatesDeg = new Vector3(cmd.X, cmd.Y, cmd.Z);
@@ -581,7 +607,7 @@ namespace DroneCore.Controllers
                 }
             }
 
-            // 6. THROTTLE
+            // 7. THROTTLE
             const float MinIdleThrottle = 0.04f;
             if (mode == GoalMode.Rate || bGamepadAngle)
             {
@@ -589,7 +615,9 @@ namespace DroneCore.Controllers
             }
             else
             {
-                float zAccel = _axes[3].Velocity.GetOutput();
+                float zAccel = (mode == GoalMode.Acceleration)
+                    ? accelCmd.z
+                    : _axes[3].Velocity.GetOutput();
                 output[3] = _hoverThrottle01 * (1.0f + zAccel / 9.81f);
             }
 
@@ -879,9 +907,11 @@ namespace DroneCore.Controllers
             _telemetry.Mode = mode;
             _telemetry.ExternalCmd = cmd;
             _telemetry.DesiredVel = Vector3.zero;
+            _telemetry.DesiredAccel = Vector3.zero;
             _telemetry.DesiredAnglesDeg = Vector3.zero;
             _telemetry.DesiredRatesDeg = Vector3.zero;
             _telemetry.HasVelSetpoint = false;
+            _telemetry.HasAccelSetpoint = false;
             _telemetry.HasAngleSetpoint = false;
             _telemetry.HasRateSetpoint = false;
         }

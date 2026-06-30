@@ -392,6 +392,16 @@ namespace DroneCore.Api
                     BR = _controller.LastMotor01[3]
                 };
             }
+            if (_controller != null && _controller.Thrusts != null)
+            {
+                telem.MotorThrusts = new Motor4
+                {
+                    FL = _controller.Thrusts[0],
+                    FR = _controller.Thrusts[1],
+                    BL = _controller.Thrusts[2],
+                    BR = _controller.Thrusts[3]
+                };
+            }
 
             return telem;
         }
@@ -451,7 +461,8 @@ namespace DroneCore.Api
         public string DroneID;
         public GoalMode Mode;
         public ControllerKind Controller;
-        public Motor4 MotorOutputs;
+        public Motor4 MotorOutputs;   
+        public Motor4 MotorThrusts;  
         public CascadedController.CascadeTelemetrySnapshot ControllerTelemetry;
     }
 }
