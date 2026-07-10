@@ -1,0 +1,65 @@
+
+name: "ModalAI_Sentinel_RB5_S500"
+
+body_mesh: "/QuadSimPlugin/Assets/Drone_Models/Sentinel/Sentinel.Sentinel"
+
+physical_properties:
+  mass_kg: 1.347
+  com_offset: {x: 0.0, y: 0.0, z: 0.02}
+  inertia: {x: 0.02817, y: 0.02817, z: 0.04383}
+  arm_length: 0.236
+  linear_drag_coef: 0.15
+  angular_drag_coef: 0.08
+
+propulsion:
+  prop_diameter: 0.254
+  max_rpm: 10464
+  max_thrust: 12.68
+  thrust_coef: 0.0831
+  torque_coef: 0.0303 #0.0147   # use 0.0303 only if your model expects power-style coefficient
+
+  propellers:
+    - {id: 0, x:  0.167, y: 0.0, z:  0.167, dir: -1}
+    - {id: 1, x:  0.167, y: 0.0, z: -0.167, dir:  1}
+    - {id: 2, x: -0.167, y: 0.0, z:  0.167, dir:  1}
+    - {id: 3, x: -0.167, y: 0.0, z: -0.167, dir: -1}
+
+controller:
+
+  position_gains:
+    x: {p: 0.95, i: 0.0, d: 0.0}
+    y: {p: 0.95, i: 0.0, d: 0.0}
+    z: {p: 1.0, i: 0.0, d: 0.0}
+
+  velocity_gains:
+    x: {p: 3.0, i: 0.1, d: 0.0}
+    y: {p: 3.0, i: 0.1, d: 0.0}
+    z: {p: 8.0, i: 2.0, d: 0.0}
+
+  attitude_gains:
+    roll:  {p: 5.5, i: 0.0, d: 0.0}
+    pitch: {p: 5.5, i: 0.0, d: 0.0}
+
+  rate_gains:
+    roll:  {p: 0.08, i: 0.4, d: 0.0}
+    pitch: {p: 0.08, i: 0.4, d: 0.0}
+    yaw:   {p: .13, i: 0.3, d: 0.0}
+
+camera_parameters:
+  Cam_Arm_Length: 2.5
+  FOV: 90
+  Cam_Pitch: -15.0
+  Cam_Socket_Offset:
+    x: -5.0
+    y: 0.0
+    z: 2.0
+
+limits:
+  max_velocity_xy: 3.0
+  max_velocity_z: 1.12
+  max_tilt_angle_deg: 30.0
+  max_angular_rate_RP_deg: 150.0
+  max_angular_rate_Yaw_deg: 150.0
+  max_thrust_newtons: 12.68
+  max_pid_output: 700.0
+  acceptable_distance: 5

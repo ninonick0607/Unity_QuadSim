@@ -20,6 +20,6 @@ MonoBehaviour:
   originAltitudeM: 5
   masterSeed: 12345
   enableSensorNoise: 0
-  windEnabled: 0
-  windSpeed: 10
+  windEnabled: 1
+  windSpeed: 15
   windHeadingDeg: 0

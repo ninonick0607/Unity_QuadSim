@@ -84,12 +84,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 66eca1a18f6e4731a9a8a3973fbe4e71, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DroneCore.Core.DroneManager
-  quadPawnPrefab: {fileID: -6611264674519159391, guid: 73493b039b7aa328aac6841c1086dcf9, type: 3}
+  quadPawnPrefab: {fileID: 4678018957320333326, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
   defaultSpawnOrigin: {x: 0, y: 1, z: 0}
   spawnOffset: 1.5
   selectedConfigName: StandardDrone_Config
   simManager: {fileID: 6615807386293998892}
   swarmMode: 0
+  masterSeed: 12345
+  enableSensorNoise: 0
+  originLat: 30.4636
+  originLon: -86.5533
+  originAlt: 0
 --- !u!114 &3517857633211225954
 MonoBehaviour:
   m_ObjectHideFlags: 0

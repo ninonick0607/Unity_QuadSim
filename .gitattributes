@@ -1,2 +1,10 @@
 *.fbx filter=lfs diff=lfs merge=lfs -text
 *.bytes filter=lfs diff=lfs merge=lfs -text
+
+# Keep these Crazyflie FBX files out of Git LFS
+Assets/QuadSim/Prefabs/ExternalAssets/ccw_prop.fbx -filter -diff -merge -text
+Assets/QuadSim/Prefabs/ExternalAssets/cf2_assembly.fbx -filter -diff -merge -text
+Assets/QuadSim/Prefabs/ExternalAssets/cw_prop.fbx -filter -diff -merge -text
+Assets/Samples/ccw_prop.fbx -filter -diff -merge -text
+Assets/Samples/cf2_assembly.fbx -filter -diff -merge -text
+Assets/Samples/cw_prop.fbx -filter -diff -merge -text
