@@ -413,9 +413,14 @@ namespace DroneCore.Core
 
             _selectedDroneIndex = index;
 
+            // Activate only the selected drone's camera; keep its current camera mode.
             if (alsoPossess)
             {
-                target.ForceFPVCameraActive();
+                for (int i = 0; i < _registeredDrones.Count; i++)
+                {
+                    if (_registeredDrones[i] != null)
+                        _registeredDrones[i].SetCameraActive(i == _selectedDroneIndex);
+                }
             }
 
             Debug.Log($"[DroneManager] Selected drone: {target.name} (index {index})");

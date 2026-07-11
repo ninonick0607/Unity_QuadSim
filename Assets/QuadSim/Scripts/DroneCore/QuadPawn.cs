@@ -596,19 +596,91 @@ namespace DroneCore
         }
 
         // ============================================================================
-        // Camera (stubs — future CameraRig component)
+        // Camera
         // ============================================================================
 
-        public void ForceFPVCameraActive()
+        public enum CameraMode { ThirdPerson, FPV }
+
+        [Header("Camera")]
+        [Tooltip("Drone view camera. Auto-found in children if unset.")]
+        [SerializeField] private Camera droneCamera;
+
+        public CameraMode CamMode { get; private set; } = CameraMode.ThirdPerson;
+
+        private Transform _tpParent;
+        private Vector3 _tpLocalPos;
+        private Quaternion _tpLocalRot;
+        private bool _camInit;
+
+        private void InitCameraRefs()
         {
-            // TODO: CameraRig.SetMode(FPV)
-            Debug.Log($"[QuadPawn] {DroneID}: ForceFPVCameraActive (stub)");
+            if (_camInit) return;
+
+            if (droneCamera == null)
+            {
+                // Prefer the canonical ThirdPerson camera by name; fall back to any child camera.
+                Transform tp = transform.Find("ThirdPerson") ?? FindDeepChild(transform, "ThirdPerson");
+                if (tp != null) droneCamera = tp.GetComponent<Camera>();
+                if (droneCamera == null) droneCamera = GetComponentInChildren<Camera>(true);
+            }
+            if (droneCamera == null) return;
+
+            _tpParent   = droneCamera.transform.parent;
+            _tpLocalPos = droneCamera.transform.localPosition;
+            _tpLocalRot = droneCamera.transform.localRotation;
+            _camInit = true;
+        }
+
+        private static Transform FindDeepChild(Transform root, string name)
+        {
+            foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+                if (t.name == name) return t;
+            return null;
+        }
+
+        /// <summary>This drone's camera (may be null if prefab has none).</summary>
+        public Camera DroneCamera { get { InitCameraRefs(); return droneCamera; } }
+
+        /// <summary>Enable/disable this drone's camera (+AudioListener). DroneManager
+        /// calls this on selection so only the selected drone renders.</summary>
+        public void SetCameraActive(bool active)
+        {
+            InitCameraRefs();
+            if (droneCamera == null) return;
+            droneCamera.enabled = active;
+            var listener = droneCamera.GetComponent<AudioListener>();
+            if (listener != null) listener.enabled = active;
+        }
+
+        public void SetCameraMode(CameraMode mode)
+        {
+            InitCameraRefs();
+            if (droneCamera == null) return;
+
+            var camT = droneCamera.transform;
+            if (mode == CameraMode.FPV)
+            {
+                Transform mount = fpvCameraPoint != null ? fpvCameraPoint : transform;
+                camT.SetParent(mount, worldPositionStays: false);
+                camT.localPosition = Vector3.zero;
+                camT.localRotation = Quaternion.identity;
+            }
+            else
+            {
+                camT.SetParent(_tpParent, worldPositionStays: false);
+                camT.localPosition = _tpLocalPos;
+                camT.localRotation = _tpLocalRot;
+            }
+            CamMode = mode;
         }
 
         public void SwitchCamera()
+            => SetCameraMode(CamMode == CameraMode.ThirdPerson ? CameraMode.FPV : CameraMode.ThirdPerson);
+
+        public void ForceFPVCameraActive()
         {
-            // TODO: CameraRig.CycleMode()
-            Debug.Log($"[QuadPawn] {DroneID}: SwitchCamera (stub)");
+            SetCameraActive(true);
+            SetCameraMode(CameraMode.FPV);
         }
 
         public Transform GetFPVCameraPoint()

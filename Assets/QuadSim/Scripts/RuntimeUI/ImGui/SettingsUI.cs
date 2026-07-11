@@ -72,7 +72,8 @@ namespace QuadSim.RuntimeUI.ImGuiHud
             if (ImGui.SmallButton("Refresh")) RefreshConfigs(dm);
 
             if (ImGui.Button("Reload Drone (re-read YAML)"))
-                dm.ReloadCurrentDrone(resetPosition: false);
+                UiActions.Defer(() => dm.ReloadCurrentDrone(resetPosition:false));
+            
             ImGui.SameLine();
             ImGui.TextDisabled("Save: edit YAML directly (StreamingAssets/Configs/Drones)");
 
@@ -116,7 +117,7 @@ namespace QuadSim.RuntimeUI.ImGuiHud
         private void DrawTogglablesTab(DroneManager dm, ControlPanelUI cp, StateHudUI hud)
         {
             if (ImGui.Button("Spawn Drone Now") && dm != null)
-                dm.SpawnDrone(Vector3.zero, Quaternion.identity);
+                UiActions.Defer(() => dm.SpawnDrone(Vector3.zero, Quaternion.identity));
             ImGui.SameLine();
             ImGui.TextDisabled("(DroneManager auto-spawns one on sim start)");
 

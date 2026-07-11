@@ -68,6 +68,8 @@ namespace QuadSim.RuntimeUI.ImGuiHud
                     float BtnW(string t) => ImGui.CalcTextSize(t).X + padX * 2f;
 
                     ImGui.SetCursorPosY(btnTopY);
+                    ImGui.Dummy(new ImVec2(26f, 0f));   // reserve top-left corner for HUD toggle
+                    ImGui.SameLine();
                     if (ImGui.Button("Settings")) OnSettingsClicked?.Invoke();
                     ImGui.SameLine();
 
@@ -114,16 +116,18 @@ namespace QuadSim.RuntimeUI.ImGuiHud
                     }
                     ImGui.SameLine();
                     ImGui.SetCursorPosY(btnTopY);
-                    if (ImGui.Button("Step")) sim.StepOnce();
-                    ImGui.SameLine();
+                    if (ImGui.Button("Step")) UiActions.Defer(() => sim.StepOnce());                    ImGui.SameLine();
                     ImGui.SetCursorPosY(btnTopY);
                     if (ImGui.Button("Reset"))
                     {
                         _speedScale = 1f;
-                        sim.SetTimeScale(1.0);
-                        sim.Resume();
-                        sim.ResetSimulation();
-                        OnSimReset?.Invoke();
+                        sim.SetTimeScale(1.0);   // flag writes — safe immediately
+                        UiActions.Defer(() =>
+                        {
+                            sim.Resume();
+                            sim.ResetSimulation();
+                            OnSimReset?.Invoke();
+                        });
                     }
 
                     ImGui.SameLine(); ImGui.Dummy(new ImVec2(40f, 0f)); ImGui.SameLine();
@@ -134,8 +138,7 @@ namespace QuadSim.RuntimeUI.ImGuiHud
                     ImGui.SameLine();
                     ImGui.SetCursorPosY(btnTopY);
                     if (ImGui.Button("Spawn Drone") && dm != null)
-                        dm.SpawnDrone(Vector3.zero, Quaternion.identity); // self-selects + FPV cam
-
+                        UiActions.Defer(() => dm.SpawnDrone(Vector3.zero, Quaternion.identity));
                     // ---- Status column ----
                     ImGui.TableSetColumnIndex(1);
                     ImGuiWidgets.RoundedLabel("##FPSBox", $"FPS: {_fps:F1}", statusW, BarHeight - 12f);

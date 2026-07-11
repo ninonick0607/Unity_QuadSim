@@ -15,6 +15,7 @@ namespace QuadSim.RuntimeUI.ImGuiHud
         private SimCoreApi _sim;
         private DroneManager _dm;
         private UImGui.UImGui _ui;
+        private Camera _boundCamera;
 
         private TaskbarUI _taskbar;
         private ControlPanelUI _controlPanel;
@@ -26,6 +27,7 @@ namespace QuadSim.RuntimeUI.ImGuiHud
         private bool _externalPendingApproval;
         private bool _layoutSeen;
         private bool _subscribed;
+        private bool _hudVisible = true;
         private float _noLayoutWarnTimer;
 
         private void OnEnable()
@@ -57,7 +59,6 @@ namespace QuadSim.RuntimeUI.ImGuiHud
                 _ui.Layout -= OnLayout;
                 _subscribed = false;
             }
-
             UnsubscribeSim();
         }
 
@@ -69,7 +70,6 @@ namespace QuadSim.RuntimeUI.ImGuiHud
                 if (_sim != null)
                     _sim.OnExternalConnectionRequest += HandleExternalRequest;
             }
-
             if (_dm == null)
                 _dm = DroneManager.Get();
         }
@@ -80,14 +80,40 @@ namespace QuadSim.RuntimeUI.ImGuiHud
                 _sim.OnExternalConnectionRequest -= HandleExternalRequest;
         }
 
-        private void HandleExternalRequest()
+        private void HandleExternalRequest() => _externalPendingApproval = true;
+
+        // ====================================================================
+        // Camera binding — keep UImGui pointed at whatever camera is live.
+        // Survives drone reload/spawn (new camera object) and drone selection.
+        // Switch Camera moves the SAME camera between mounts, so no re-bind.
+        // ====================================================================
+        private void EnsureUiCamera()
         {
-            _externalPendingApproval = true;
+            if (_ui == null) return;
+
+            Camera target = null;
+            QuadPawn pawn = _dm != null ? _dm.SelectedDrone : null;
+            if (pawn != null) target = pawn.DroneCamera;
+            if (target == null || !target.enabled || !target.gameObject.activeInHierarchy)
+                target = Camera.main;
+
+            if (target == null || target == _boundCamera) return;
+
+            _ui.SetCamera(target);
+            _boundCamera = target;
+            Debug.Log($"[ImGuiRuntimeBootstrap] UImGui camera -> {target.name}");
         }
 
         private void Update()
         {
             ResolveRefs();
+
+            // Drain deferred UI actions FIRST — spawn/reload/resets happen here,
+            // safely outside the render pipeline.
+            UiActions.Drain();
+
+            EnsureUiCamera();
+
             if (_sim == null) return;
 
             if (!_layoutSeen)
@@ -96,18 +122,19 @@ namespace QuadSim.RuntimeUI.ImGuiHud
                 if (_noLayoutWarnTimer > 5f)
                 {
                     Debug.LogWarning("[ImGuiRuntimeBootstrap] No ImGui layout callback after 5s. " +
-                                     "Check that UImGui is enabled, assigned to the active camera, and the HDRP RenderImGuiPass is active.");
+                                     "Check that UImGui is enabled, has a camera, and the RenderImGui pass is active.");
                     _noLayoutWarnTimer = float.NegativeInfinity;
                 }
             }
 
+            // ---- Command streaming (independent of HUD visibility) ----
             if (_sim.CurrentAuthority != InputSource.UI) return;
             if (_dm == null || _dm.DroneCount == 0) return;
 
-            QuadPawn pawn = _dm.SelectedDrone;
-            if (pawn == null) return;
+            QuadPawn streamPawn = _dm.SelectedDrone;
+            if (streamPawn == null) return;
 
-            var api = pawn.GetComponent<QuadSimApi>();
+            var api = streamPawn.GetComponent<QuadSimApi>();
             if (api == null || !api.IsInitialized) return;
 
             GoalMode mode = api.CurrentMode;
@@ -119,7 +146,7 @@ namespace QuadSim.RuntimeUI.ImGuiHud
                 return;
             }
 
-            var cmd = _controlPanel.GetCommandState(pawn);
+            var cmd = _controlPanel.GetCommandState(streamPawn);
             if (cmd == null) return;
 
             api.SendCommand(InputSource.UI, cmd.Build(mode));
@@ -137,21 +164,70 @@ namespace QuadSim.RuntimeUI.ImGuiHud
             if (!_appliedStartupPrefs)
             {
                 _appliedStartupPrefs = true;
-
                 if (_settings.PersistControlPanel && !_controlPanel.IsOpen)
                     _controlPanel.ToggleOpen();
-
                 if (_settings.PersistStateHud)
                     _stateHud.SetVisible(true);
             }
 
-            _taskbar.Draw(_sim, _dm);
-            DrawFloatingButtons();
-            _controlPanel.Draw(_sim, _dm);
-            _stateHud.Draw(_dm);
-            _settings.Draw(_dm, _controlPanel, _stateHud);
-            DrawJoystickViz();
-            DrawExternalApprovalPopup();
+            if (_hudVisible)
+            {
+                _taskbar.Draw(_sim, _dm);
+                DrawFloatingButtons();
+                _controlPanel.Draw(_sim, _dm);
+                _stateHud.Draw(_dm);
+                _settings.Draw(_dm, _controlPanel, _stateHud);
+                DrawJoystickViz();
+            }
+
+            DrawExternalApprovalPopup();   // safety-relevant: always drawn
+            DrawHudToggleButton();         // last = topmost, always drawn
+        }
+
+        // ====================================================================
+        // Master HUD toggle — invisible 26x26 button in the top-left corner.
+        // Highlights on hover. Hides/shows the entire HUD.
+        // ====================================================================
+        private void DrawHudToggleButton()
+        {
+            const float size = 26f;
+
+            ImGui.SetNextWindowPos(new ImVec2(0f, 0f));
+            ImGui.SetNextWindowSize(new ImVec2(size + 4f, size + 4f));
+            ImGui.SetNextWindowBgAlpha(0f);
+
+            var flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize |
+                        ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar |
+                        ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoBackground |
+                        ImGuiWindowFlags.NoFocusOnAppearing;
+
+            ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new ImVec2(2f, 2f));
+            if (ImGui.Begin("##QuadSimHudToggle", flags))
+            {
+                if (ImGui.InvisibleButton("##HudToggleBtn", new ImVec2(size, size)))
+                    _hudVisible = !_hudVisible;
+
+                bool hovered = ImGui.IsItemHovered();
+                var min = ImGui.GetItemRectMin();
+                var max = ImGui.GetItemRectMax();
+                var dl = ImGui.GetWindowDrawList();
+
+                // Faint outline always (so it's findable); bright on hover.
+                // Set the first alpha to 0 if you want it truly invisible at rest.
+                uint col = hovered ? SimImGuiStyle.Col32(120, 200, 255, 230)
+                                   : SimImGuiStyle.Col32(255, 255, 255, 25);
+                dl.AddRect(min, max, col, 5f, ImDrawFlags.None, hovered ? 2f : 1f);
+
+                if (hovered)
+                {
+                    // Eye-ish marker + tooltip
+                    var c = new ImVec2((min.X + max.X) * 0.5f, (min.Y + max.Y) * 0.5f);
+                    dl.AddCircleFilled(c, 4f, col);
+                    ImGui.SetTooltip(_hudVisible ? "Hide HUD" : "Show HUD");
+                }
+            }
+            ImGui.End();
+            ImGui.PopStyleVar();
         }
 
         private void DrawFloatingButtons()
@@ -165,12 +241,9 @@ namespace QuadSim.RuntimeUI.ImGuiHud
             ImGui.SetNextWindowSize(new ImVec2(240f, 104f));
             ImGui.SetNextWindowBgAlpha(0f);
 
-            var flags = ImGuiWindowFlags.NoTitleBar |
-                        ImGuiWindowFlags.NoResize |
-                        ImGuiWindowFlags.NoMove |
-                        ImGuiWindowFlags.NoSavedSettings |
-                        ImGuiWindowFlags.NoScrollbar |
-                        ImGuiWindowFlags.NoFocusOnAppearing |
+            var flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize |
+                        ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoSavedSettings |
+                        ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoFocusOnAppearing |
                         ImGuiWindowFlags.NoBackground;
 
             if (ImGui.Begin("##QuadSimControlPanelBtn", flags))
@@ -193,7 +266,6 @@ namespace QuadSim.RuntimeUI.ImGuiHud
                 ImGui.PopStyleVar();
                 ImGui.PopID();
             }
-
             ImGui.End();
         }
 
@@ -227,15 +299,12 @@ namespace QuadSim.RuntimeUI.ImGuiHud
                     _sim.AcceptExternalConnection();
                     ImGui.CloseCurrentPopup();
                 }
-
                 ImGui.SameLine();
-
                 if (ImGui.Button("Deny##ExternalDeny", new ImVec2(120f, 0f)))
                 {
                     _sim.DenyExternalConnection();
                     ImGui.CloseCurrentPopup();
                 }
-
                 ImGui.EndPopup();
             }
         }

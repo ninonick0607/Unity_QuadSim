@@ -121,7 +121,7 @@ namespace QuadSim.RuntimeUI.ImGuiHud
                 ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new ImVec2(16f, 9f));
 
                 if (ImGui.Button("Switch Camera##ControlPanelSwitchCamera"))
-                    pawn.SwitchCamera();
+                    UiActions.Defer(() => pawn.SwitchCamera());
 
                 ImGui.SameLine();
 
@@ -130,7 +130,7 @@ namespace QuadSim.RuntimeUI.ImGuiHud
                 if (ImGui.Button("Reset High##ControlPanelResetHigh"))
                 {
                     state.HoverActive = false;
-                    api.ResetPose(dm.SpawnOrigin + Vector3.up * ResetHighAltM, Quaternion.identity);
+                    UiActions.Defer(() => api.ResetPose(dm.SpawnOrigin + Vector3.up * ResetHighAltM, Quaternion.identity));
                 }
 
                 ImGui.SameLine();
@@ -138,13 +138,13 @@ namespace QuadSim.RuntimeUI.ImGuiHud
                 if (ImGui.Button("Reset Low##ControlPanelResetLow"))
                 {
                     state.HoverActive = false;
-                    dm.ResetSelectedDrone();
+                    UiActions.Defer(() => dm.ResetSelectedDrone());
                 }
 
                 ImGui.SameLine();
 
                 if (ImGui.Button("Rotation##ControlPanelResetRotation"))
-                    api.ResetRotation();
+                    UiActions.Defer(() => api.ResetRotation());
 
                 ImGui.EndDisabled();
                 ImGui.PopStyleVar();
@@ -167,8 +167,9 @@ namespace QuadSim.RuntimeUI.ImGuiHud
                     ImGui.PushID(i);
 
                     bool selected = i == dm.SelectedDroneIndex;
+                    int idx = i;
                     if (ImGui.Selectable($"{drones[i].DroneID}##DroneSelect", selected))
-                        dm.SelectDroneByIndex(i, alsoPossess: true);
+                        UiActions.Defer(() => dm.SelectDroneByIndex(idx, alsoPossess: true));
 
                     if (selected)
                         ImGui.SetItemDefaultFocus();
