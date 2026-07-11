@@ -7,6 +7,13 @@
       "dependencies": {},
       "hash": "acc1c7bc9ea34c33b830e40316fca52553878d29"
     },
+    "com.psydack.uimgui": {
+      "version": "https://github.com/psydack/uimgui.git",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "f3d18ef6c13232f88e36c69e3f5f3190061f557e"
+    },
     "com.unity.addressables": {
       "version": "2.9.1",
       "depth": 0,

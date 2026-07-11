@@ -8,7 +8,10 @@ namespace Experimental
     {
         private Rigidbody _body;
         private ConfigurableJoint _joint;
+        [SerializeField] private LineRenderer rope;
+        [SerializeField] private Transform ropeEnd;
 
+        private Transform _droneMount;
         private void Awake()
         {
             _body = GetComponent<Rigidbody>();
@@ -22,7 +25,7 @@ namespace Experimental
                 Debug.LogError("[PayloadAttachment] Missing drone Rigidbody or mount.");
                 return;
             }
-
+            _droneMount = mount;
             // Position the payload attachment point at the drone mount.
             _joint.connectedBody = null;
             _body.position = mount.position;
@@ -41,6 +44,16 @@ namespace Experimental
                 droneBody.transform.InverseTransformPoint(mount.position);
 
             _joint.connectedBody = droneBody;
+        }
+        
+        private void LateUpdate()
+        {
+            if (rope == null || _droneMount == null || ropeEnd == null)
+                return;
+
+            rope.positionCount = 2;
+            rope.SetPosition(0, _droneMount.position);
+            rope.SetPosition(1, ropeEnd.position);
         }
     }
 }

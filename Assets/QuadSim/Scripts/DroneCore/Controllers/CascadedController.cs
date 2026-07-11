@@ -139,7 +139,22 @@ namespace DroneCore.Controllers
         public IReadOnlyList<float> Thrusts => _thrusts;
         public CascadeTelemetrySnapshot TelemetrySnapshot => _telemetry;
         public IReadOnlyDictionary<PIDKey, PIDInfo> PIDMap => _pidMap;
+        
+        /// <summary>Debug visuals hook. RuntimeUI writes this; consume in a future debug-draw pass. TODO.</summary>
+        public bool DebugVisualsEnabled { get; set; }
 
+        /// <summary>
+        /// Rebuild the effectiveness matrix for the CURRENT output frame.
+        /// Must be called after SensorManager.outputFrame changes at runtime,
+        /// otherwise the allocator torque signs are stale (FLU-built matrix under FRD).
+        /// </summary>
+        public void RebuildAllocator()
+        {
+            if (!_configApplied || !_axesBuilt) return;
+            _controlAllocator.RebuildEffectiveness(
+                _cachedConfig.RotorParams.Rotors, _rotorPhysics, GetCurrentFrame());
+            Debug.Log($"[CascadedController] {name}: allocator rebuilt for frame {GetCurrentFrame()}");
+        }
         // ============================================================================
         // Initialization (called by QuadPawn)
         // ============================================================================

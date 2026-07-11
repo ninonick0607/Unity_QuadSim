@@ -75,7 +75,8 @@ namespace DroneCore
         private bool _controllerReady;
         private bool _initialized;
         public bool HasConfigApplied => _configApplied;
-
+        /// <summary>Read-only view of the applied YAML config. UI reads limits/ranges from here.</summary>
+        public Yaml.Drone.DroneConfig Config => _config;
         // Active controller type (matches UE's currentControllerType)
         [Header("Controller Selection")]
         [SerializeField] private ControllerKind currentControllerKind = ControllerKind.Cascade;
@@ -109,7 +110,6 @@ namespace DroneCore
         public FlightCommandProxy CommandProxy => commandProxy;
         public ModeCoordinator ModeCoordinator => modeCoordinator;
         public QuadSimApi Api => quadSimApi;
-        public DroneConfig Config => _config;
         public RotorPhysicsDerived RotorPhysics => _rotorPhysics;
         public bool IsInitialized => _initialized;
         public ControllerKind CurrentControllerKind => currentControllerKind;

@@ -1,7 +1,9 @@
 {
   "name": "Nino.QuadSim",
   "rootNamespace": "",
-  "references": [],
+  "references": [
+    "UImGui"
+  ],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
