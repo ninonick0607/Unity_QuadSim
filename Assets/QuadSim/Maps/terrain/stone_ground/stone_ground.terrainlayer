@@ -7,9 +7,9 @@ TerrainLayer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: stone_ground
-  m_DiffuseTexture: {fileID: 2800000, guid: 31627e9dbb81dad4ea2c4341db17299c, type: 3}
-  m_NormalMapTexture: {fileID: 2800000, guid: 9f716dfbfc8069049b0f18b00433ec05, type: 3}
-  m_MaskMapTexture: {fileID: 2800000, guid: 4340d0ca7040a1240aae9b618dcbe116, type: 3}
+  m_DiffuseTexture: {fileID: 2800000, guid: c11dbf0c503556e56bb6b03f9a35530e, type: 3}
+  m_NormalMapTexture: {fileID: 2800000, guid: 17b97c652bdc1b05ca0a48a0c0493bf0, type: 3}
+  m_MaskMapTexture: {fileID: 2800000, guid: 28d085ef73491da80880f2227ffbdc86, type: 3}
   m_TileSize: {x: 3.7, y: 3.7}
   m_TileOffset: {x: 0.27, y: 0.27}
   m_Specular: {r: 0, g: 0, b: 0, a: 0}

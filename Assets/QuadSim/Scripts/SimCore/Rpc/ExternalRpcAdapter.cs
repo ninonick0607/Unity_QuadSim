@@ -706,10 +706,12 @@ namespace SimCore.Rpc
             switch (mode)
             {
                 case GoalMode.Position:
-                    // Client sends: (X, Y, Z, Yaw_deg) in client world frame
+                    // Client sends: (X, Y, Z, Yaw_deg) in the client WORLD frame:
+                    //   clientFrame FLU → ENU (E, N, Up)   [the SDK default]
+                    //   clientFrame FRD → NED (N, E, Down)
                     // Internal Axis4 layout: (X_world, Y_world, Yaw_deg, Alt_world)
                     //
-                    // Convert position from client frame → Unity world:
+                    // Convert position from client world frame → Unity world:
                     Vector3 posClient = new Vector3(x, y, z);
                     Vector3 posUnity = Frames.InverseTransformWorldPosition(posClient, clientFrame);
                     // Map into Axis4 layout: (X, Z, Yaw, Y_alt)
@@ -919,7 +921,9 @@ namespace SimCore.Rpc
             float qz = req.GetFloat("qz", 0f);
             float qw = req.GetFloat("qw", 1f);
  
-            // Convert from client frame → Unity
+            // Convert from client WORLD frame → Unity.
+            // clientFrame FLU → position interpreted as ENU (SDK default);
+            // clientFrame FRD → interpreted as NED.
             Vector3 position = Frames.InverseTransformWorldPosition(
                 new Vector3(px, py, pz), _clientFrame);
             Quaternion rotation = Frames.InverseTransformQuaternion(
@@ -1083,6 +1087,10 @@ namespace SimCore.Rpc
 
         private static Dictionary<string, object> SensorDataToDict(SensorData s) => new Dictionary<string, object>
         {
+            // Body-axis convention of the imu_*/mag_* fields ("flu" or "frd").
+            // World-frame fields are unaffected: gps_position is always ENU,
+            // gps_vel_ned is always NED, gps_lat/lon/alt is WGS84.
+            ["frame"]           = s.BodyFrame == SimFrame.FRD ? "frd" : "flu",
             ["imu_ang_vel"]     = Vec3ToArray(s.ImuAngVel),
             ["imu_attitude"]    = Vec3ToArray(s.ImuAttitude),
             ["imu_accel"]       = Vec3ToArray(s.ImuAccel),

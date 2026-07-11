@@ -103,8 +103,9 @@ namespace RobotCore
             Mag = new MagSensor(rb, bodyTransform, noiseSeed + 4);
 
             
+            // outputFrame selects the BODY-axis convention only (FLU/FRD).
+            // World-frame data (GPS local position) is always ENU.
             IMU.OutputFrame = outputFrame;
-            GPS.OutputFrame = outputFrame;
             Mag.OutputFrame = outputFrame;
 
             IMU.Reset();
@@ -159,12 +160,12 @@ namespace RobotCore
         {
             double nowSec = nowNanos * 1e-9;
 
-            // Keep output frame synced for both sensors
+            // Keep BODY output frame synced (IMU + mag). GPS position is ENU always.
             IMU.OutputFrame = outputFrame;
-            GPS.OutputFrame = outputFrame;
             Mag.OutputFrame = outputFrame;
 
             var latest = Latest;
+            latest.BodyFrame = outputFrame;   // self-description for the RPC payload
 
             // IMU
             if (_imuLimiter.ShouldRunAndConsume(nowNanos))
@@ -180,7 +181,7 @@ namespace RobotCore
                 latest.ImuValid = IMU.IsValid;
             }
 
-            // GPS — position is now already in OutputFrame from GPSSensor
+            // GPS — local position is always world-frame ENU from GPSSensor
             if (_gpsLimiter.ShouldRunAndConsume(nowNanos))
             {
                 GPS.Sample(nowSec, enableNoise);

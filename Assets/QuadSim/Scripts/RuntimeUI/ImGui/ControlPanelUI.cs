@@ -209,6 +209,9 @@ namespace QuadSim.RuntimeUI.ImGuiHud
             ImGui.SameLine();
 
             var sensors = pawn.Sensors;
+            // NOTE: this toggles the BODY-axis convention (IMU/mag) only.
+            // GPS local position stays world-frame ENU in both modes, so the
+            // cascaded PositionController state is convention-independent.
             bool frd = sensors != null && sensors.outputFrame == SimFrame.FRD;
 
             if (ImGui.Checkbox("FRD##ControlPanelFrameFRD", ref frd) && sensors != null && canCommand)

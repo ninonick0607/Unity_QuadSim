@@ -7,10 +7,10 @@ TerrainLayer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: ground_grass_fells_mossy
-  m_DiffuseTexture: {fileID: 2800000, guid: ca8fc6a1fc250b548a51e1e8df92ea48, type: 3}
-  m_NormalMapTexture: {fileID: 2800000, guid: 0581c75cc1dfbe84d8159132007f8849, type: 3}
-  m_MaskMapTexture: {fileID: 2800000, guid: 3fe97a66382844a4890fc5808cd6e2e2, type: 3}
-  m_TileSize: {x: 4.2, y: 4.2}
+  m_DiffuseTexture: {fileID: 2800000, guid: dff6ffc2e29bc49cf893001136691e8e, type: 3}
+  m_NormalMapTexture: {fileID: 2800000, guid: 3bceeace551346186818b78271214e3d, type: 3}
+  m_MaskMapTexture: {fileID: 2800000, guid: 50c86bf3417cf9399ae55438ce293f76, type: 3}
+  m_TileSize: {x: 2, y: 4.2}
   m_TileOffset: {x: 0.13, y: 0.13}
   m_Specular: {r: 0, g: 0, b: 0, a: 0}
   m_Metallic: 0

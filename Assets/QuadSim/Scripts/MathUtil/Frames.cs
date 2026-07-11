@@ -2,11 +2,39 @@ using UnityEngine;
 
 namespace MathUtil
 {
+    // ========================================================================
+    // COORDINATE CONVENTIONS — single source of truth
+    // ========================================================================
+    //
+    // Unity WORLD (left-handed):   X = East,    Y = Up,   Z = North
+    // Unity BODY  (left-handed):   X = forward, Y = up,   Z = left
+    //
+    // WORLD frames (right-handed):
+    //   ENU (E, N, U) = ( u.x,  u.z,  u.y )      <- canonical world frame.
+    //   NED (N, E, D) = ( u.z,  u.x, -u.y )      <- MAVLink wire / PX4 only.
+    //
+    // BODY frames (right-handed):
+    //   FLU (F, L, U) = ( b.x,  b.z,  b.y )      <- canonical body frame (ROS).
+    //   FRD (F, R, D) = ( b.x, -b.z, -b.y )      <- PX4 HIL body frame.
+    //
+    // Pseudovectors (angular velocity, torque): relabel + negate-all,
+    // correcting Unity's left-handed chirality (see TransformAngularVelocity).
+    //
+    // POLICY:
+    //   * All world-frame I/O (gps_position, position commands, reset_pose,
+    //     viz) is ALWAYS ENU. NED exists only at the MAVLink wire boundary
+    //     (Px4Link) and in the explicitly named gps_vel_ned field.
+    //   * SimFrame selects the BODY-axis convention for sensor outputs
+    //     (FLU default; FRD for the PX4 HIL bridge). The world-position
+    //     FRD branches below map to true NED and are kept correct for
+    //     completeness, but no internal system routes world data through
+    //     them.
+    // ========================================================================
     public enum SimFrame
     {
         UnityBody, // drone local: +X forward, +Y up, +Z left
-        FLU,       // +X forward, +Y left, +Z up  (ROS)
-        FRD        // +X forward, +Y right, +Z down (PX4)
+        FLU,       // body: +X forward, +Y left, +Z up   (ROS)  | world pairing: ENU
+        FRD        // body: +X forward, +Y right, +Z down (PX4) | world pairing: NED
     }
 
     public static class Frames
@@ -103,21 +131,24 @@ namespace MathUtil
         }
 
         /// <summary>
-        /// Convert a world-space position from Unity (Y-up) to the target frame.
-        /// Used for GPS position and any other world-frame vectors.
+        /// Convert a world-space position/vector from Unity (X=E, Y=U, Z=N)
+        /// to the target world frame.
         ///
-        /// Unity world: X=east(?), Y=up, Z=north(?)  — axis meaning depends on scene,
-        /// but the Y↔Z swap for up-axis is always correct.
+        /// FLU pairing → ENU: (E, N, U) = (x, z, y)
+        /// FRD pairing → NED: (N, E, D) = (z, x, -y)
         ///
-        /// FLU world: same horizontal axes, Z=up  →  (x, z, y)
-        /// FRD world: same horizontal axes, Z=down → (x, -z, -y)
+        /// NOTE: NED is an X/Y swap relative to ENU, not a sign flip of it.
+        /// The previous FRD branch returned (x, -z, -y) = (East, South, Down),
+        /// which is not NED. Nothing internal consumes world-frame FRD
+        /// (world I/O is pinned to ENU — see header policy), but the mapping
+        /// is now correct for any future NED client.
         /// </summary>
         public static Vector3 TransformWorldPosition(Vector3 posUnityWorld, SimFrame target)
         {
             return target switch
             {
                 SimFrame.FLU => new Vector3(posUnityWorld.x, posUnityWorld.z, posUnityWorld.y),
-                SimFrame.FRD => new Vector3(posUnityWorld.x, -posUnityWorld.z, -posUnityWorld.y),
+                SimFrame.FRD => new Vector3(posUnityWorld.z, posUnityWorld.x, -posUnityWorld.y),
                 _ => posUnityWorld
             };
         }
@@ -126,8 +157,17 @@ namespace MathUtil
         {
             return target switch
             {
-                // Negate all spatial components to flip chirality, swap Y and Z
+                // Negate all spatial components to flip chirality, swap Y and Z.
+                // Maps Unity body->world rotation to body-FLU -> world-ENU.
                 SimFrame.FLU => new Quaternion(-q.x, -q.z, -q.y, q.w),
+                // KNOWN GAP: no FRD branch — in FRD (PX4) mode the raw Unity
+                // quaternion passes through. Unconsumed today (HIL_SENSOR has
+                // no attitude; the bridge never reads imu_orientation). The
+                // FRD->NED remap needs q_ned = Q_wned^-1 * q_unity * Q_bfrd,
+                // with DIFFERENT world/body basis quaternions — derive AND
+                // verify empirically (yaw-sweep invariance test) before
+                // adding it. Do not guess a component remap here; that is
+                // how the original det=-1 reflection bug happened.
                 _ => q 
             };
         }
@@ -137,18 +177,18 @@ namespace MathUtil
         // ====================================================================
 
         /// <summary>
-        /// Convert a world-space position from client frame back to Unity (Y-up).
-        /// Inverse of TransformWorldPosition.
+        /// Convert a world-space position from client world frame back to
+        /// Unity (X=E, Y=U, Z=N). Inverse of TransformWorldPosition.
         ///
-        /// FLU (x,y,z) where Z=up  →  Unity (x, z, y) where Y=up
-        /// FRD (x,y,z) where Z=down → Unity (x, -z, -y) where Y=up
+        /// ENU (e,n,u) → Unity (e, u, n)   = (x, z, y)   [self-inverse relabel]
+        /// NED (n,e,d) → Unity (e, -d, n)  = (y, -z, x)
         /// </summary>
         public static Vector3 InverseTransformWorldPosition(Vector3 posClient, SimFrame source)
         {
             return source switch
             {
                 SimFrame.FLU => new Vector3(posClient.x, posClient.z, posClient.y),
-                SimFrame.FRD => new Vector3(posClient.x, -posClient.z, -posClient.y),
+                SimFrame.FRD => new Vector3(posClient.y, -posClient.z, posClient.x),
                 _ => posClient
             };
         }
