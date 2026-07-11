@@ -26,6 +26,7 @@ using SimCore.Common;
 using DroneCore.Api;
 using MathUtil;
 using RobotCore;
+using NetMQ;
 
 namespace SimCore.Rpc
 {
@@ -71,6 +72,7 @@ namespace SimCore.Rpc
 
         private RpcServerThread _server;
         private SimCoreApi _sim;
+        private bool _netMqCleanedUp;
 
         // Connection tracking
         private bool _clientConnected;
@@ -211,7 +213,7 @@ namespace SimCore.Rpc
 
         private void OnDestroy()
         {
-            StopServer();
+            ShutdownNetMq();
 
             if (_sim != null)
             {
@@ -221,7 +223,7 @@ namespace SimCore.Rpc
 
         private void OnApplicationQuit()
         {
-            StopServer();
+            ShutdownNetMq();
         }
 
         // ============================================================================
@@ -244,12 +246,15 @@ namespace SimCore.Rpc
         }
         public void StartServer()
         {
-            if (_server != null && _server.IsRunning)
+            // Non-null also covers the startup window before IsRunning becomes true.
+            // Never replace a server whose background thread is still starting.
+            if (_server != null)
             {
-                Debug.LogWarning("[RpcAdapter] Server already running.");
+                Debug.LogWarning("[RpcAdapter] Server already starting or running.");
                 return;
             }
 
+            _netMqCleanedUp = false;
             _server = new RpcServerThread(commandPort, telemetryPort);
             _server.Start();
 
@@ -261,17 +266,56 @@ namespace SimCore.Rpc
         {
             if (_server == null) return;
 
-            // If a client was connected, notify disconnect
+            // If a client was connected, notify disconnect.
             if (_clientConnected)
             {
                 HandleClientDisconnect("server_shutdown");
             }
 
-            _server.Stop();
-            _server.Dispose();
-            _server = null;
+            // Dispose calls Stop(). RpcServerThread.Stop() also handles the
+            // startup window before its sockets have finished binding.
+            RpcServerThread server = _server;
+            server.Dispose();
 
+            if (server.IsThreadAlive)
+            {
+                // Keep the reference so StartServer cannot launch a second worker.
+                // More importantly, ShutdownNetMq will not terminate the global
+                // context while this thread may still own a socket.
+                Debug.LogError("[RpcAdapter] RPC worker is still alive after shutdown timeout; " +
+                               "skipping NetMQ cleanup to avoid a context race.");
+                return;
+            }
+
+            _server = null;
             Debug.Log("[RpcAdapter] RPC server stopped.");
+        }
+
+        /// <summary>
+        /// NetMQ cleanup is process-global. Run it exactly once on Unity's main
+        /// thread, and only after the socket thread has fully stopped and joined.
+        /// Blocking cleanup prevents the next Editor play session from creating
+        /// sockets while the previous NetMQ context is still terminating.
+        /// </summary>
+        private void ShutdownNetMq()
+        {
+            StopServer();
+
+            // StopServer deliberately retains _server when its worker failed to
+            // join. Global cleanup would be unsafe while that thread owns sockets.
+            if (_server != null) return;
+
+            if (_netMqCleanedUp) return;
+            _netMqCleanedUp = true;
+
+            try
+            {
+                NetMQConfig.Cleanup(true);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[RpcAdapter] NetMQ cleanup warning: {ex.Message}");
+            }
         }
 
         // ============================================================================

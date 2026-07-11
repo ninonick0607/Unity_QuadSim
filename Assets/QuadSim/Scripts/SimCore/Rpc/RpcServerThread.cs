@@ -100,6 +100,9 @@ namespace SimCore.Rpc
         /// <summary>True if the background thread is actively running and sockets are bound.</summary>
         public bool IsRunning => _isRunning;
 
+        /// <summary>True during startup, normal operation, or a delayed shutdown.</summary>
+        public bool IsThreadAlive => _thread != null && _thread.IsAlive;
+
         // ============================================================================
         // Construction
         // ============================================================================
@@ -123,9 +126,11 @@ namespace SimCore.Rpc
         /// </summary>
         public void Start()
         {
-            if (_isRunning)
+            // IsRunning becomes true only after both sockets bind. Guard on the
+            // actual thread so another Start cannot enter during that window.
+            if (_thread != null && _thread.IsAlive)
             {
-                Log(LogLevel.Warning, "Server thread already running.");
+                Log(LogLevel.Warning, "Server thread already starting or running.");
                 return;
             }
 
@@ -144,20 +149,24 @@ namespace SimCore.Rpc
         /// </summary>
         public void Stop()
         {
-            if (!_isRunning) return;
-
+            // Always stop and join, including while the thread is still creating
+            // or binding sockets. The old IsRunning guard leaked that startup case.
             _shutdownRequested = true;
 
-            if (_thread != null && _thread.IsAlive)
+            Thread thread = _thread;
+            if (thread != null && thread.IsAlive && Thread.CurrentThread != thread)
             {
-                // Give it time to clean up sockets
-                if (!_thread.Join(TimeSpan.FromSeconds(3)))
+                if (!thread.Join(TimeSpan.FromSeconds(3)))
                 {
-                    Log(LogLevel.Warning, "Server thread did not exit within 3s. Abandoning.");
+                    // Keep the reference alive. The adapter must not run global
+                    // NetMQ cleanup while this worker may still own sockets.
+                    Log(LogLevel.Warning, "Server thread did not exit within 3s.");
+                    return;
                 }
             }
 
-            _thread = null;
+            if (_thread == thread && (thread == null || !thread.IsAlive))
+                _thread = null;
         }
 
         /// <summary>
@@ -212,11 +221,16 @@ namespace SimCore.Rpc
 
             try
             {
-                // NetMQ requires cleanup registration
+                // Select the managed AsyncIO backend before creating sockets.
                 AsyncIO.ForceDotNet.Force();
 
+                if (_shutdownRequested) return;
                 repSocket = new ResponseSocket();
+
+                if (_shutdownRequested) return;
                 pubSocket = new PublisherSocket();
+
+                if (_shutdownRequested) return;
 
                 string repAddress = $"tcp://*:{_repPort}";
                 string pubAddress = $"tcp://*:{_pubPort}";
@@ -237,7 +251,10 @@ namespace SimCore.Rpc
             }
             catch (Exception ex)
             {
-                Log(LogLevel.Error, $"Server thread exception: {ex.Message}\n{ex.StackTrace}");
+                if (_shutdownRequested)
+                    Log(LogLevel.Info, $"Server stopped during startup/shutdown: {ex.Message}");
+                else
+                    Log(LogLevel.Error, $"Server thread exception: {ex.Message}\n{ex.StackTrace}");
             }
             finally
             {
@@ -249,8 +266,8 @@ namespace SimCore.Rpc
                 repSocket?.Dispose();
                 pubSocket?.Dispose();
 
-                NetMQConfig.Cleanup(false);
-
+                // NetMQConfig.Cleanup is process-global, not socket-local. The
+                // adapter performs one blocking cleanup after this thread joins.
                 Log(LogLevel.Info, "Server thread stopped. Sockets closed.");
             }
         }
@@ -277,9 +294,23 @@ namespace SimCore.Rpc
                     var queued = new QueuedRequest { Request = parsed.Value };
                     _pendingRequests.Enqueue(queued);
 
-                    // Wait for main thread to process and set the response
-                    // Timeout prevents deadlock if main thread stops processing
-                    bool gotResponse = queued.ResponseReady.Wait(TimeSpan.FromSeconds(5));
+                    // Wait in short slices so shutdown can interrupt this wait and
+                    // Stop() can reliably join the worker instead of waiting 5 seconds.
+                    bool gotResponse = false;
+                    const int responseTimeoutMs = 5000;
+                    const int waitSliceMs = 10;
+                    for (int waitedMs = 0;
+                         waitedMs < responseTimeoutMs && !_shutdownRequested;
+                         waitedMs += waitSliceMs)
+                    {
+                        if (queued.ResponseReady.Wait(waitSliceMs))
+                        {
+                            gotResponse = true;
+                            break;
+                        }
+                    }
+
+                    if (_shutdownRequested) return;
 
                     if (gotResponse && queued.ResponseBytes != null)
                     {
