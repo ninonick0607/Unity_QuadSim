@@ -57,12 +57,18 @@ namespace QuadSim.RuntimeUI.ImGuiHud
 
         private DronePanelState GetState(QuadPawn pawn)
         {
+
+            List<QuadPawn> dead = null;
+            foreach (var k in _states.Keys)
+                if (k == null) (dead ??= new List<QuadPawn>()).Add(k);
+            if (dead != null)
+                foreach (var k in dead) _states.Remove(k);
+
             if (!_states.TryGetValue(pawn, out var s))
             {
                 s = new DronePanelState();
                 _states[pawn] = s;
             }
-
             return s;
         }
 
@@ -81,11 +87,8 @@ namespace QuadSim.RuntimeUI.ImGuiHud
             bool canCommand = sim.CurrentAuthority == InputSource.UI;
 
             var io = ImGui.GetIO();
-            if (_panelX < 0f)
-                _panelX = Mathf.Max(0f, io.DisplaySize.X - PanelW - RightPad);
-
             ImGui.SetNextWindowPos(
-                new ImVec2(_panelX, Mathf.Clamp(_panelY, 0f, Mathf.Max(0f, io.DisplaySize.Y - 60f))),
+                new ImVec2(Mathf.Max(0f, io.DisplaySize.X - PanelW - RightPad), 80f),
                 ImGuiCond.FirstUseEver);
 
             ImGui.SetNextWindowSizeConstraints(
@@ -94,13 +97,9 @@ namespace QuadSim.RuntimeUI.ImGuiHud
 
             var wFlags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.AlwaysAutoResize;
 
-            if (ImGui.Begin($"Control Panel - {pawn.DroneID}##ControlPanel", ref _open, wFlags))
+            if (ImGui.Begin($"Control Panel - {pawn.DroneID}##CP_{pawn.GetInstanceID()}", ref _open, wFlags))
             {
                 ImGui.PushID(pawn.GetInstanceID());
-
-                var wp = ImGui.GetWindowPos();
-                _panelX = wp.X;
-                _panelY = wp.Y;
 
                 DrawDroneCombo(dm, pawn);
                 DrawAuthorityRow(sim, canCommand);
