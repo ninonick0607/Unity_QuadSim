@@ -1,19 +1,20 @@
 <p align="center">
-  <h1 align="center">QuadSim</h1>
+  <h1 align="center">QuadSim Unity Plugin</h1>
   <p align="center">
-    Research-oriented quadrotor simulation built in Unity.
+    Installable Unity quadrotor simulation package with Python SDK control.
     <br />
-    Modular controllers, explicit control authority, and scriptable at every level.
+    Deterministic stepping, headless RPC, sensors, control allocation, and sample scenes.
   </p>
 </p>
 
 <p align="center">
   <a href="#getting-started">Getting Started</a> •
   <a href="#scene-setup">Scene Setup</a> •
-  <a href="#control-sources">Control Sources</a> •
-  <a href="#flight-modes">Flight Modes</a> •
-  <a href="#drone-configuration">Drone Configuration</a> •
   <a href="#python-sdk">Python SDK</a> •
+  <a href="#control-overview">Control Overview</a> •
+  <a href="#headless--lockstep">Headless / Lockstep</a> •
+  <a href="#sensors--frames">Sensors & Frames</a> •
+  <a href="#drone-configuration">Drone Configuration</a> •
   <a href="#architecture">Architecture</a>
 </p>
 
@@ -21,16 +22,38 @@
 
 ## What is QuadSim?
 
-QuadSim is a simulation platform for quadrotor research. It supports classical cascaded controllers, swappable control sources, and a Python SDK for external scripting. The goal is a platform where controls engineers and autonomy researchers can prototype, test, and validate flight algorithms with full transparency into what the system is doing and why.
+QuadSim is a research-oriented quadrotor simulation platform built in Unity for controls research, autonomy development, headless tuning, and sim-to-real workflows.
 
-**Key features:**
-- Cascaded PID controller (Position, Velocity, Angle, Rate) ported from a proven Unreal Engine implementation
-- Three control sources: in-sim UI (gamepad/keyboard), Internal C# scripts, External Python via ZeroMQ RPC
-- Explicit authority system where only one source controls the drone at a time
-- YAML-based drone configuration (mass, inertia, rotor geometry, PID gains, flight limits)
-- Deterministic physics stepping with pause/step/resume
-- Real-time telemetry streaming over PUB/SUB
-- FLU coordinate frame output for standard robotics conventions
+This repository is the **Unity runtime/plugin**. It provides the simulation scene components, drone prefab, sensors, controller plumbing, control allocation, physics stepping, and RPC bridge needed to run QuadSim inside a Unity project.
+
+The Python package is separate: **`quadsim-sdk`** connects to a running QuadSim scene over ZeroMQ and is where user-facing Python control APIs live.
+
+```text
+Unity QuadSim Plugin       ← simulator runtime, prefabs, physics, sensors, RPC
+quadsim-sdk / QuadSimLib   ← Python interface, high-level flight, raw modes, lockstep control
+```
+
+Use this README to install and run the Unity simulator. Use the Python SDK docs for detailed control-mode usage.
+
+- Python SDK repo: [github.com/ninonick0607/QuadSimLib](https://github.com/ninonick0607/QuadSimLib)
+- Detailed Python control modes: [QuadSimLib/docs/control_modes.md](https://github.com/ninonick0607/QuadSimLib/blob/master/docs/control_modes.md)
+
+---
+
+## Key Features
+
+- Installable Unity Package Manager package.
+- Drop-in `SimRoot` + `QuadPawn` scene setup.
+- Deterministic fixed-step physics using scripted simulation.
+- Headless Linux execution with RPC ports configurable from the command line.
+- External Python control over ZeroMQ / MessagePack.
+- Composite lockstep stepping for faster-than-real-time studies.
+- Explicit control authority between UI, Internal C#, and External Python.
+- Cascaded controller modes: position, velocity, angle, and rate.
+- Low-level access: direct motors, allocated wrench, and direct rigidbody wrench.
+- Sensor stack: IMU, GPS, barometer, magnetometer.
+- FLU output frame for Python-facing robotics workflows.
+- YAML-based drone model and controller configuration.
 
 ---
 
@@ -38,203 +61,108 @@ QuadSim is a simulation platform for quadrotor research. It supports classical c
 
 ### Requirements
 
-- Unity 2022.3 LTS or newer (2023.x works too)
-- NuGet packages (included): NetMQ, MessagePack-CSharp, YamlDotNet
+- Unity 6 / Unity 6000.x
+- Git
+- Git LFS if your project pulls large mesh or texture assets
+- Python 3.8+ for Python SDK control
+- A QuadSim scene containing `SimRoot`, `ExternalRpcAdapter`, and at least one configured `QuadPawn` for RPC control
 
-### Clone
+### Install the Unity Package
 
+In Unity:
+
+1. Open **Window → Package Manager**.
+2. Click **+**.
+3. Choose **Add package from git URL...**.
+4. Paste:
+
+```text
+https://github.com/ninonick0607/Unity-QuadSim-Plugin.git#v0.1.0
 ```
-git clone https://github.com/ninonick0607/Unity_QuadSim.git
+
+For active development, you can omit the tag and install the latest `main` branch:
+
+```text
+https://github.com/ninonick0607/Unity-QuadSim-Plugin.git
 ```
 
-Open the project in Unity Hub. Let it import and compile.
+For reproducible research or lab machines, prefer a tagged version like `#v0.1.0`.
+
+### Import the Sample Scene
+
+After the package installs:
+
+1. Open **Package Manager**.
+2. Select **QuadSim**.
+3. Open the **Samples** section.
+4. Import **QuadSim Scene**.
+5. Open the imported scene and press Play.
+
+The sample scene contains the demo environment and required simulation objects. Runtime scripts, prefabs, models, and third-party plugins remain inside the package under `Runtime/`.
 
 ---
 
 ## Scene Setup
 
-QuadSim is designed to drop into any Unity scene. You need two things:
+QuadSim is designed to drop into a Unity scene with a small number of required objects.
 
-### 1. SimRoot Prefab
+### `SimRoot`
 
-Drag the **SimRoot** prefab into your scene hierarchy. This is the simulation backbone. It contains:
+`SimRoot` is the simulation backbone. It should contain or reference:
 
-- **SimulationManager** — physics stepping, time control, deterministic loop
-- **ControlAuthorityManager** — who has control (UI, Internal, External)
-- **ExternalRpcAdapter** — ZeroMQ server for Python connections
-- **DroneManager** — spawning, selection, config loading
+| Component | Purpose |
+|----------|---------|
+| `SimulationManager` | Owns scripted fixed-step physics, pause/resume, and stepping |
+| `SimCoreApi` | Global simulation API facade |
+| `ControlAuthorityManager` | Tracks whether UI, Internal, or External owns control |
+| `ExternalRpcAdapter` | ZeroMQ server for Python clients |
+| `DroneManager` | Spawns and registers configured drones |
 
-SimRoot auto-resolves its internal references on Awake. You don't need to wire anything up manually.
+### `QuadPawn`
 
-### 2. QuadPawn Prefab
+`QuadPawn` is the drone vehicle. It owns the Rigidbody, motor transforms, controller, sensors, command proxy, and per-drone API.
 
-The **QuadPawn** prefab is your drone. DroneManager spawns it automatically using the config specified in its inspector. You don't manually place drones in the scene. On play, DroneManager checks if any drones exist, and if not, spawns one at the default spawn origin with the selected YAML config.
+A typical drone prefab includes:
 
-That's it. Hit Play and you have a flying drone.
+| Component | Purpose |
+|----------|---------|
+| `Rigidbody` | Physical body simulated by Unity |
+| `CascadedController` | Position → velocity → angle → rate controller |
+| `SensorManager` | IMU, GPS, barometer, magnetometer |
+| `FlightCommandProxy` | Current command and goal mode |
+| `ModeCoordinator` | Mode transitions and routing |
+| `QuadSimApi` | Per-drone API used by C# and RPC |
 
-### Using the Default Scene
-
-The project includes a ready-to-go scene with SimRoot and a ground plane already configured. Open it from `Assets/Scenes/` and hit Play. The drone spawns, the HUD telemetry panel shows up, and you can fly immediately with whatever control source is set as default.
-
----
-
-## Control Sources
-
-QuadSim has three control sources. Only one has authority at a time.
-
-### UI (Default, Currently WIP)
-
-Gamepad or keyboard input. This is the default if you don't change anything. Pick up a controller and fly, or use the on-screen controls.
-
-### Internal (C# Scripts)
-
-Drop a MonoBehaviour into your scene that uses `SimCoreApi` and `QuadSimApi` to send commands. This is for writing flight behaviors, test scripts, or autonomy logic directly in Unity.
-
-```csharp
-// Get the APIs
-var sim = SimCoreApi.Get();
-var drone = QuadSimApi.Selected();
-
-// Register as Internal and request authority
-sim.NotifyInternalConnected();
-sim.RequestAuthority(InputSource.Internal);
-
-// Fly
-drone.SetMode(GoalMode.Rate);
-drone.SendCommand(InputSource.Internal, new Axis4(0, 0, 30, 0.44f));
-
-// Read sensors
-var sensors = drone.GetSensorData();
-Debug.Log($"Altitude: {sensors.GpsPosition.y}");
-```
-
-See `Assets/Scripts/Examples/InternalApiExample.cs` for a full working demo that exercises mode switching, velocity commands, resets, and time control.
-
-### External (Python via RPC)
-
-Connect from Python using the [QuadSim Python SDK](https://github.com/ninonicok0607/QuadSimLib). The ExternalRpcAdapter on SimRoot runs a ZeroMQ server (REQ/REP on port 5555, PUB/SUB on port 5556) that bridges Python commands to the Unity main thread.
-
-```python
-from quadsim import QuadSim
-
-with QuadSim() as sim:
-    drone = sim.drone()
-    drone.takeoff(3.0)
-    drone.fly_to(x=5, y=0, z=3)
-    drone.land()
-```
-
-More on this in the [Python SDK](#python-sdk) section.
-
-### Switching Authority
-
-Set the default source in the **ControlAuthorityManager** inspector on SimRoot:
-
-| Setting | What happens |
-|---------|-------------|
-| **Default Source = UI** | Gamepad/keyboard active immediately |
-| **Default Source = Internal** | Waits for an Internal script to call `NotifyInternalConnected()` |
-| **Default Source = External** | Waits for a Python client to connect, auto-accepts |
-
-If the default source doesn't connect within the timeout (configurable, default 60s), the HUD shows an option to switch to UI.
-
-You can also switch at runtime. The authority system is explicit: calling `RequestAuthority(InputSource.Internal)` only succeeds if that source is in a Connected state. No silent takeovers.
-
----
-
-## Flight Modes
-
-The cascaded controller supports these goal modes, selectable per-source:
-
-| Mode | What you command | What the controller does |
-|------|-----------------|------------------------|
-| **Rate** | Roll/pitch/yaw rates + throttle | Innermost loop only. Direct rate control. |
-| **Angle** | Roll/pitch angles + yaw rate + throttle | Angle PID outputs rates, rate PID stabilizes. |
-| **Velocity** | Vx, Vy, Vz + yaw rate | Velocity PID outputs angles, cascades down. |
-| **Position** | X, Y, Z + yaw | Full cascade. Position PID outputs velocity, cascades all the way down. |
-| **Passthrough** | Motor commands [0,1] per motor | Bypasses the entire controller. Direct motor control. |
-| **Wrench** | Force + torque vectors | Bypasses controller and actuation model. Raw physics. |
-
-Each mode enters the cascade at a different level. Rate is the innermost loop, Position is the outermost. The controller automatically runs all stages below whatever you set.
-
----
-
-## Drone Configuration
-
-Drone parameters live in YAML files at `Assets/Configs/Drones/`. The default is `StandardDrone_Config.yaml`. DroneManager loads the config specified in its inspector field.
-
-### YAML Structure
-
-```yaml
-name: "StandardDrone"
-
-physical_properties:
-  mass_kg: 1.0
-  com_offset: { x: 0, y: 0, z: 0 }
-  inertia: { x: 0.01, y: 0.02, z: 0.01 }
-  arm_length: 0.22
-  linear_drag_coef: 0.1
-  angular_drag_coef: 0.05
-
-propulsion:
-  prop_diameter: 0.254
-  max_rpm: 10000
-  thrust_coef: 0.025
-  torque_coef: 0.0005
-  propellers:
-    - { id: 0, x: 0.155, y: 0, z: 0.155, dir: 1 }    # FL, CW
-    - { id: 1, x: 0.155, y: 0, z: -0.155, dir: -1 }   # FR, CCW
-    - { id: 2, x: -0.155, y: 0, z: 0.155, dir: -1 }   # BL, CCW
-    - { id: 3, x: -0.155, y: 0, z: -0.155, dir: 1 }   # BR, CW
-
-flight_limits:
-  max_vel_xy: 5.0
-  max_vel_z: 3.0
-  max_angle: 35.0
-  max_rate_rp: 220.0
-  max_rate_yaw: 200.0
-
-controller:
-  position_gains:
-    x: { p: 1.0, i: 0.0, d: 0.0 }
-    y: { p: 1.0, i: 0.0, d: 0.0 }
-    z: { p: 1.5, i: 0.0, d: 0.0 }
-  velocity_gains:
-    x: { p: 2.0, i: 0.1, d: 0.0 }
-    y: { p: 2.0, i: 0.1, d: 0.0 }
-    z: { p: 5.0, i: 0.5, d: 0.0 }
-  attitude_gains:
-    roll:  { p: 6.0, i: 0.0, d: 0.0 }
-    pitch: { p: 6.0, i: 0.0, d: 0.0 }
-  rate_gains:
-    roll:  { p: 0.15, i: 0.0, d: 0.002 }
-    pitch: { p: 0.15, i: 0.0, d: 0.002 }
-    yaw:   { p: 0.3,  i: 0.0, d: 0.0 }
-```
-
-### What Each Section Controls
-
-**physical_properties** — Mass, center of mass offset, diagonal inertia tensor, arm length, and drag coefficients. These feed directly into the Rigidbody and the control allocator.
-
-**propulsion** — Rotor model (diameter, RPM, thrust/torque coefficients) and individual rotor placement. Each rotor has a body-frame position and spin direction (+1 CW, -1 CCW). The control allocator builds its effectiveness matrix from this.
-
-**flight_limits** — Maximum velocities, angles, and angular rates. These clamp the output at each cascade stage so the controller doesn't demand physically unreasonable setpoints.
-
-**controller** — PID gains for each cascade stage (position, velocity, attitude, rate) per axis. Tuning these is where most of the flight behavior comes from.
-
-### Hot Reload
-
-You can edit the YAML while the sim is running. The drone config can be reloaded through `QuadPawn.ReloadYaml()` or through the inspector. PID gains can also be tuned live through the RPC interface from Python.
+`DroneManager` can spawn a configured `QuadPawn` automatically. For most users, the sample scene is the fastest starting point.
 
 ---
 
 ## Python SDK
 
-The [QuadSim Python SDK](https://github.com/ninonicok0607/QuadSimLib) (`quadsim-sdk`) provides full programmatic control:
+Install the SDK separately from the Unity package:
 
 ```bash
-pip install -e path/to/QuadSimLib
+pip install quadsim-sdk
 ```
+
+From source:
+
+```bash
+git clone https://github.com/ninonick0607/QuadSimLib.git
+cd QuadSimLib
+pip install -e .
+```
+
+Start the Unity scene or headless build first, then verify the connection:
+
+```python
+from quadsim import QuadSim
+
+with QuadSim() as sim:
+    print(sim.get_status())
+```
+
+Basic flight:
 
 ```python
 from quadsim import QuadSim
@@ -242,63 +170,277 @@ from quadsim import QuadSim
 with QuadSim() as sim:
     drone = sim.drone()
 
-    # High-level
     drone.takeoff(altitude=3.0)
-    drone.fly_to(x=5, y=0, z=3, speed=2.0)
-
-    # Low-level on the same object
-    drone.set_mode("rate")
-    drone.send_command(roll=0, pitch=0, yaw=30, throttle=0.44)
-    sensors = drone.get_sensors()
-
+    drone.fly_to(x=5, y=0, z=3)
+    drone.hover(duration=2.0)
+    drone.yaw_to(heading_deg=180)
     drone.land()
 ```
 
-The SDK communicates over ZeroMQ (REQ/REP for commands, PUB/SUB for streaming telemetry). All data uses FLU coordinates. See the [SDK README](https://github.com/ninonicok0607/QuadSimLib) for full API docs.
+For detailed mode-by-mode Python usage, see the SDK docs:
 
-### Connection Setup
+```text
+QuadSimLib/docs/control_modes.md
+```
 
-1. Set **Default Source = External** on the ControlAuthorityManager (SimRoot inspector)
-2. Hit Play in Unity
-3. Run your Python script — it connects automatically
-4. Authority is granted to External on connection
+---
 
-If Default Source is UI or Internal, an External client can still connect but will need explicit authority handoff (either from the UI popup or programmatically).
+## Control Overview
+
+QuadSim separates **who owns control** from **what kind of command is being sent**.
+
+### Control Sources
+
+Only one source has authority at a time.
+
+| Source | Used for |
+|--------|----------|
+| `UI` | Keyboard/gamepad/manual testing |
+| `Internal` | C# scripts running inside Unity |
+| `External` | Python SDK over ZeroMQ RPC |
+
+The authority system prevents silent takeovers. External Python commands only apply when the Python client is connected and has authority.
+
+### Control Interfaces
+
+This README intentionally keeps the mode list short. The detailed Python command syntax lives in the SDK docs.
+
+| Interface | What you command | Typical use |
+|----------|------------------|-------------|
+| High-level SDK flight | `takeoff`, `fly_to`, `hover`, `land` | Scripted demos, simple autonomy |
+| Position mode | FLU position + yaw | Waypoints and navigation |
+| Velocity mode | FLU velocity + yaw rate | Outer-loop guidance |
+| Angle mode | Roll/pitch angle + yaw rate + throttle/altitude stage | Manual-style stabilized control |
+| Rate mode | Body rates + throttle | Inner-loop controller work |
+| Passthrough motors | Four normalized motor commands | PX4 bridge, mixer tests, actuator studies |
+| Allocated wrench | Body torques + thrust through allocator | Geometric controller and physical feasibility tests |
+| Direct wrench | Body force/torque applied to Rigidbody | Idealized controller sanity checks |
+| Acceleration helper | Desired local acceleration + yaw rate through SDK helper | Policy/guidance interfaces that do not want to command torques |
+
+Important distinction:
+
+- **Allocated wrench** goes through motor allocation and saturation.
+- **Direct wrench** bypasses the allocator and applies the requested force/torque directly to the Rigidbody.
+- **Passthrough** bypasses the cascaded controller but still goes through the actuation model.
+
+Detailed examples for switching modes from Python are in:
+
+- [Python SDK control modes](https://github.com/ninonick0607/QuadSimLib/blob/main/docs/control_modes.md)
+
+---
+
+## Headless / Lockstep
+
+QuadSim can run without a Unity window for tuning, regression tests, and faster-than-real-time studies.
+
+Build your scene for Linux, then run:
+
+```bash
+./QuadSim_Unity.x86_64 -batchmode -nographics -rpcPort 5555 -telemetryPort 5556
+```
+
+The simulator uses scripted physics stepping, so Python can pause the sim and advance it deterministically:
+
+```python
+from quadsim import QuadSim
+
+CONTROL_HZ = 50.0
+
+with QuadSim() as sim:
+    drone = sim.drone()
+    sim.pause()
+
+    status = sim.get_status()
+    steps_per_tick = max(1, round((1.0 / CONTROL_HZ) / status.fixed_dt))
+
+    sensors = drone.get_sensors()
+    for _ in range(1000):
+        command = my_controller(sensors)
+        sensors = drone.step_with_command(command, count=steps_per_tick)
+
+    sim.resume()
+```
+
+At the default 250 Hz physics rate, `count=5` gives a 50 Hz controller update.
+
+Why lockstep matters:
+
+- Physics advances only when requested.
+- Trials are reproducible.
+- Headless studies can run faster than real time.
+- Composite step calls reduce RPC round trips.
+
+---
+
+## Sensors & Frames
+
+Everything exposed to Python uses **FLU** unless a lower-level interface explicitly says otherwise:
+
+| Axis | Direction |
+|------|-----------|
+| `X` | Forward |
+| `Y` | Left |
+| `Z` | Up |
+
+Common fields:
+
+| Field | Frame |
+|-------|-------|
+| `gps_position` | World FLU, z-up |
+| `imu_orientation` | Body orientation exposed in SDK convention |
+| `imu_attitude` | Roll, pitch, yaw |
+| `imu_vel` | Body-frame FLU velocity |
+| `imu_ang_vel` | Body-frame FLU angular velocity |
+| `imu_accel` | Body-frame FLU acceleration/specific force depending on sensor setting |
+| `gps_vel_ned` | NED velocity for PX4 bridge use |
+| `baro_*` | Barometer pressure, temperature, altitude |
+| `mag_*` | Magnetometer field and heading |
+
+The frame conversion boundary belongs in the Unity adapter and sensor stack. Python users should send and read FLU values unless they are intentionally writing a PX4/NED bridge.
+
+---
+
+## Drone Configuration
+
+Drone parameters are loaded from YAML/model configuration and applied to the spawned `QuadPawn`.
+
+Typical configuration includes:
+
+```yaml
+name: "StandardDrone"
+
+physical_properties:
+  mass_kg: 0.73
+  com_offset: { x: 0, y: 0, z: 0 }
+  inertia: { x: 0.00791, y: 0.00791, z: 0.01231 }
+
+propulsion:
+  max_rpm: 10000
+  thrust_coef: 0.025
+  torque_coef: 0.0005
+  propellers:
+    - { id: 0, x:  0.17, y: 0, z:  0.17, dir:  1 }
+    - { id: 1, x:  0.17, y: 0, z: -0.17, dir: -1 }
+    - { id: 2, x: -0.17, y: 0, z:  0.17, dir: -1 }
+    - { id: 3, x: -0.17, y: 0, z: -0.17, dir:  1 }
+
+controller:
+  position_gains:
+    x: { p: 1.0, i: 0.0, d: 0.0 }
+  velocity_gains:
+    x: { p: 2.0, i: 0.1, d: 0.0 }
+  angle_gains:
+    roll: { p: 6.0, i: 0.0, d: 0.0 }
+  rate_gains:
+    roll: { p: 0.1, i: 0.0, d: 0.0 }
+```
+
+For packaged builds, runtime-readable configs should live in Unity-accessible package resources or `StreamingAssets`, depending on how the project loads drone models/configs.
+
+---
+
+## Visualization
+
+### In Unity
+
+The sample scene can visualize the drone, ground plane, telemetry HUD, and optional ghost/setpoint markers.
+
+### Headless UDP Viewer
+
+For headless runs, stream the state from Python to a separate UDP viewer:
+
+```python
+from quadsim import UdpViz
+
+viz = UdpViz(source="study-0")
+viz.path(planned_points)
+
+# inside your control loop
+viz.sample(t, pos, target=target_pos, err=err)
+```
+
+Run the viewer in a second terminal:
+
+```bash
+python live_viewer.py --port 14660
+```
+
+The viewer uses FLU `[x, y, z]` directly.
 
 ---
 
 ## Architecture
 
+```text
+Python SDK
+  └── ZeroMQ / MessagePack RPC
+        └── ExternalRpcAdapter
+              └── SimCoreApi / QuadSimApi
+                    ├── ControlAuthorityManager
+                    ├── SimulationManager
+                    └── QuadPawn
+                          ├── SensorManager
+                          ├── CascadedController
+                          ├── ControlAllocator
+                          └── Rigidbody
 ```
-SimRoot (GameObject)
-├── SimulationManager        — physics stepping, time control
-├── ControlAuthorityManager  — source lifecycle, authority switching
-├── ExternalRpcAdapter       — ZeroMQ server, Python bridge
-└── DroneManager             — spawning, selection, config loading
-    └── QuadPawn (spawned)   — the drone itself
-        ├── Rigidbody
-        ├── SensorManager    — IMU + GPS at configurable rates
-        ├── CascadedController — Position→Velocity→Angle→Rate PID cascade
-        ├── FlightCommandProxy — validated command routing
-        ├── ModeCoordinator  — goal mode state machine
-        └── QuadSimApi       — per-drone API facade
+
+### Simulation Timing
+
+`SimulationManager` sets Unity physics to scripted mode and advances the sim through a fixed-step pipeline:
+
+```text
+PrePhysicsStep → Physics.Simulate(dt) → PostPhysicsStep
 ```
 
-### Key Design Principles
+The default base rate is 250 Hz. Controllers, sensors, telemetry, and external clients can run at subrates using deterministic tick timing.
 
-**Explicit registration over scene searching.** Subsystems use serialized field injection and direct registration. No `FindObjectOfType` at runtime.
+### RPC
 
-**Controllers are authority-agnostic.** The CascadedController reads commands through `FlightCommandProxy` and never knows if the command came from a gamepad, a C# script, or Python.
+The external interface uses two sockets:
 
-**Layer separation.** `SimCore` handles sim-wide concerns (time, authority). `DroneCore` handles per-drone concerns (control, sensors, physics). SimCore never references DroneCore directly.
+| Socket | Default port | Purpose |
+|--------|--------------|---------|
+| REQ/REP | `5555` | Commands, queries, mode changes, stepping |
+| PUB/SUB | `5556` | Telemetry streaming |
 
-**One authority at a time.** The `ControlAuthorityManager` enforces that exactly one source has control. Switching is deliberate and visible. The `FlightCommandProxy` rejects commands from non-authority sources.
+The headless executable can override both ports:
+
+```bash
+-rpcPort 5555 -telemetryPort 5556
+```
+
+---
+
+## Project Structure
+
+Package-oriented layout:
+
+```text
+Unity-QuadSim-Plugin/
+├── package.json
+├── Runtime/
+│   ├── DroneCore/
+│   ├── RobotCore/
+│   ├── SimCore/
+│   ├── Prefabs/
+│   ├── Configs/
+│   └── ThirdParty/
+├── Samples~/
+│   └── QuadSim Scene/
+├── Documentation~
+└── README.md
+```
+
+Development repository layout may contain additional editor-only scenes, experiments, assets, and test scripts.
 
 ---
 
 ## Related
 
-- **QuadSim Python SDK** — [github.com/ninonicok0607/QuadSimLib](https://github.com/ninonicok0607/QuadSimLib)
+- **Python SDK / QuadSimLib**: [github.com/ninonick0607/QuadSimLib](https://github.com/ninonick0607/QuadSimLib)
+- **Unity plugin**: [github.com/ninonick0607/Unity-QuadSim-Plugin](https://github.com/ninonick0607/Unity-QuadSim-Plugin)
+- **Research controller repo**: `Resnet-GeometricController`
 
 ---
 
