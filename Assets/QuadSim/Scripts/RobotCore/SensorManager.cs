@@ -120,7 +120,7 @@ namespace RobotCore
             Mag.Reset();
             Mag.Initialize(Geo);
             
-            long now = 0;
+            long now = ClockFactory.Clock.NowNanos;
             _imuLimiter  = new FrequencyLimiter(imuHz, now);
             _gpsLimiter  = new FrequencyLimiter(gpsHz, now);
             _baroLimiter = new FrequencyLimiter(baroHz, now);   
@@ -129,6 +129,7 @@ namespace RobotCore
             _logLimiter  = new FrequencyLimiter(logHz <= 0 ? 1e-6 : logHz, now);
 
             Latest = default;
+            PrimeSnapshot(now);
         }
 
         public void OnReset()
@@ -154,6 +155,21 @@ namespace RobotCore
             _logLimiter?.Reset(now);
 
             Latest = default;
+            PrimeSnapshot(now);
+        }
+
+        /// <summary>
+        /// Populate the cached snapshot immediately without advancing physics.
+        /// This guarantees that the first SDK get_sensors() call is valid even
+        /// when the simulation starts or remains paused.
+        /// </summary>
+        private void PrimeSnapshot(long nowNanos)
+        {
+            double dtSec = ClockFactory.BaseDtSec;
+            if (dtSec <= 0.0)
+                dtSec = 1.0 / 250.0;
+
+            UpdateSensors(dtSec, nowNanos);
         }
 
         public void UpdateSensors(double dtSec, long nowNanos)

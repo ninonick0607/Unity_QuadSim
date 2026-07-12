@@ -491,7 +491,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5853520712938592260, guid: b79c6713f4bd6080598bcc0d5632c4d5, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 15.14
+      value: 80.32
       objectReference: {fileID: 0}
     - target: {fileID: 5853520712938592260, guid: b79c6713f4bd6080598bcc0d5632c4d5, type: 3}
       propertyPath: m_LocalPosition.y
@@ -499,7 +499,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5853520712938592260, guid: b79c6713f4bd6080598bcc0d5632c4d5, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -0
+      value: -31.8
       objectReference: {fileID: 0}
     - target: {fileID: 5853520712938592260, guid: b79c6713f4bd6080598bcc0d5632c4d5, type: 3}
       propertyPath: m_LocalRotation.w
@@ -1515,6 +1515,10 @@ PrefabInstance:
     - target: {fileID: 2056661484049275604, guid: f366a39f85cf3a68faaf6f1dbe3a123b, type: 3}
       propertyPath: spawnPayload
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3255322024149863400, guid: f366a39f85cf3a68faaf6f1dbe3a123b, type: 3}
+      propertyPath: runMode
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3739808548804034099, guid: f366a39f85cf3a68faaf6f1dbe3a123b, type: 3}
       propertyPath: _camera
