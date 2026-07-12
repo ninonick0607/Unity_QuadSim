@@ -9,16 +9,12 @@ namespace RobotCore.Sensors
         private Rigidbody _rb;
 
         /// <summary>
-        /// Output frame for position data. Set by SensorManager to match
-        /// the global outputFrame setting. Defaults to FLU.
-        /// </summary>
-        public SimFrame OutputFrame = SimFrame.FLU;
-
-        /// <summary>
-        /// Last sampled position in the OutputFrame coordinate convention.
-        /// When OutputFrame is FLU: (x=fwd, y=left, z=up).
-        /// When OutputFrame is FRD: (x=fwd, y=right, z=down).
-        /// When OutputFrame is UnityBody: raw Unity world (x, y=up, z).
+        /// Last sampled local position, ALWAYS world-frame ENU
+        /// (x=East, y=North, z=Up/altitude), independent of the body-frame
+        /// output convention (FLU/FRD) used by the IMU and magnetometer.
+        /// NED is a client-side relabel: (n, e, d) = (y, x, -z).
+        /// Policy: world I/O is ENU everywhere inside QuadSim; NED exists
+        /// only at the MAVLink wire boundary and in LastVelNED.
         /// </summary>
         public Vector3 LastPosition { get; private set; }
 
@@ -65,20 +61,21 @@ namespace RobotCore.Sensors
                 return;
             }
 
-            Vector3 pos = Frames.TransformWorldPosition(_rb.position, OutputFrame);
+            // World-frame local position is always ENU (see LastPosition doc).
+            Vector3 pos = Frames.TransformWorldPosition(_rb.position, SimFrame.FLU);
 
             if (addNoise)
             {
-                pos.x += _rng.Next() * LatLonNoiseStdDev;  // horizontal
-                pos.y += _rng.Next() * LatLonNoiseStdDev;  // horizontal
-                pos.z += _rng.Next() * AltNoiseStdDev;     // vertical (Z is the up/down axis in FLU and FRD)
+                pos.x += _rng.Next() * LatLonNoiseStdDev;  // East  (horizontal)
+                pos.y += _rng.Next() * LatLonNoiseStdDev;  // North (horizontal)
+                pos.z += _rng.Next() * AltNoiseStdDev;     // Up    (vertical)
             }
             
             if (_geo != null)
             {
-                // FLU world == ENU — identical to MagSensor.UpdateEarthMagField()
-                Vector3 flu = Frames.TransformWorldPosition(_rb.position, SimFrame.FLU);
-                _geo.EnuToGeodetic(flu.x, flu.y, flu.z,
+                // Noise-free ENU for the geodetic conversion (ground truth).
+                Vector3 enu = Frames.TransformWorldPosition(_rb.position, SimFrame.FLU);
+                _geo.EnuToGeodetic(enu.x, enu.y, enu.z,
                     out double lat, out double lon, out double h);
                 LastLatDeg = lat;
                 LastLonDeg = lon;

@@ -7,11 +7,11 @@ TerrainLayer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: ground_rockgrass_fellsdirty
-  m_DiffuseTexture: {fileID: 2800000, guid: ada3ffebc706aac4788bfcfeee5377dc, type: 3}
-  m_NormalMapTexture: {fileID: 2800000, guid: 293586dd4406ef540921e050ce974816, type: 3}
-  m_MaskMapTexture: {fileID: 2800000, guid: 464f9f1ed65ca28478ca7f2342f2d2f0, type: 3}
-  m_TileSize: {x: 5.3, y: 5.3}
-  m_TileOffset: {x: 0.68, y: 0.68}
+  m_DiffuseTexture: {fileID: 2800000, guid: ad6fd930d668fb1be80fafe005030486, type: 3}
+  m_NormalMapTexture: {fileID: 2800000, guid: 3bceeace551346186818b78271214e3d, type: 3}
+  m_MaskMapTexture: {fileID: 2800000, guid: 4a0378487b24649c193a7e01da3dc497, type: 3}
+  m_TileSize: {x: 4.42, y: 5.3}
+  m_TileOffset: {x: -0.82, y: 0.68}
   m_Specular: {r: 0, g: 0, b: 0, a: 0}
   m_Metallic: 0
   m_Smoothness: 0

@@ -52,7 +52,7 @@ Use this README to install and run the Unity simulator. Use the Python SDK docs 
 - Cascaded controller modes: position, velocity, angle, and rate.
 - Low-level access: direct motors, allocated wrench, and direct rigidbody wrench.
 - Sensor stack: IMU, GPS, barometer, magnetometer.
-- FLU output frame for Python-facing robotics workflows.
+- ENU world / FLU body frames for Python-facing robotics workflows (FRD body + NED accessors for PX4).
 - YAML-based drone model and controller configuration.
 
 ---
@@ -274,29 +274,58 @@ Why lockstep matters:
 
 ## Sensors & Frames
 
-Everything exposed to Python uses **FLU** unless a lower-level interface explicitly says otherwise:
+QuadSim distinguishes **world** frames (fixed to the map) from **body**
+frames (attached to the vehicle). The wire is canonical: world data is
+always ENU; body data is FLU by default and FRD in PX4 mode.
 
-| Axis | Direction |
-|------|-----------|
-| `X` | Forward |
-| `Y` | Left |
-| `Z` | Up |
+### Unity <-> robotics frame mapping
 
-Common fields:
+Unity is left-handed; all robotics frames below are right-handed.
+`Frames.cs` is the single conversion boundary — no other file converts.
 
-| Field | Frame |
-|-------|-------|
-| `gps_position` | World FLU, z-up |
-| `imu_orientation` | Body orientation exposed in SDK convention |
-| `imu_attitude` | Roll, pitch, yaw |
-| `imu_vel` | Body-frame FLU velocity |
-| `imu_ang_vel` | Body-frame FLU angular velocity |
-| `imu_accel` | Body-frame FLU acceleration/specific force depending on sensor setting |
-| `gps_vel_ned` | NED velocity for PX4 bridge use |
-| `baro_*` | Barometer pressure, temperature, altitude |
-| `mag_*` | Magnetometer field and heading |
+```
+Unity WORLD:  X = East,    Y = Up,  Z = North
+Unity BODY:   X = forward, Y = up,  Z = left
 
-The frame conversion boundary belongs in the Unity adapter and sensor stack. Python users should send and read FLU values unless they are intentionally writing a PX4/NED bridge.
+WORLD frames:
+  ENU (E, N, U) = ( u.x,  u.z,  u.y )    # canonical world frame
+  NED (N, E, D) = ( u.z,  u.x, -u.y )    # MAVLink wire / explicit fields only
+
+BODY frames:
+  FLU (F, L, U) = ( b.x,  b.z,  b.y )    # canonical body frame (ROS)
+  FRD (F, R, D) = ( b.x, -b.z, -b.y )    # PX4 HIL body frame
+
+Pseudovectors (angular velocity, torque): relabel + negate-all
+(left-handed -> right-handed chirality correction).
+Quaternion (Unity -> body-FLU/world-ENU): (-q.x, -q.z, -q.y, q.w)
+```
+
+Note NED is an X/Y **swap** of ENU plus a Z flip — not a sign flip of
+FLU-style axes. This is why world and body conventions are documented
+separately.
+
+### Sensor fields
+
+| Field | Frame | Notes |
+|-------|-------|-------|
+| `gps_position` | World **ENU** | Always ENU in every mode. `z` = altitude. |
+| `gps_lat/lon/alt` | WGS84 geodetic | Ellipsoidal altitude, computed in-sim. |
+| `gps_vel_ned` | World **NED** | `(vn, ve, vd)` — PX4 `HIL_GPS` wire quantity. |
+| `imu_vel` | **Body** FLU/FRD | Body-frame velocity — not world. |
+| `imu_ang_vel` | Body FLU/FRD | rad/s. |
+| `imu_accel` | Body FLU/FRD | Specific force (gravity included), as PX4 expects. |
+| `imu_attitude` | Body convention | RPY degrees, display-oriented. |
+| `imu_orientation` | body(FLU) -> world(ENU) | Quaternion. FLU mode only (no FRD branch in `TransformQuaternion` yet). |
+| `mag_field` | Body FLU/FRD | Gauss, WMM-derived. |
+| `baro_*` | Scalars | ISA model. |
+| `frame` | — | Payload self-description: `"flu"` or `"frd"` body convention. |
+
+The `outputFrame` toggle (SensorManager / runtime UI) switches the
+**body** convention only, for the PX4 HIL bridge. World-frame data never
+changes convention; NED exists only at the MAVLink boundary (`Px4Link`)
+and in the explicitly named `gps_vel_ned` field. The Python SDK exposes
+explicit accessors (`position_ned`, `velocity_enu`, `vel_body_frd`, ...)
+derived by pure relabels.
 
 ---
 

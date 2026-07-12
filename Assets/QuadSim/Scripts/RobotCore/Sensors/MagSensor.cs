@@ -100,7 +100,7 @@ namespace RobotCore.Sensors
 
         private void UpdateEarthMagField()
         {
-            // Convention: FLU world position == ENU (East, North, Up). See alignment note.
+            // World position in ENU (East, North, Up) — TransformWorldPosition(FLU) is the ENU map.
             Vector3 flu = Frames.TransformWorldPosition(_rb.position, SimFrame.FLU);
             _geo.EnuToGeodetic(flu.x, flu.y, flu.z, out double lat, out double lon, out _);
 

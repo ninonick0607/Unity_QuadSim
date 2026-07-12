@@ -103,8 +103,9 @@ namespace RobotCore
             Mag = new MagSensor(rb, bodyTransform, noiseSeed + 4);
 
             
+            // outputFrame selects the BODY-axis convention only (FLU/FRD).
+            // World-frame data (GPS local position) is always ENU.
             IMU.OutputFrame = outputFrame;
-            GPS.OutputFrame = outputFrame;
             Mag.OutputFrame = outputFrame;
 
             IMU.Reset();
@@ -119,7 +120,7 @@ namespace RobotCore
             Mag.Reset();
             Mag.Initialize(Geo);
             
-            long now = 0;
+            long now = ClockFactory.Clock.NowNanos;
             _imuLimiter  = new FrequencyLimiter(imuHz, now);
             _gpsLimiter  = new FrequencyLimiter(gpsHz, now);
             _baroLimiter = new FrequencyLimiter(baroHz, now);   
@@ -128,6 +129,7 @@ namespace RobotCore
             _logLimiter  = new FrequencyLimiter(logHz <= 0 ? 1e-6 : logHz, now);
 
             Latest = default;
+            PrimeSnapshot(now);
         }
 
         public void OnReset()
@@ -153,18 +155,33 @@ namespace RobotCore
             _logLimiter?.Reset(now);
 
             Latest = default;
+            PrimeSnapshot(now);
+        }
+
+        /// <summary>
+        /// Populate the cached snapshot immediately without advancing physics.
+        /// This guarantees that the first SDK get_sensors() call is valid even
+        /// when the simulation starts or remains paused.
+        /// </summary>
+        private void PrimeSnapshot(long nowNanos)
+        {
+            double dtSec = ClockFactory.BaseDtSec;
+            if (dtSec <= 0.0)
+                dtSec = 1.0 / 250.0;
+
+            UpdateSensors(dtSec, nowNanos);
         }
 
         public void UpdateSensors(double dtSec, long nowNanos)
         {
             double nowSec = nowNanos * 1e-9;
 
-            // Keep output frame synced for both sensors
+            // Keep BODY output frame synced (IMU + mag). GPS position is ENU always.
             IMU.OutputFrame = outputFrame;
-            GPS.OutputFrame = outputFrame;
             Mag.OutputFrame = outputFrame;
 
             var latest = Latest;
+            latest.BodyFrame = outputFrame;   // self-description for the RPC payload
 
             // IMU
             if (_imuLimiter.ShouldRunAndConsume(nowNanos))
@@ -180,7 +197,7 @@ namespace RobotCore
                 latest.ImuValid = IMU.IsValid;
             }
 
-            // GPS — position is now already in OutputFrame from GPSSensor
+            // GPS — local position is always world-frame ENU from GPSSensor
             if (_gpsLimiter.ShouldRunAndConsume(nowNanos))
             {
                 GPS.Sample(nowSec, enableNoise);
