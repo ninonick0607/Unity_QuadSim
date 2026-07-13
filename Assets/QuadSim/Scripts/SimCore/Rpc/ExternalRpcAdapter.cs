@@ -575,23 +575,19 @@ namespace SimCore.Rpc
                 case "frd":
                     _clientFrame = SimFrame.FRD;
                     break;
-                case "unity":
-                    _clientFrame = SimFrame.UnityBody;
-                    break;
                 default:
                     return RpcResponse.Error($"invalid_frame: {frameStr}", req.RequestId);
             }
-    
-            // Also update the sensor output frame so reads match writes
-            if (TryGetSelectedDrone(req, out var drone, out var droneErr))
-            {
-                // You may need to expose a method to set the sensor frame on QuadSimApi
-                // For now, this ensures symmetry
-            }
-    
+
+            if (!TryGetSelectedDrone(req, out var drone, out var droneErr))
+                return droneErr;
+
+            if (!drone.SetSensorOutputFrame(_clientFrame))
+                return RpcResponse.Error($"unsupported_sensor_frame: {frameStr}", req.RequestId);
+
             return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
             {
-                ["frame"] = frameStr.ToLowerInvariant()
+                ["frame"] = _clientFrame == SimFrame.FRD ? "frd" : "flu"
             });
         }
         

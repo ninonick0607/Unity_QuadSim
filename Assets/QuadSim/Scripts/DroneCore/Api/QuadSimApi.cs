@@ -31,6 +31,7 @@ using SimCore.Common;
 using DroneCore.Controllers;
 using DroneCore.Core;
 using DroneCore.Interfaces;
+using MathUtil;
 using RobotCore;
 
 namespace DroneCore.Api
@@ -343,6 +344,13 @@ namespace DroneCore.Api
         // ============================================================================
         // Sensor Data (Measured State)
         // ============================================================================
+
+        /// <summary>Set the body frame used by IMU and magnetometer outputs.</summary>
+        public bool SetSensorOutputFrame(SimFrame frame)
+        {
+            if (!AssertInitialized("SetSensorOutputFrame")) return false;
+            return _sensorManager != null && _sensorManager.SetOutputFrame(frame);
+        }
 
         /// <summary>
         /// Get the latest sensor readings (IMU + GPS).

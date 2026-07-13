@@ -25,7 +25,9 @@ namespace RobotCore
         public double magHz = 50.0;
         
         [Header("Noise")]
-        public bool enableNoise = false;   // set TRUE for PX4 SITL/HIL. NOTE: baro-only today.
+        // Keep enabled for PX4 SITL/HIL: PX4's sensor validator flags more
+        // than 100 bit-identical samples as STALE even when timestamps advance.
+        public bool enableNoise = false;
 
         [Header("Georeferencing (PX4 origin)")]
         public double originLatDeg  = 47.397742;  // PX4 SITL default home (Zurich)
@@ -60,8 +62,24 @@ namespace RobotCore
         [ContextMenu("Toggle Output Frame  FLU <-> FRD")]
         public void ToggleOutputFrame()
         {
-            outputFrame = (outputFrame == SimFrame.FRD) ? SimFrame.FLU : SimFrame.FRD;
+            SetOutputFrame((outputFrame == SimFrame.FRD) ? SimFrame.FLU : SimFrame.FRD);
+        }
+
+        /// <summary>
+        /// Select the body-axis convention exposed to external clients.
+        /// World-frame fields remain ENU. UnityBody is intentionally not exposed
+        /// because vectors and pseudovectors require different chirality maps.
+        /// </summary>
+        public bool SetOutputFrame(SimFrame frame)
+        {
+            if (frame != SimFrame.FLU && frame != SimFrame.FRD)
+                return false;
+
+            outputFrame = frame;
+            if (IMU != null) IMU.OutputFrame = frame;
+            if (Mag != null) Mag.OutputFrame = frame;
             Debug.Log($"[SensorManager] outputFrame → {outputFrame}");
+            return true;
         }
         
         private void ResolveRefsOrThrow()

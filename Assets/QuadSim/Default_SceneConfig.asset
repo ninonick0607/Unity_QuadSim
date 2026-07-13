@@ -19,7 +19,7 @@ MonoBehaviour:
   originLongitudeDeg: -117.7391
   originAltitudeM: 5
   masterSeed: 12345
-  enableSensorNoise: 0
+  enableSensorNoise: 1
   windEnabled: 0
   windSpeed: 10
   windHeadingDeg: 0

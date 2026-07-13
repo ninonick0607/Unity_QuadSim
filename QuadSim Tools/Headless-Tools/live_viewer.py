@@ -162,11 +162,19 @@ def main():
                     ax.set_ylim(float(Y.min()) - pad, float(Y.max()) + pad)
                     ax.set_zlim(float(Z.min()) - pad, float(Z.max()) + pad)
 
+                yaw_text = ""
+                if "yaw_error_deg" in latest:
+                    yaw_text = (
+                        f" | yaw={latest.get('yaw_deg', 0.0):+.1f}°"
+                        f"/{latest.get('yaw_target_deg', 0.0):+.1f}°"
+                        f" eYaw={latest['yaw_error_deg']:+.1f}°"
+                    )
                 ax.set_title(
                     f"QuadSim live | trial={latest.get('trial', -1)} "
                     f"t={latest.get('t_rel', 0.0):.1f}s "
                     f"err={latest.get('err', 0.0):.2f}m "
                     f"speed={latest.get('speed', 0.0):.2f}m/s"
+                    f"{yaw_text}"
                 )
 
                 fig.canvas.draw_idle()
