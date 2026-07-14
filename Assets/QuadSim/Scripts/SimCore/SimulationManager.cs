@@ -264,14 +264,19 @@ namespace SimCore
         /// </summary>
         public void ResetSimulation()
         {
-            ClockFactory.Reset(newStartNanos: 0);
-            _accumulatorSec = 0;
-            _pendingSteps = 0;
+            ResetClock();
 
             foreach (var s in RegisteredManagers)
             {
                 s.OnSimulationReset(this);
             }
+        }
+
+        public void ResetClock()
+        {
+            ClockFactory.Reset(newStartNanos: 0);
+            _accumulatorSec = 0;
+            _pendingSteps = 0;
         }
     }
 

@@ -69,22 +69,34 @@ namespace SimCore.Rpc
         /// </summary>
         public float GetFloat(string key, float defaultValue = 0f)
         {
-            if (!Params.TryGetValue(key, out var val)) return defaultValue;
+            return TryGetFloat(key, out float value) ? value : defaultValue;
+        }
 
-            return val switch
+        public bool TryGetFloat(string key, out float value)
+        {
+            value = 0f;
+            if (!Params.TryGetValue(key, out var val)) return false;
+
+            return TryConvertFloat(val, out value);
+        }
+
+        public static bool TryConvertFloat(object val, out float value)
+        {
+            value = 0f;
+            switch (val)
             {
-                float f   => f,
-                double d  => (float)d,
-                byte b    => b,
-                sbyte sb  => sb,
-                short s   => s,
-                ushort us => us,
-                int i     => i,
-                uint ui   => ui,
-                long l    => l,
-                ulong ul  => ul,
-                _ => defaultValue
-            };
+                case float f: value = f; return true;
+                case double d: value = (float)d; return true;
+                case byte b: value = b; return true;
+                case sbyte sb: value = sb; return true;
+                case short s: value = s; return true;
+                case ushort us: value = us; return true;
+                case int i: value = i; return true;
+                case uint ui: value = ui; return true;
+                case long l: value = l; return true;
+                case ulong ul: value = ul; return true;
+                default: return false;
+            }
         }
 
         /// <summary>
@@ -93,22 +105,26 @@ namespace SimCore.Rpc
         /// </summary>
         public int GetInt(string key, int defaultValue = 0)
         {
-            if (!Params.TryGetValue(key, out var val)) return defaultValue;
+            return TryGetInt(key, out int value) ? value : defaultValue;
+        }
 
-            return val switch
+        public bool TryGetInt(string key, out int value)
+        {
+            value = 0;
+            if (!Params.TryGetValue(key, out var raw)) return false;
+
+            switch (raw)
             {
-                byte b    => b,
-                sbyte sb  => sb,
-                short s   => s,
-                ushort us => us,
-                int i     => i,
-                uint ui   => (int)ui,
-                long l    => (int)l,
-                ulong ul  => (int)ul,
-                float f   => (int)f,
-                double d  => (int)d,
-                _ => defaultValue
-            };
+                case byte b: value = b; return true;
+                case sbyte sb: value = sb; return true;
+                case short s: value = s; return true;
+                case ushort us: value = us; return true;
+                case int i: value = i; return true;
+                case uint ui when ui <= int.MaxValue: value = (int)ui; return true;
+                case long l when l >= int.MinValue && l <= int.MaxValue: value = (int)l; return true;
+                case ulong ul when ul <= int.MaxValue: value = (int)ul; return true;
+                default: return false;
+            }
         }
 
         /// <summary>Get a bool parameter, with default.</summary>
@@ -117,6 +133,53 @@ namespace SimCore.Rpc
             if (Params.TryGetValue(key, out var val) && val is bool b)
                 return b;
             return defaultValue;
+        }
+
+        public bool TryGetArray(string key, out IReadOnlyList<object> values)
+        {
+            values = null;
+            if (!Params.TryGetValue(key, out var raw)) return false;
+
+            if (raw is object[] array)
+            {
+                values = array;
+                return true;
+            }
+
+            if (raw is List<object> list)
+            {
+                values = list;
+                return true;
+            }
+
+            return false;
+        }
+
+        public static bool TryGetMap(object raw, out Dictionary<string, object> values)
+        {
+            if (raw is Dictionary<string, object> stringMap)
+            {
+                values = stringMap;
+                return true;
+            }
+
+            if (raw is IDictionary<object, object> objectMap)
+            {
+                values = new Dictionary<string, object>(objectMap.Count);
+                foreach (var pair in objectMap)
+                {
+                    if (pair.Key is not string key)
+                    {
+                        values = null;
+                        return false;
+                    }
+                    values[key] = pair.Value;
+                }
+                return true;
+            }
+
+            values = null;
+            return false;
         }
     }
 

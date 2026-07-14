@@ -2,11 +2,18 @@ namespace RobotCore.Core_Utils
 {
     public sealed class GaussianRng
     {
-        private readonly System.Random _rng;
+        private System.Random _rng;
         private bool   _hasSpare;
         private double _spare;
 
         public GaussianRng(int seed) { _rng = new System.Random(seed); }
+
+        public void Reset(int seed)
+        {
+            _rng = new System.Random(seed);
+            _hasSpare = false;
+            _spare = 0.0;
+        }
 
         public float Next()
         {

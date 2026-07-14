@@ -106,6 +106,31 @@ namespace RobotCore
             originLonDeg  = lonDeg;
             originHeightM = heightM;
         }
+
+        public void ReseedForEpisode(int episodeSeed, int agentIndex)
+        {
+            noiseSeed = DeriveSeed(episodeSeed, agentIndex, 0);
+            IMU?.Reseed(DeriveSeed(episodeSeed, agentIndex, 1));
+            GPS?.Reseed(DeriveSeed(episodeSeed, agentIndex, 2));
+            Baro?.Reseed(DeriveSeed(episodeSeed, agentIndex, 3));
+            Mag?.Reseed(DeriveSeed(episodeSeed, agentIndex, 4));
+        }
+
+        private static int DeriveSeed(int episodeSeed, int agentIndex, int streamId)
+        {
+            unchecked
+            {
+                uint value = (uint)episodeSeed;
+                value ^= 0x9E3779B9u * (uint)(agentIndex + 1);
+                value ^= 0x85EBCA6Bu * (uint)(streamId + 1);
+                value ^= value >> 16;
+                value *= 0x7FEB352Du;
+                value ^= value >> 15;
+                value *= 0x846CA68Bu;
+                value ^= value >> 16;
+                return (int)value;
+            }
+        }
         public void OnStart()
         {
             ResolveRefsOrThrow();

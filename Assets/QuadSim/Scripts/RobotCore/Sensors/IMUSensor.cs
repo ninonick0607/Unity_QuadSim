@@ -37,6 +37,8 @@ namespace RobotCore.Sensors
             _bodyTransform = bodyTransform;
             _rng = new GaussianRng(noiseSeed);
         }
+
+        public void Reseed(int seed) => _rng.Reset(seed);
         
         public void Reset()
         {

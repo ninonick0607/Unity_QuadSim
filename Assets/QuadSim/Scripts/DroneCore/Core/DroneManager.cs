@@ -6,6 +6,12 @@ using Yaml.Drone;
 
 namespace DroneCore.Core
 {
+    public enum StartupSpawnPolicy
+    {
+        SpawnDefaultIfNone = 0,
+        SceneDronesOnly = 1,
+    }
+
     /// <summary>
     /// DroneManager is the central registry and orchestrator for all drones in the simulation.
     /// It handles spawning, selection, configuration, and drives the physics step pipeline.
@@ -24,6 +30,9 @@ namespace DroneCore.Core
         // ============================================================================
 
         [Header("Spawning")]
+        [Tooltip("Choose whether simulation startup may create a default drone when the scene contains none.")]
+        [SerializeField] private StartupSpawnPolicy startupSpawnPolicy = StartupSpawnPolicy.SpawnDefaultIfNone;
+
         [Tooltip("Prefab to instantiate when spawning drones.")]
         [SerializeField] private QuadPawn quadPawnPrefab;
 
@@ -82,6 +91,7 @@ namespace DroneCore.Core
         public string SelectedConfigName => selectedConfigName;
         public bool SwarmMode { get => swarmMode; set => swarmMode = value; }
         public Vector3 SpawnOrigin { get => defaultSpawnOrigin; set => defaultSpawnOrigin = value; }
+        public StartupSpawnPolicy SpawnPolicy => startupSpawnPolicy;
 
         /// <summary>
         /// Currently selected drone, or null.
@@ -176,11 +186,14 @@ namespace DroneCore.Core
             else
                 Debug.LogWarning($"[DroneManager] Failed to load config: {selectedConfigName}");
 
-            // If no drones exist yet, spawn one now.
-            if (_registeredDrones.Count == 0)
+            if (_registeredDrones.Count == 0 && startupSpawnPolicy == StartupSpawnPolicy.SpawnDefaultIfNone)
             {
-                Debug.Log("[DroneManager] No drones registered; spawning default drone.");
+                Debug.Log("[DroneManager] Startup policy is SpawnDefaultIfNone; spawning default drone.");
                 SpawnDroneWithConfig(selectedConfigName, defaultSpawnOrigin, Quaternion.identity);
+            }
+            else if (_registeredDrones.Count == 0)
+            {
+                Debug.Log("[DroneManager] Startup policy is SceneDronesOnly; starting without a drone.");
             }
             else
             {
@@ -277,6 +290,8 @@ namespace DroneCore.Core
             Vector3 spawnPos = DetermineSpawnPosition(position);
             Quaternion spawnRot = rotation == Quaternion.identity ? DetermineSpawnRotation() : rotation;
 
+            int droneNumber = _registeredDrones.Count;
+
             // Instantiate
             QuadPawn newDrone = Instantiate(quadPawnPrefab, spawnPos, spawnRot);
             if (newDrone == null)
@@ -285,7 +300,7 @@ namespace DroneCore.Core
                 return null;
             }
             
-            newDrone.name = $"Drone_{_registeredDrones.Count:D2}";
+            newDrone.name = $"Drone_{droneNumber:D2}";
             
             if (newDrone.Sensors != null)
                 newDrone.Sensors.Configure(masterSeed, enableSensorNoise, originLat, originLon, originAlt);
@@ -370,14 +385,43 @@ namespace DroneCore.Core
                 return;
             }
 
-            bool wasEmpty = _registeredDrones.Count == 0;
-            _registeredDrones.Add(drone);
+            drone.EnsureAgentIdentity(GetNextAvailableDroneIndex());
 
-            Debug.Log($"[DroneManager] Registered drone: {drone.name} (total: {_registeredDrones.Count})");
+            for (int i = 0; i < _registeredDrones.Count; i++)
+            {
+                QuadPawn existing = _registeredDrones[i];
+                if (existing == null) continue;
+
+                if (existing.DroneIndex == drone.DroneIndex)
+                {
+                    Debug.LogError($"[DroneManager] Duplicate drone_index {drone.DroneIndex}; " +
+                                   $"cannot register {drone.name}.");
+                    return;
+                }
+
+                if (string.Equals(existing.AgentId, drone.AgentId, System.StringComparison.Ordinal))
+                {
+                    Debug.LogError($"[DroneManager] Duplicate agent_id '{drone.AgentId}'; " +
+                                   $"cannot register {drone.name}.");
+                    return;
+                }
+            }
+
+            bool wasEmpty = _registeredDrones.Count == 0;
+            QuadPawn selectedBefore = SelectedDrone;
+            _registeredDrones.Add(drone);
+            _registeredDrones.Sort(CompareDroneIdentity);
+
+            Debug.Log($"[DroneManager] Registered {drone.AgentId} " +
+                      $"(index={drone.DroneIndex}, team={drone.TeamId}, total={_registeredDrones.Count})");
 
             if (wasEmpty)
             {
                 SelectDroneByIndex(0, true);
+            }
+            else if (selectedBefore != null)
+            {
+                _selectedDroneIndex = _registeredDrones.IndexOf(selectedBefore);
             }
         }
 
@@ -403,6 +447,38 @@ namespace DroneCore.Core
         // ============================================================================
 
         public int GetDroneIndex(QuadPawn drone) => _registeredDrones.IndexOf(drone);
+
+        public QuadPawn GetDroneByAgentId(string agentId)
+        {
+            if (string.IsNullOrEmpty(agentId)) return null;
+
+            for (int i = 0; i < _registeredDrones.Count; i++)
+            {
+                QuadPawn drone = _registeredDrones[i];
+                if (drone != null && string.Equals(drone.AgentId, agentId, System.StringComparison.Ordinal))
+                    return drone;
+            }
+            return null;
+        }
+
+        public QuadPawn GetDroneByPersistentIndex(int droneIndex)
+        {
+            for (int i = 0; i < _registeredDrones.Count; i++)
+            {
+                QuadPawn drone = _registeredDrones[i];
+                if (drone != null && drone.DroneIndex == droneIndex)
+                    return drone;
+            }
+            return null;
+        }
+
+        internal void RefreshIdentityOrder()
+        {
+            QuadPawn selected = SelectedDrone;
+            _registeredDrones.Sort(CompareDroneIdentity);
+            if (selected != null)
+                _selectedDroneIndex = _registeredDrones.IndexOf(selected);
+        }
 
         public void SelectDroneByIndex(int index, bool alsoPossess = false)
         {
@@ -516,6 +592,26 @@ namespace DroneCore.Core
         // ============================================================================
         // Utility
         // ============================================================================
+
+        private int GetNextAvailableDroneIndex()
+        {
+            int candidate = 0;
+            while (GetDroneByPersistentIndex(candidate) != null)
+                candidate++;
+            return candidate;
+        }
+
+        private static int CompareDroneIdentity(QuadPawn a, QuadPawn b)
+        {
+            if (ReferenceEquals(a, b)) return 0;
+            if (a == null) return 1;
+            if (b == null) return -1;
+
+            int indexOrder = a.DroneIndex.CompareTo(b.DroneIndex);
+            return indexOrder != 0
+                ? indexOrder
+                : string.CompareOrdinal(a.AgentId, b.AgentId);
+        }
 
         private void CleanupInvalidDrones()
         {

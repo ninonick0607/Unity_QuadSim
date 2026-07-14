@@ -153,6 +153,11 @@ namespace MathUtil
             };
         }
 
+        public static Vector3 TransformWorldVector(Vector3 vectorUnityWorld, SimFrame target)
+        {
+            return TransformWorldPosition(vectorUnityWorld, target);
+        }
+
         public static Quaternion TransformQuaternion(Quaternion q, SimFrame target)
         {
             return target switch

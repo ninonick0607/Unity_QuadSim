@@ -119,7 +119,9 @@ namespace QuadSim.RuntimeUI.ImGuiHud
             if (ImGui.Button("Spawn Drone Now") && dm != null)
                 UiActions.Defer(() => dm.SpawnDrone(Vector3.zero, Quaternion.identity));
             ImGui.SameLine();
-            ImGui.TextDisabled("(DroneManager auto-spawns one on sim start)");
+            ImGui.TextDisabled(dm != null && dm.SpawnPolicy == StartupSpawnPolicy.SceneDronesOnly
+                ? "(startup uses scene-placed drones only)"
+                : "(startup spawns a default only when none exist)");
 
             ImGui.Separator();
             bool pcp = PersistControlPanel;

@@ -490,7 +490,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2056661484049275604, guid: f366a39f85cf3a68faaf6f1dbe3a123b, type: 3}
       propertyPath: spawnPayload
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3255322024149863400, guid: f366a39f85cf3a68faaf6f1dbe3a123b, type: 3}
       propertyPath: runMode

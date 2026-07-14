@@ -23,10 +23,13 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using SimCore.Common;
+using DroneCore;
 using DroneCore.Api;
+using DroneCore.Core;
 using MathUtil;
 using RobotCore;
 using NetMQ;
+using QuadSim.RL;
 
 namespace SimCore.Rpc
 {
@@ -91,6 +94,47 @@ namespace SimCore.Rpc
         private float _publishHz;
         private float _publishTimer;
         private HashSet<string> _subscribedTopics = new() { "sensors", "telemetry" };
+        private long _rlEpisodeId = 0;
+        private long _rlStepIndex;
+
+        private readonly struct PreparedMultiAction
+        {
+            public readonly QuadPawn Pawn;
+            public readonly QuadSimApi Api;
+            public readonly GoalMode Mode;
+            public readonly Axis4 Command;
+
+            public PreparedMultiAction(QuadPawn pawn, QuadSimApi api, GoalMode mode, Axis4 command)
+            {
+                Pawn = pawn;
+                Api = api;
+                Mode = mode;
+                Command = command;
+            }
+        }
+
+        private readonly struct PreparedEpisodeReset
+        {
+            public readonly QuadPawn Pawn;
+            public readonly QuadSimApi Api;
+            public readonly string AgentId;
+            public readonly string TeamId;
+            public readonly int DroneIndex;
+            public readonly Vector3 Position;
+            public readonly Quaternion Rotation;
+
+            public PreparedEpisodeReset(QuadPawn pawn, QuadSimApi api, string agentId,
+                string teamId, int droneIndex, Vector3 position, Quaternion rotation)
+            {
+                Pawn = pawn;
+                Api = api;
+                AgentId = agentId;
+                TeamId = teamId;
+                DroneIndex = droneIndex;
+                Position = position;
+                Rotation = rotation;
+            }
+        }
 
         // ============================================================================
         // String ↔ Enum Maps (Phase 9b)
@@ -415,6 +459,7 @@ namespace SimCore.Rpc
                 ["disconnect"]       = HandleDisconnect,
                 ["heartbeat"]        = HandleHeartbeat,
                 ["get_status"]       = HandleGetStatus,
+                ["list_drones"]      = HandleListDrones,
                 ["set_frame"] = HandleSetFrame,
 
                 // --- Phase 9b: Drone control ---
@@ -436,6 +481,8 @@ namespace SimCore.Rpc
                 ["resume"]           = HandleResume,
                 ["step"]             = HandleStep,
                 ["step_with_command"] = HandleStepWithCommand,
+                ["step_multi"]       = HandleStepMulti,
+                ["reset_episode"]    = HandleResetEpisode,
                 ["set_time_scale"]   = HandleSetTimeScale,
                 ["reset_simulation"] = HandleResetSimulation,
                 ["set_wind"]         = HandleSetWind,
@@ -609,6 +656,36 @@ namespace SimCore.Rpc
                 ["external_status"] = status.ExternalStatus.ToString(),
                 ["client_connected"] = _clientConnected,
                 ["client_name"] = _clientName ?? "",
+            });
+        }
+
+        private RpcResponse HandleListDrones(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+
+            DroneManager manager = DroneManager.Get();
+            if (manager == null)
+                return RpcResponse.Error("no_drone_manager", req.RequestId);
+
+            var drones = manager.RegisteredDrones;
+            object[] entries = new object[drones.Count];
+
+            for (int i = 0; i < drones.Count; i++)
+            {
+                var drone = drones[i];
+                entries[i] = new Dictionary<string, object>
+                {
+                    ["agent_id"] = drone.AgentId,
+                    ["team_id"] = drone.TeamId,
+                    ["drone_index"] = drone.DroneIndex,
+                    ["drone_id"] = drone.DroneID,
+                    ["is_initialized"] = drone.IsInitialized,
+                };
+            }
+
+            return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
+            {
+                ["drones"] = entries,
             });
         }
 
@@ -1036,6 +1113,203 @@ namespace SimCore.Rpc
 
             return HandleGetSensorData(req);
         }
+
+        private RpcResponse HandleStepMulti(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+            if (_sim.CurrentAuthority != InputSource.External)
+                return RpcResponse.Error("authority_rejected", req.RequestId);
+            if (_sim.SimManager == null)
+                return RpcResponse.Error("simulation_manager_missing", req.RequestId);
+
+            int count = req.GetInt("count", 1);
+            if (count <= 0)
+                return RpcResponse.Error("invalid_param: count must be > 0", req.RequestId);
+            if (!req.TryGetArray("actions", out var rawActions))
+                return RpcResponse.Error("missing_or_invalid_param: actions", req.RequestId);
+
+            DroneManager manager = DroneManager.Get();
+            if (manager == null)
+                return RpcResponse.Error("no_drone_manager", req.RequestId);
+            if (rawActions.Count != manager.DroneCount)
+                return RpcResponse.Error("action_count_mismatch", req.RequestId);
+
+            var prepared = new List<PreparedMultiAction>(rawActions.Count);
+            var seenAgents = new HashSet<string>(StringComparer.Ordinal);
+
+            for (int i = 0; i < rawActions.Count; i++)
+            {
+                if (!RpcRequest.TryGetMap(rawActions[i], out var actionMap))
+                    return RpcResponse.Error($"invalid_action: {i}", req.RequestId);
+
+                var action = new RpcRequest("step_multi_action", actionMap);
+                string agentId = action.GetString("agent_id");
+                if (string.IsNullOrEmpty(agentId))
+                    return RpcResponse.Error($"missing_agent_id: {i}", req.RequestId);
+                if (!seenAgents.Add(agentId))
+                    return RpcResponse.Error($"duplicate_agent: {agentId}", req.RequestId);
+
+                QuadPawn pawn = manager.GetDroneByAgentId(agentId);
+                if (pawn == null)
+                    return RpcResponse.Error($"unknown_agent: {agentId}", req.RequestId);
+                QuadSimApi api = pawn.Api;
+                if (api == null || !api.IsInitialized)
+                    return RpcResponse.Error($"agent_not_initialized: {agentId}", req.RequestId);
+
+                string modeName = action.GetString("mode");
+                if (modeName == null || !GoalModeMap.TryGetValue(modeName.ToLowerInvariant(), out var mode))
+                    return RpcResponse.Error($"invalid_mode: {modeName ?? "missing"}", req.RequestId);
+
+                if (!action.TryGetFloat("x", out float x)
+                    || !action.TryGetFloat("y", out float y)
+                    || !action.TryGetFloat("z", out float z)
+                    || !action.TryGetFloat("w", out float w))
+                {
+                    return RpcResponse.Error($"invalid_action_dimensions: {agentId}", req.RequestId);
+                }
+                if (!IsFinite(x) || !IsFinite(y) || !IsFinite(z) || !IsFinite(w))
+                    return RpcResponse.Error($"non_finite_action: {agentId}", req.RequestId);
+
+                Axis4 command = RemapClientCommand(x, y, z, w, mode, _clientFrame);
+                prepared.Add(new PreparedMultiAction(pawn, api, mode, command));
+            }
+
+            for (int i = 0; i < manager.RegisteredDrones.Count; i++)
+            {
+                string requiredAgent = manager.RegisteredDrones[i].AgentId;
+                if (!seenAgents.Contains(requiredAgent))
+                    return RpcResponse.Error($"missing_action: {requiredAgent}", req.RequestId);
+            }
+
+            prepared.Sort((a, b) => a.Pawn.DroneIndex.CompareTo(b.Pawn.DroneIndex));
+            for (int i = 0; i < prepared.Count; i++)
+            {
+                PreparedMultiAction action = prepared[i];
+                if (!action.Api.SendCommand(InputSource.External, action.Command, action.Mode))
+                    return RpcResponse.Error($"command_failed: {action.Pawn.AgentId}", req.RequestId);
+            }
+
+            _sim.SimManager.StepImmediate(count);
+            _rlStepIndex++;
+
+            var states = new Dictionary<string, object>(manager.DroneCount);
+            for (int i = 0; i < manager.RegisteredDrones.Count; i++)
+            {
+                QuadPawn pawn = manager.RegisteredDrones[i];
+                RLAgentState state = pawn.Api.GetRLState();
+                states[state.AgentId] = RLAgentStateToDict(state);
+            }
+
+            return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
+            {
+                ["episode_id"] = _rlEpisodeId,
+                ["step_index"] = _rlStepIndex,
+                ["sim_time"] = _sim.SimTimeSec,
+                ["steps_ran"] = count,
+                ["agents"] = states,
+                ["events"] = Array.Empty<object>(),
+            });
+        }
+
+        private RpcResponse HandleResetEpisode(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+            if (_sim.CurrentAuthority != InputSource.External)
+                return RpcResponse.Error("authority_rejected", req.RequestId);
+            if (_sim.SimManager == null)
+                return RpcResponse.Error("simulation_manager_missing", req.RequestId);
+            if (!req.TryGetInt("seed", out int seed))
+                return RpcResponse.Error("missing_or_invalid_param: seed", req.RequestId);
+
+            int settleSteps = req.GetInt("settle_steps", 2);
+            if (settleSteps < 0)
+                return RpcResponse.Error("invalid_param: settle_steps must be >= 0", req.RequestId);
+            if (!req.TryGetArray("agents", out var rawAgents))
+                return RpcResponse.Error("missing_or_invalid_param: agents", req.RequestId);
+
+            DroneManager manager = DroneManager.Get();
+            if (manager == null)
+                return RpcResponse.Error("no_drone_manager", req.RequestId);
+            if (rawAgents.Count != manager.DroneCount)
+                return RpcResponse.Error("agent_count_mismatch", req.RequestId);
+
+            var prepared = new List<PreparedEpisodeReset>(rawAgents.Count);
+            var seenAgentIds = new HashSet<string>(StringComparer.Ordinal);
+            var seenIndices = new HashSet<int>();
+
+            for (int i = 0; i < rawAgents.Count; i++)
+            {
+                if (!RpcRequest.TryGetMap(rawAgents[i], out var agentMap))
+                    return RpcResponse.Error($"invalid_agent: {i}", req.RequestId);
+
+                var agent = new RpcRequest("reset_episode_agent", agentMap);
+                string agentId = agent.GetString("agent_id");
+                string teamId = agent.GetString("team_id");
+                if (string.IsNullOrWhiteSpace(agentId))
+                    return RpcResponse.Error($"missing_agent_id: {i}", req.RequestId);
+                if (string.IsNullOrWhiteSpace(teamId))
+                    return RpcResponse.Error($"missing_team_id: {i}", req.RequestId);
+                if (!agent.TryGetInt("drone_index", out int droneIndex) || droneIndex < 0)
+                    return RpcResponse.Error($"invalid_drone_index: {i}", req.RequestId);
+                if (!seenAgentIds.Add(agentId))
+                    return RpcResponse.Error($"duplicate_agent: {agentId}", req.RequestId);
+                if (!seenIndices.Add(droneIndex))
+                    return RpcResponse.Error($"duplicate_drone_index: {droneIndex}", req.RequestId);
+
+                QuadPawn pawn = manager.GetDroneByPersistentIndex(droneIndex);
+                if (pawn == null)
+                    return RpcResponse.Error($"unknown_drone_index: {droneIndex}", req.RequestId);
+                QuadSimApi api = pawn.Api;
+                if (api == null || !api.IsInitialized)
+                    return RpcResponse.Error($"agent_not_initialized: {agentId}", req.RequestId);
+
+                if (!TryGetVector3(agent, "position_enu", out Vector3 positionEnu))
+                    return RpcResponse.Error($"invalid_position_enu: {agentId}", req.RequestId);
+                if (!agent.TryGetFloat("yaw_deg", out float yawDeg) || !IsFinite(yawDeg))
+                    return RpcResponse.Error($"invalid_yaw_deg: {agentId}", req.RequestId);
+
+                Vector3 position = Frames.InverseTransformWorldPosition(positionEnu, SimFrame.FLU);
+                Quaternion rotationEnu = Quaternion.AngleAxis(yawDeg, Vector3.forward);
+                Quaternion rotation = Frames.InverseTransformQuaternion(rotationEnu, SimFrame.FLU);
+                prepared.Add(new PreparedEpisodeReset(
+                    pawn, api, agentId, teamId, droneIndex, position, rotation));
+            }
+
+            prepared.Sort((a, b) => a.DroneIndex.CompareTo(b.DroneIndex));
+
+            _sim.Pause();
+            _sim.SimManager.ResetClock();
+            _rlEpisodeId++;
+            _rlStepIndex = 0;
+
+            for (int i = 0; i < prepared.Count; i++)
+            {
+                PreparedEpisodeReset reset = prepared[i];
+                reset.Pawn.SetEpisodeIdentity(reset.AgentId, reset.TeamId, reset.DroneIndex);
+            }
+            manager.RefreshIdentityOrder();
+
+            for (int i = 0; i < prepared.Count; i++)
+            {
+                PreparedEpisodeReset reset = prepared[i];
+                reset.Api.ResetEpisodeState(reset.Position, reset.Rotation, seed, reset.DroneIndex);
+            }
+            Physics.SyncTransforms();
+
+            if (settleSteps > 0)
+                _sim.SimManager.StepImmediate(settleSteps);
+
+            return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
+            {
+                ["episode_id"] = _rlEpisodeId,
+                ["step_index"] = _rlStepIndex,
+                ["sim_time"] = _sim.SimTimeSec,
+                ["seed"] = seed,
+                ["settle_steps"] = settleSteps,
+                ["agents"] = CaptureRLStates(manager),
+                ["events"] = Array.Empty<object>(),
+            });
+        }
         
         private RpcResponse HandleUpdateViz(RpcRequest req)
         {
@@ -1332,6 +1606,57 @@ namespace SimCore.Rpc
         private static object[] QuatToArray(Quaternion q)
         {
             return new object[] { q.x, q.y, q.z, q.w };
+        }
+
+        private static bool IsFinite(float value) =>
+            !float.IsNaN(value) && !float.IsInfinity(value);
+
+        private static bool TryGetVector3(RpcRequest req, string key, out Vector3 value)
+        {
+            value = Vector3.zero;
+            if (!req.TryGetArray(key, out var raw) || raw.Count != 3)
+                return false;
+            if (!RpcRequest.TryConvertFloat(raw[0], out float x)
+                || !RpcRequest.TryConvertFloat(raw[1], out float y)
+                || !RpcRequest.TryConvertFloat(raw[2], out float z)
+                || !IsFinite(x) || !IsFinite(y) || !IsFinite(z))
+            {
+                return false;
+            }
+
+            value = new Vector3(x, y, z);
+            return true;
+        }
+
+        private static Dictionary<string, object> CaptureRLStates(DroneManager manager)
+        {
+            var states = new Dictionary<string, object>(manager.DroneCount);
+            for (int i = 0; i < manager.RegisteredDrones.Count; i++)
+            {
+                RLAgentState state = manager.RegisteredDrones[i].Api.GetRLState();
+                states[state.AgentId] = RLAgentStateToDict(state);
+            }
+            return states;
+        }
+
+        private static Dictionary<string, object> RLAgentStateToDict(RLAgentState state)
+        {
+            return new Dictionary<string, object>
+            {
+                ["agent_id"] = state.AgentId,
+                ["team_id"] = state.TeamId,
+                ["drone_index"] = state.DroneIndex,
+                ["position_enu"] = Vec3ToArray(state.PositionEnu),
+                ["velocity_enu"] = Vec3ToArray(state.VelocityEnu),
+                ["orientation_flu_to_enu"] = QuatToArray(state.OrientationFluToEnu),
+                ["body_velocity_flu"] = Vec3ToArray(state.BodyVelocityFlu),
+                ["body_angular_velocity_flu"] = Vec3ToArray(state.BodyAngularVelocityFlu),
+                ["forward_enu"] = Vec3ToArray(state.ForwardEnu),
+                ["up_enu"] = Vec3ToArray(state.UpEnu),
+                ["is_valid"] = state.IsValid,
+                ["has_collision"] = state.HasCollision,
+                ["is_grounded"] = state.IsGrounded,
+            };
         }
     }
 }

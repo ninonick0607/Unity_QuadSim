@@ -38,6 +38,8 @@ namespace RobotCore.Sensors
             _rb = inRb;
             _rng = new GaussianRng(noiseSeed);
         }
+
+        public void Reseed(int seed) => _rng.Reset(seed);
         
         public void Reset()
         {

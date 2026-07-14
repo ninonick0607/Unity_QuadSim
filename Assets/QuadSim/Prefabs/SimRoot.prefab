@@ -84,6 +84,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 66eca1a18f6e4731a9a8a3973fbe4e71, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DroneCore.Core.DroneManager
+  startupSpawnPolicy: 0
   quadPawnPrefab: {fileID: 4678018957320333326, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
   defaultSpawnOrigin: {x: 0, y: 1, z: 0}
   spawnOffset: 1.5

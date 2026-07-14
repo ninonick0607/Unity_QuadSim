@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using DroneCore.Controllers;
 using DroneCore.Core;
 using DroneCore.Interfaces;
@@ -29,6 +30,16 @@ namespace DroneCore
         // ============================================================================
         // Serialized Fields — Set in Inspector / Prefab
         // ============================================================================
+
+        [Header("Agent Identity")]
+        [Tooltip("Stable RPC identity. Leave empty to assign drone_<index> when registered.")]
+        [SerializeField] private string agentId = "";
+
+        [Tooltip("Team identity used by multi-agent tasks.")]
+        [SerializeField] private string teamId = "neutral";
+
+        [Tooltip("Persistent RPC index. Leave at -1 to assign the next available index.")]
+        [SerializeField] private int droneIndex = -1;
 
         [Header("Core Physics")]
         [SerializeField] private Rigidbody rb;
@@ -67,8 +78,7 @@ namespace DroneCore
         // Rotor physics derived from config (matches UE's RotorPhysics member)
         private RotorPhysicsDerived _rotorPhysics;
 
-        // Unique identifier
-        public string DroneID { get; private set; }
+        public string DroneID => gameObject.name;
 
         // Initialization tracking
         private bool _sensorsReady;
@@ -88,6 +98,8 @@ namespace DroneCore
         private Vector3 _bufferedTorque;
         private uint _wrenchGeneration;
         private uint _lastAppliedGeneration;
+        private readonly HashSet<Collider> _activeColliders = new HashSet<Collider>();
+        private readonly HashSet<Collider> _groundColliders = new HashSet<Collider>();
 
         // Manager reference (set explicitly by DroneManager, not searched)
         private DroneManager _droneManager;
@@ -113,6 +125,28 @@ namespace DroneCore
         public RotorPhysicsDerived RotorPhysics => _rotorPhysics;
         public bool IsInitialized => _initialized;
         public ControllerKind CurrentControllerKind => currentControllerKind;
+        public string AgentId => agentId;
+        public string TeamId => teamId;
+        public int DroneIndex => droneIndex;
+        public bool HasCollision => _activeColliders.Count > 0;
+        public bool IsGrounded => _groundColliders.Count > 0;
+
+        internal void EnsureAgentIdentity(int fallbackIndex)
+        {
+            if (droneIndex < 0)
+                droneIndex = fallbackIndex;
+            if (string.IsNullOrWhiteSpace(agentId))
+                agentId = $"drone_{droneIndex}";
+            if (string.IsNullOrWhiteSpace(teamId))
+                teamId = "neutral";
+        }
+
+        internal void SetEpisodeIdentity(string newAgentId, string newTeamId, int newDroneIndex)
+        {
+            agentId = newAgentId;
+            teamId = newTeamId;
+            droneIndex = newDroneIndex;
+        }
 
         // ============================================================================
         // Unity Lifecycle
@@ -126,8 +160,6 @@ namespace DroneCore
 
         private void Awake()
         {
-            DroneID = gameObject.name;
-
             // Auto-bind subsystem references if not set in prefab
             if (rb == null) rb = GetComponent<Rigidbody>();
             if (controller == null) controller = GetComponent<CascadedController>();
@@ -151,12 +183,12 @@ namespace DroneCore
             if (controller == null) Debug.LogError($"[QuadPawn] {DroneID}: Missing CascadedController!");
             if (sensorManager == null) Debug.LogError($"[QuadPawn] {DroneID}: Missing SensorManager!");
             if (commandProxy == null) Debug.LogError($"[QuadPawn] {DroneID}: Missing FlightCommandProxy!");
-        }
 
+            // Register during Awake so scene-placed drones are known before
+            // SimulationManager evaluates DroneManager's startup spawn policy.
+            if (_droneManager == null)
+                _droneManager = DroneManager.Get();
 
-        private void Start()
-        {
-            // Register with DroneManager (injected by DroneManager.SpawnDroneWithConfig)
             if (_droneManager != null)
             {
                 _droneManager.RegisterDrone(this);
@@ -164,19 +196,12 @@ namespace DroneCore
             }
             else
             {
-                // Fallback for scene-placed drones — prefer explicit injection
-                _droneManager = DroneManager.Get();
-                if (_droneManager != null)
-                {
-                    _droneManager.RegisterDrone(this);
-                    Debug.LogWarning($"[QuadPawn] {DroneID}: Registered via fallback Get(). Prefer SetDroneManager().");
-                }
-                else
-                {
-                    Debug.LogWarning($"[QuadPawn] {DroneID}: No DroneManager — drone will not be managed.");
-                }
+                Debug.LogWarning($"[QuadPawn] {DroneID}: No DroneManager — drone will not be managed.");
             }
+        }
 
+        private void Start()
+        {
             // If config was applied before Start(), initialize now
             if (_configApplied)
             {
@@ -190,6 +215,37 @@ namespace DroneCore
             {
                 _droneManager.UnregisterDrone(this);
             }
+        }
+
+        private void OnCollisionEnter(Collision collision) => TrackCollision(collision);
+
+        private void OnCollisionStay(Collision collision) => TrackCollision(collision);
+
+        private void OnCollisionExit(Collision collision)
+        {
+            _activeColliders.Remove(collision.collider);
+            _groundColliders.Remove(collision.collider);
+        }
+
+        private void TrackCollision(Collision collision)
+        {
+            Collider other = collision.collider;
+            _activeColliders.Add(other);
+
+            bool isGroundContact = false;
+            for (int i = 0; i < collision.contactCount; i++)
+            {
+                if (Vector3.Dot(collision.GetContact(i).normal, Vector3.up) >= 0.5f)
+                {
+                    isGroundContact = true;
+                    break;
+                }
+            }
+
+            if (isGroundContact)
+                _groundColliders.Add(other);
+            else
+                _groundColliders.Remove(other);
         }
 
         // ============================================================================
@@ -485,6 +541,9 @@ namespace DroneCore
         /// </summary>
         public void ResetPhysics()
         {
+            _activeColliders.Clear();
+            _groundColliders.Clear();
+
             if (rb == null) return;
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;

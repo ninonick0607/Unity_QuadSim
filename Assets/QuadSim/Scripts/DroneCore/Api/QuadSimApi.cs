@@ -33,6 +33,7 @@ using DroneCore.Core;
 using DroneCore.Interfaces;
 using MathUtil;
 using RobotCore;
+using QuadSim.RL;
 
 namespace DroneCore.Api
 {
@@ -320,6 +321,16 @@ namespace DroneCore.Api
             Debug.Log($"[QuadSimApi] {DroneID}: Pose reset to {position}");
         }
 
+        public void ResetEpisodeState(Vector3 position, Quaternion rotation, int seed, int droneIndex)
+        {
+            if (!AssertInitialized("ResetEpisodeState")) return;
+
+            _sensorManager?.ReseedForEpisode(seed, droneIndex);
+            _pawn?.ResetPosition(position, rotation);
+            _modeCoordinator?.SetMode(GoalMode.None);
+            _proxy?.ResetToSafe(GoalMode.None);
+        }
+
         /// <summary>Level the drone (zero roll/pitch, keep yaw) and zero velocities.</summary>
         public void ResetRotation()
         {
@@ -361,6 +372,11 @@ namespace DroneCore.Api
         {
             if (_sensorManager == null) return default;
             return _sensorManager.Latest;
+        }
+
+        public RLAgentState GetRLState()
+        {
+            return RLAgentState.Capture(_pawn);
         }
 
         // ============================================================================
