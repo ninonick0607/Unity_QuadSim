@@ -1192,13 +1192,8 @@ namespace SimCore.Rpc
             _sim.SimManager.StepImmediate(count);
             _rlStepIndex++;
 
-            var states = new Dictionary<string, object>(manager.DroneCount);
-            for (int i = 0; i < manager.RegisteredDrones.Count; i++)
-            {
-                QuadPawn pawn = manager.RegisteredDrones[i];
-                RLAgentState state = pawn.Api.GetRLState();
-                states[state.AgentId] = RLAgentStateToDict(state);
-            }
+            Dictionary<string, object> states = CaptureRLStates(
+                manager, _sim.SimTimeSec, out object[] events);
 
             return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
             {
@@ -1207,7 +1202,7 @@ namespace SimCore.Rpc
                 ["sim_time"] = _sim.SimTimeSec,
                 ["steps_ran"] = count,
                 ["agents"] = states,
-                ["events"] = Array.Empty<object>(),
+                ["events"] = events,
             });
         }
 
@@ -1306,8 +1301,8 @@ namespace SimCore.Rpc
                 ["sim_time"] = _sim.SimTimeSec,
                 ["seed"] = seed,
                 ["settle_steps"] = settleSteps,
-                ["agents"] = CaptureRLStates(manager),
-                ["events"] = Array.Empty<object>(),
+                ["agents"] = CaptureRLStates(manager, _sim.SimTimeSec, out object[] events),
+                ["events"] = events,
             });
         }
         
@@ -1628,15 +1623,38 @@ namespace SimCore.Rpc
             return true;
         }
 
-        private static Dictionary<string, object> CaptureRLStates(DroneManager manager)
+        private static Dictionary<string, object> CaptureRLStates(
+            DroneManager manager, double simTime, out object[] eventPayloads)
         {
             var states = new Dictionary<string, object>(manager.DroneCount);
+            var events = new List<RLAgentEvent>();
             for (int i = 0; i < manager.RegisteredDrones.Count; i++)
             {
-                RLAgentState state = manager.RegisteredDrones[i].Api.GetRLState();
+                QuadPawn pawn = manager.RegisteredDrones[i];
+                RLAgentState state = pawn.Api.GetRLState();
                 states[state.AgentId] = RLAgentStateToDict(state);
+                pawn.DrainRLEvents(events);
+                if (!state.IsValid)
+                    events.Add(new RLAgentEvent("invalid_state", state.AgentId, null, simTime));
             }
+
+            eventPayloads = new object[events.Count];
+            for (int i = 0; i < events.Count; i++)
+                eventPayloads[i] = RLAgentEventToDict(events[i]);
             return states;
+        }
+
+        private static Dictionary<string, object> RLAgentEventToDict(RLAgentEvent agentEvent)
+        {
+            var payload = new Dictionary<string, object>
+            {
+                ["type"] = agentEvent.Type,
+                ["agent_id"] = agentEvent.AgentId,
+                ["sim_time"] = agentEvent.SimTime,
+            };
+            if (!string.IsNullOrEmpty(agentEvent.OtherAgentId))
+                payload["other_agent_id"] = agentEvent.OtherAgentId;
+            return payload;
         }
 
         private static Dictionary<string, object> RLAgentStateToDict(RLAgentState state)

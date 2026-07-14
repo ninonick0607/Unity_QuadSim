@@ -9,6 +9,7 @@ using SimCore.Common;
 using UnityEngine;
 using Yaml.Drone;
 using DroneCore.Api;
+using QuadSim.RL;
 
 namespace DroneCore
 {
@@ -100,6 +101,7 @@ namespace DroneCore
         private uint _lastAppliedGeneration;
         private readonly HashSet<Collider> _activeColliders = new HashSet<Collider>();
         private readonly HashSet<Collider> _groundColliders = new HashSet<Collider>();
+        private readonly List<RLAgentEvent> _pendingRLEvents = new List<RLAgentEvent>();
 
         // Manager reference (set explicitly by DroneManager, not searched)
         private DroneManager _droneManager;
@@ -217,9 +219,24 @@ namespace DroneCore
             }
         }
 
-        private void OnCollisionEnter(Collision collision) => TrackCollision(collision);
+        private void OnCollisionEnter(Collision collision)
+        {
+            bool wasGrounded = IsGrounded;
+            bool isGroundContact = TrackCollision(collision);
 
-        private void OnCollisionStay(Collision collision) => TrackCollision(collision);
+            QuadPawn otherPawn = collision.collider.GetComponentInParent<QuadPawn>();
+            if (otherPawn != null && otherPawn != this)
+                AddRLEvent("agent_collision", otherPawn.AgentId);
+            if (isGroundContact && !wasGrounded)
+                AddRLEvent("ground_contact");
+        }
+
+        private void OnCollisionStay(Collision collision)
+        {
+            bool wasGrounded = IsGrounded;
+            if (TrackCollision(collision) && !wasGrounded)
+                AddRLEvent("ground_contact");
+        }
 
         private void OnCollisionExit(Collision collision)
         {
@@ -227,7 +244,7 @@ namespace DroneCore
             _groundColliders.Remove(collision.collider);
         }
 
-        private void TrackCollision(Collision collision)
+        private bool TrackCollision(Collision collision)
         {
             Collider other = collision.collider;
             _activeColliders.Add(other);
@@ -246,6 +263,23 @@ namespace DroneCore
                 _groundColliders.Add(other);
             else
                 _groundColliders.Remove(other);
+
+            return isGroundContact;
+        }
+
+        private void AddRLEvent(string type, string otherAgentId = null)
+        {
+            double simTime = ClockFactory.IsInitialized
+                ? ClockFactory.Clock.NowNanos / 1_000_000_000.0
+                : 0.0;
+            _pendingRLEvents.Add(new RLAgentEvent(type, AgentId, otherAgentId, simTime));
+        }
+
+        public void DrainRLEvents(List<RLAgentEvent> destination)
+        {
+            if (destination == null || _pendingRLEvents.Count == 0) return;
+            destination.AddRange(_pendingRLEvents);
+            _pendingRLEvents.Clear();
         }
 
         // ============================================================================
@@ -543,6 +577,7 @@ namespace DroneCore
         {
             _activeColliders.Clear();
             _groundColliders.Clear();
+            _pendingRLEvents.Clear();
 
             if (rb == null) return;
             rb.linearVelocity = Vector3.zero;

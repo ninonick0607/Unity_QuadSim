@@ -4,6 +4,22 @@ using UnityEngine;
 
 namespace QuadSim.RL
 {
+    public readonly struct RLAgentEvent
+    {
+        public readonly string Type;
+        public readonly string AgentId;
+        public readonly string OtherAgentId;
+        public readonly double SimTime;
+
+        public RLAgentEvent(string type, string agentId, string otherAgentId, double simTime)
+        {
+            Type = type;
+            AgentId = agentId;
+            OtherAgentId = otherAgentId;
+            SimTime = simTime;
+        }
+    }
+
     public struct RLAgentState
     {
         public string AgentId;
