@@ -494,7 +494,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3255322024149863400, guid: f366a39f85cf3a68faaf6f1dbe3a123b, type: 3}
       propertyPath: runMode
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3739808548804034099, guid: f366a39f85cf3a68faaf6f1dbe3a123b, type: 3}
       propertyPath: _camera
@@ -525,15 +525,38 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8210477119045688787, guid: f366a39f85cf3a68faaf6f1dbe3a123b, type: 3}
+      propertyPath: api
+      value: 
+      objectReference: {fileID: 2748501231768571355, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+    - target: {fileID: 8210477119045688787, guid: f366a39f85cf3a68faaf6f1dbe3a123b, type: 3}
       propertyPath: windZone
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 8538247500957711054, guid: fe427f0a56dd8a541bec5b30cf9c41d2, type: 3}
+    - target: {fileID: 8210477119045688787, guid: f366a39f85cf3a68faaf6f1dbe3a123b, type: 3}
+      propertyPath: simManager
+      value: 
+      objectReference: {fileID: 481474396}
+    - target: {fileID: 8210477119045688787, guid: f366a39f85cf3a68faaf6f1dbe3a123b, type: 3}
+      propertyPath: modeCoordinator
+      value: 
+      objectReference: {fileID: 5015867165408226507, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects:
     - {fileID: 3183757932974992011, guid: f366a39f85cf3a68faaf6f1dbe3a123b, type: 3}
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f366a39f85cf3a68faaf6f1dbe3a123b, type: 3}
+--- !u!114 &481474396 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 3255322024149863400, guid: f366a39f85cf3a68faaf6f1dbe3a123b, type: 3}
+  m_PrefabInstance: {fileID: 190327002}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 16cb25956d3b4704aa5895ad06b796a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::QuadSim.SimCore.SimulationManager
 --- !u!1 &1352268529
 GameObject:
   m_ObjectHideFlags: 0
