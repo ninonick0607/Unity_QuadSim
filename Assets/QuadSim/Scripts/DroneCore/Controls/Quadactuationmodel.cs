@@ -6,8 +6,9 @@ namespace DroneCore.Controls
     
     public sealed class MotorLagFilter
     {
-        public bool  Enabled    = false;
-        public float TauSeconds = 0.020f;   // ~20 ms typical small-quad motor+ESC
+        public bool  Enabled        = false;
+        public float TauUpSeconds   = 0.020f;
+        public float TauDownSeconds = 0.020f;
 
         private float[] _state;
 
@@ -20,11 +21,12 @@ namespace DroneCore.Controls
             if (_state == null || _state.Length != motor01.Length)
                 _state = (float[])motor01.Clone();   // first tick: start at command
 
-            float tau   = Mathf.Max(1e-4f, TauSeconds);
-            float alpha = 1f - Mathf.Exp(-Mathf.Max(0f, dt) / tau);
-            
             for (int i = 0; i < motor01.Length; i++)
             {
+                float tau = motor01[i] >= _state[i]
+                    ? Mathf.Max(1e-4f, TauUpSeconds)
+                    : Mathf.Max(1e-4f, TauDownSeconds);
+                float alpha = 1f - Mathf.Exp(-Mathf.Max(0f, dt) / tau);
                 _state[i] += (motor01[i] - _state[i]) * alpha;
                 motor01[i] = _state[i];
             }

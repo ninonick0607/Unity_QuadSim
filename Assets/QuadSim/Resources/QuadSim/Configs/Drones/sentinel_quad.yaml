@@ -3,10 +3,17 @@ name: "ModalAI_Sentinel_RB5_S500"
 body_mesh: "/QuadSimPlugin/Assets/Drone_Models/Sentinel/Sentinel.Sentinel"
 
 physical_properties:
-  mass_kg: 1.347
-  com_offset: {x: 0.0, y: 0.0, z: 0.02}
-  inertia: {x: 0.02817, y: 0.02817, z: 0.04383}
-  arm_length: 0.236
+  # Gazebo sentinel_base: 1.347 kg body + four 0.016076923 kg rotor links.
+  mass_kg: 1.4113076923
+
+  # QuadSim is one rigid body centered at the composed Gazebo center of mass.
+  com_offset: {x: 0.0, y: 0.0, z: 0.0}
+
+  # Gazebo composed inertia about that center is FLU
+  # (0.02383614, 0.02393907, 0.04399995). Unity axes are X-forward,
+  # Y-up, Z-left, hence the Y/Z permutation here.
+  inertia: {x: 0.02383614, y: 0.04399995, z: 0.02393907}
+  arm_length: 0.24607316
   linear_drag_coef: 0.15
   angular_drag_coef: 0.08
 
@@ -24,17 +31,25 @@ propulsion:
   # into QuadSim's T = Ct * rho * n^2 * D^4 convention.
   thrust_coef: 0.0832333
 
-  # Gazebo momentConstant is Q/T in meters—not the dimensionless Cq.
-  # Cq = momentConstant * Ct / D
-  torque_coef: 0.00498089
+  # Previously validated QuadSim yaw-torque coefficient. Keep this empirical
+  # plant value until a controlled PX4 yaw-rate sweep justifies changing it.
+  torque_coef: 0.0303
 
-  # QuadSim convention: -1 = CCW, +1 = CW.
-  # SDF: motors 0/1 CCW and motors 2/3 CW.
+  # Gazebo MulticopterMotorModel asymmetric response constants. QuadSim applies
+  # them to its normalized motor command; the remaining motor-law difference is
+  # handled by plant-specific thrust calibration and rate-response comparison.
+  motor_time_constant_up_s: 0.0125
+  motor_time_constant_down_s: 0.025
+
+  # QuadSim canonical order is FL, FR, BL, BR. Its physics applies dir as the
+  # reactive body-yaw torque sign (-1=CCW, +1=CW), while Gazebo names the
+  # rotor's own rotation. PX4 none_iris outputs are also remapped to this order
+  # by px4_bridge.MOTOR_MAP, so Gazebo motor directions cannot be copied here.
   propellers:
-    - {id: 0, x:  0.167, y: 0.0, z:  0.167, dir: -1}
-    - {id: 1, x:  0.167, y: 0.0, z: -0.167, dir: -1}
-    - {id: 2, x: -0.167, y: 0.0, z:  0.167, dir:  1}
-    - {id: 3, x: -0.167, y: 0.0, z: -0.167, dir:  1}
+    - {id: 0, x:  0.174, y: 0.0, z:  0.174, dir: -1}
+    - {id: 1, x:  0.174, y: 0.0, z: -0.174, dir:  1}
+    - {id: 2, x: -0.174, y: 0.0, z:  0.174, dir:  1}
+    - {id: 3, x: -0.174, y: 0.0, z: -0.174, dir: -1}
 
 controller:
 

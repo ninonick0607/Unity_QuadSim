@@ -286,6 +286,10 @@ namespace Yaml.Drone
                     if (TryGetFloat(prop, "max_rpm", out float rpm)) outProp.Model.MaxRPM = rpm;
                     if (TryGetFloat(prop, "thrust_coef", out float thCo)) outProp.Model.ThrustCoeff = thCo;
                     if (TryGetFloat(prop, "torque_coef", out float toCo)) outProp.Model.TorqueCoeff = toCo;
+                    if (TryGetFloat(prop, "motor_time_constant_up_s", out float tauUp))
+                        outProp.Model.MotorTimeConstantUp = tauUp;
+                    if (TryGetFloat(prop, "motor_time_constant_down_s", out float tauDown))
+                        outProp.Model.MotorTimeConstantDown = tauDown;
 
                     if (TryGetNode(prop, "propellers", out YamlNode rotorsNode) && rotorsNode is YamlSequenceNode rotorSeq)
                     {

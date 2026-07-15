@@ -29,6 +29,8 @@ namespace Yaml.Drone
         public float MaxRPM;
         public float ThrustCoeff;
         public float TorqueCoeff;
+        public float MotorTimeConstantUp;
+        public float MotorTimeConstantDown;
 
     }
 

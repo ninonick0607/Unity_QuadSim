@@ -127,7 +127,8 @@ namespace DroneCore.Controllers
         // ── Plant / actuation (external-wrench allocated path) ──
         [Header("Plant / Actuation")]
         [SerializeField] private bool  enableMotorLag      = false;   // inspector toggle
-        [SerializeField] private float motorLagTauSeconds  = 0.020f;
+        [SerializeField] private float motorLagTauSeconds  = 0.020f;  // legacy symmetric / spin-up value
+        [SerializeField] private float motorLagTauDownSeconds = 0.020f;
         [SerializeField] private float allocatedMinIdle01  = 0.0f;    // 0 lets motors reach 0 at loop apex
         private readonly MotorLagFilter _motorLag = new MotorLagFilter();
         
@@ -205,6 +206,16 @@ namespace DroneCore.Controllers
 
             _maxAngleRateDeg = config.FlightParams.MaxRateRollPitch;
             _maxYawRateDeg = config.FlightParams.MaxRateYaw;
+
+            float configuredTauUp = config.RotorParams.Model.MotorTimeConstantUp;
+            float configuredTauDown = config.RotorParams.Model.MotorTimeConstantDown;
+            if (configuredTauUp > 0f && configuredTauDown > 0f)
+            {
+                enableMotorLag = true;
+                motorLagTauSeconds = configuredTauUp;
+                motorLagTauDownSeconds = configuredTauDown;
+                _motorLag.Reset(4);
+            }
             
             // Compute hover throttle from mass
             if (_body != null && _body.Rigidbody != null)
@@ -402,8 +413,9 @@ namespace DroneCore.Controllers
                 );
 
                 // Plant: optional first-order motor lag (live toggle), then actuate.
-                _motorLag.Enabled    = enableMotorLag;
-                _motorLag.TauSeconds = motorLagTauSeconds;
+                _motorLag.Enabled        = enableMotorLag;
+                _motorLag.TauUpSeconds   = motorLagTauSeconds;
+                _motorLag.TauDownSeconds = motorLagTauDownSeconds;
                 _motorLag.Apply(motor01, deltaTime);
 
                 QuadActuationModel.ComputeBodyWrench(
@@ -647,8 +659,9 @@ namespace DroneCore.Controllers
                 motor01[2] = Mathf.Clamp01(cmd.Z);  // BL
                 motor01[3] = Mathf.Clamp01(cmd.W);  // BR
                 
-                _motorLag.Enabled    = enableMotorLag;
-                _motorLag.TauSeconds = motorLagTauSeconds;
+                _motorLag.Enabled        = enableMotorLag;
+                _motorLag.TauUpSeconds   = motorLagTauSeconds;
+                _motorLag.TauDownSeconds = motorLagTauDownSeconds;
                 _motorLag.Apply(motor01, deltaTime);
                 
                 // Compute body wrench from motor commands through the actuation model
@@ -718,8 +731,9 @@ namespace DroneCore.Controllers
                 for (int i = 0; i < 4; i++) motor01[i] = throttle01;
             }
             
-            _motorLag.Enabled    = enableMotorLag;
-            _motorLag.TauSeconds = motorLagTauSeconds;
+            _motorLag.Enabled        = enableMotorLag;
+            _motorLag.TauUpSeconds   = motorLagTauSeconds;
+            _motorLag.TauDownSeconds = motorLagTauDownSeconds;
             _motorLag.Apply(motor01, deltaTime);
             
             // Compute body wrench
