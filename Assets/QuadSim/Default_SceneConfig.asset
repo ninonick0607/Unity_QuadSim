@@ -13,6 +13,11 @@ MonoBehaviour:
   m_Name: Default_SceneConfig
   m_EditorClassIdentifier: Assembly-CSharp::SimCore.QuadSimSceneConfig
   droneConfigName: flightmare_quad
+  quadSimPrefab: {fileID: 4678018957320333326, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+  startupSpawnPolicy: 0
+  payloadPrefab: {fileID: 463154142083670055, guid: fc1074fe6267f6e078f4cfb1f24f145b, type: 3}
+  spawnPayload: 1
+  payloadMountPath: Bottle
   commandPort: 5555
   telemetryPort: 5556
   originLatitudeDeg: 33.49414

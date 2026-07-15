@@ -1,5 +1,6 @@
     using System.Collections.Generic;
     using Experimental;
+    using MathUtil;
     using SimCore;
 using UnityEngine;
 using Yaml.Drone;
@@ -65,6 +66,7 @@ namespace DroneCore.Core
         [SerializeField] private double  originLat        = 30.4636;
         [SerializeField] private double  originLon        = -86.5533;
         [SerializeField] private double  originAlt        = 0.0;
+        [SerializeField] private SimFrame frame = SimFrame.FLU;
         // ============================================================================
         // Runtime State
         // ============================================================================
@@ -303,7 +305,7 @@ namespace DroneCore.Core
             newDrone.name = $"Drone_{droneNumber:D2}";
             
             if (newDrone.Sensors != null)
-                newDrone.Sensors.Configure(masterSeed, enableSensorNoise, originLat, originLon, originAlt);
+                newDrone.Sensors.Configure(masterSeed, enableSensorNoise, originLat, originLon, originAlt,frame);
             
             // Inject manager reference BEFORE Start() runs
             newDrone.SetDroneManager(this);
@@ -527,10 +529,19 @@ namespace DroneCore.Core
             Debug.Log($"[DroneManager] Selected config: {configName}");
         }
 
-        public void SetSceneEnv(int seed, bool noise, double lat, double lon, double alt)
+        public void SetSceneEnv(int seed, bool noise, double lat, double lon, double alt,StartupSpawnPolicy _spawnPolicy, QuadPawn _quadSimPrefab, PayloadAttachment _payloadPrefab, bool spawnPayloads, string payloadMount,SimFrame _frame)
         {
-            masterSeed = seed; enableSensorNoise = noise;
-            originLat = lat; originLon = lon; originAlt = alt;
+            masterSeed = seed; 
+            enableSensorNoise = noise;
+            originLat = lat; 
+            originLon = lon; 
+            originAlt = alt;
+            startupSpawnPolicy = _spawnPolicy;
+            quadPawnPrefab = _quadSimPrefab;
+            payloadPrefab = _payloadPrefab;
+            spawnPayload =  spawnPayloads;
+            payloadMountPath = payloadMount;
+            frame = _frame;
         }
         
         public List<string> GetAvailableConfigs()

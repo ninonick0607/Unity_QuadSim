@@ -8,9 +8,15 @@
 // Create assets via:  Assets > Create > QuadSim > Scene Config
 //
 using UnityEngine;
-
+using DroneCore.Core;
+using DroneCore;
+using Experimental;
+using MathUtil;
+using SimCore.Common;
 namespace SimCore
 {
+    [DefaultExecutionOrder(-1001)] // run as early as possible
+
     [CreateAssetMenu(
         fileName = "QuadSimSceneConfig",
         menuName = "QuadSim/Scene Config",
@@ -18,13 +24,49 @@ namespace SimCore
     public sealed class QuadSimSceneConfig : ScriptableObject
     {
         // =====================================================================
+        // Sim and Coordinator
+        // =====================================================================
+        [Header("Run Mode")]
+        public SimulationManager.RunMode RunMode = SimulationManager.RunMode.FreeRun; 
+        
+        // =====================================================================
         // Drone
         // =====================================================================
         [Header("Drone")]
         [Tooltip("YAML file name (without extension) in StreamingAssets/Configs/ " +
                  "that DroneConfigLoader reads. Selects mass/inertia/motor params.")]
         public string droneConfigName = "flightmare_quad";
-
+        
+        [Header("Drone Prefab")]
+        [Tooltip("Drag your Drone Model Prefab here")]
+        public QuadPawn quadSimPrefab;
+        
+        [Header("Spawning")]
+        [Tooltip("Choose whether simulation startup may create a default drone when the scene contains none.")]
+        public StartupSpawnPolicy startupSpawnPolicy = StartupSpawnPolicy.SpawnDefaultIfNone;
+        
+        // =====================================================================
+        // Payload
+        // =====================================================================
+        [Header("Drone Payload")]
+        [Tooltip("Attach Payload Prefab")]
+        public PayloadAttachment payloadPrefab;
+        
+        [Header("Spawn Payload")]
+        public bool spawnPayload = false;
+        
+        [Header("Payload Mount")]
+        public string payloadMountPath = "Bottle";
+        // =====================================================================
+        // Controller
+        // =====================================================================
+        [Header("Frame")]
+        public SimFrame outputFrame = SimFrame.FLU;
+        
+        [Header("Controller Mode WIP")]
+        [Tooltip("Choose which level of the cascade you want to start in")]
+        public GoalMode startingMode = GoalMode.Rate;
+        
         // =====================================================================
         // RPC (Python SDK boundary)
         // =====================================================================
@@ -80,5 +122,12 @@ namespace SimCore
         [Tooltip("Wind heading (yaw degrees) applied to the WindZone transform. " +
                  "0 = the zone's authored forward. Leave at 0 to steer by rotating the zone by hand.")]
         public float windHeadingDeg = 0f;
+        
+        // We want to add:
+        /* Sim Manager:
+         * - Run Mode: Manual/Free Mode
+         * Mode Coordinator:
+         * - Starting Mode: Position/ etc...
+         */
     }
 }

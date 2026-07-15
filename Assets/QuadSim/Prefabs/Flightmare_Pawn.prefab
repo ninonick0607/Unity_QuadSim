@@ -964,7 +964,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3df274c536784a5e942d71580e4dcf08, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DroneCore.DroneBody
-  agentId: ""
+  agentId: 
   teamId: neutral
   droneIndex: -1
   rb: {fileID: 9081266204741351977}

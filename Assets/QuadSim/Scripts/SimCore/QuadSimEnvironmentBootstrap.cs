@@ -20,6 +20,9 @@
 using UnityEngine;
 using SimCore.Rpc;
 using DroneCore.Core;
+using DroneCore.Api;
+using RobotCore;
+using MathUtil;
 
 namespace SimCore
 {
@@ -32,14 +35,17 @@ namespace SimCore
 
         [Header("Scene References (auto-resolved if left empty)")]
         [SerializeField] private ExternalRpcAdapter rpcAdapter;
+        [SerializeField] private SimulationManager  simManager;
         [SerializeField] private DroneManager droneManager;
-
+        [SerializeField] private QuadSimApi api;
+        [SerializeField] private SensorManager sensorManager;
         [Tooltip("Empty child transform marking where the drone spawns.")]
         [SerializeField] private Transform droneSpawnPoint;
-
+        
         [Tooltip("The WindModule trigger volume on WindZone_Prefab.")]
         [SerializeField] private Experimental.WindModule windZone;
 
+        
         // ---------------------------------------------------------------------
         // Awake: everything the spawn / socket-bind needs to see.
         // ---------------------------------------------------------------------
@@ -65,7 +71,6 @@ namespace SimCore
 
                 if (droneSpawnPoint != null)
                     droneManager.SpawnOrigin = droneSpawnPoint.position;
-
                 // Scene env (seed / noise / PX4 origin) is kept separate from the
                 // drone-model DroneConfig. DroneManager forwards it into the drone's
                 // SensorManager at spawn, BEFORE SensorManager.OnStart() runs — so the
@@ -77,9 +82,29 @@ namespace SimCore
                     config.enableSensorNoise,
                     config.originLatitudeDeg,
                     config.originLongitudeDeg,
-                    config.originAltitudeM);
+                    config.originAltitudeM,
+                    config.startupSpawnPolicy,
+                    config.quadSimPrefab,
+                    config.payloadPrefab,
+                    config.spawnPayload,
+                    config.payloadMountPath,
+                    config.outputFrame);
             }
 
+            if (simManager != null)
+            {
+                simManager.SetMode(config.RunMode);
+            }
+
+            if (api != null)
+            {
+                api.SetMode(config.startingMode);
+            }
+
+            if (sensorManager != null)
+            {
+                sensorManager.SetOutputFrame(config.outputFrame);
+            }
             Debug.Log($"[EnvBootstrap] Awake applied: ports=({config.commandPort},{config.telemetryPort}) " +
                       $"drone='{config.droneConfigName}' seed={config.masterSeed} noise={config.enableSensorNoise}");
         }

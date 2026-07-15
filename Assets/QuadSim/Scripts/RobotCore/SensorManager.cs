@@ -98,13 +98,15 @@ namespace RobotCore
         
         /// <summary>Apply scene-level env BEFORE OnStart(). Single writer for seed/noise/origin.
         /// The +1/+2/+3/+4 per-sensor offsets are still applied from noiseSeed inside OnStart().</summary>
-        public void Configure(int seed, bool noise, double latDeg, double lonDeg, double heightM)
+        public void Configure(int seed, bool noise, double latDeg, double lonDeg, double heightM,SimFrame frame)
         {
             noiseSeed     = seed;
             enableNoise   = noise;
             originLatDeg  = latDeg;
             originLonDeg  = lonDeg;
             originHeightM = heightM;
+            outputFrame = frame;
+            
         }
 
         public void ReseedForEpisode(int episodeSeed, int agentIndex)

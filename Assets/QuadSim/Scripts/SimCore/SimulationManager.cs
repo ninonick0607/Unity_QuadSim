@@ -6,6 +6,7 @@ using UnityEngine;
 
 namespace SimCore
 {
+
     /// <summary>
     /// Unity equivalent to your UE SimulationManager/TimeController backbone:
     /// - Owns authoritative stepping (manual Physics.Simulate).
@@ -277,6 +278,11 @@ namespace SimCore
             ClockFactory.Reset(newStartNanos: 0);
             _accumulatorSec = 0;
             _pendingSteps = 0;
+        }
+
+        public void SetMode(RunMode mode)
+        {
+            runMode = mode;
         }
     }
 
