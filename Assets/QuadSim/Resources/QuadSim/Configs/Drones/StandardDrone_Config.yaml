@@ -48,7 +48,7 @@ controller:
     yaw:   {p: 1.0, i: 0.0, d: 0.0}
 
 camera_parameters:
-  Cam_Arm_Length: 2.5
+  Cam_Arm_Length: 1.5
   FOV: 90
   Cam_Pitch: -15.0
   Cam_Socket_Offset:

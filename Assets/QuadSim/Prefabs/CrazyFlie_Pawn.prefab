@@ -427,6 +427,7 @@ GameObject:
   - component: {fileID: 9184194430486069368}
   - component: {fileID: 6925635596373442636}
   - component: {fileID: 2731254988113373828}
+  - component: {fileID: -5362719081472683042}
   m_Layer: 0
   m_Name: CrazyFlie_Pawn
   m_TagString: Untagged
@@ -477,12 +478,29 @@ MonoBehaviour:
   modeCoordinator: {fileID: 6925635596373442636}
   quadSimApi: {fileID: 2731254988113373828}
   fpvCameraPoint: {fileID: 3393294561050388046}
+  cameraRig: {fileID: -5362719081472683042}
   propellerMeshes:
   - {fileID: 4111657788187158029}
   - {fileID: 419703141765327995}
   - {fileID: 5952494717003119130}
   - {fileID: 7027284009040917118}
   currentControllerKind: 0
+--- !u!114 &-5362719081472683042
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9135757327438227529}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6f0b542ec6f4bdbad0012bcf61b81dc, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::DroneCore.CameraSystem.DroneCameraRig
+  fpvMount: {fileID: 0}
+  followTarget: {fileID: 3393294561050388046}
+  orbitTarget: {fileID: 3393294561050388046}
+  defaultFpvOffset: {x: 0.15, y: 0.05, z: 0}
 --- !u!54 &4049279432092915417
 Rigidbody:
   m_ObjectHideFlags: 0

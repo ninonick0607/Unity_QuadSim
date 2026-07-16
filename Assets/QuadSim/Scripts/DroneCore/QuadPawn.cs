@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using DroneCore.Controllers;
+using DroneCore.CameraSystem;
 using DroneCore.Core;
 using DroneCore.Interfaces;
 using RobotCore;
@@ -25,6 +26,7 @@ namespace DroneCore
     /// buffered force application, and controller routing.
     /// </summary>
     [RequireComponent(typeof(Rigidbody))]
+    [RequireComponent(typeof(DroneCameraRig))]
     [DisallowMultipleComponent]
     public sealed class QuadPawn : MonoBehaviour
     {
@@ -60,6 +62,7 @@ namespace DroneCore
         
         [Header("Camera")]
         [SerializeField] private Transform fpvCameraPoint;
+        [SerializeField] private DroneCameraRig cameraRig;
 
         [Header("Visuals")]
         [SerializeField] private Transform[] propellerMeshes = new Transform[4];
@@ -169,6 +172,7 @@ namespace DroneCore
             if (commandProxy == null) commandProxy = GetComponent<FlightCommandProxy>();
             if (modeCoordinator == null) modeCoordinator = GetComponent<ModeCoordinator>();
             if (quadSimApi == null) quadSimApi = GetComponent<QuadSimApi>();
+            EnsureCameraRig();
             
             // Build motor array from serialized references
             _motors[0] = motorFL;
@@ -293,6 +297,11 @@ namespace DroneCore
         {
             _config = config;
             _configApplied = true;
+
+            EnsureCameraRig();
+            CameraDirector director = CameraDirector.Get();
+            if (director != null && director.TargetDrone == this)
+                director.ApplyCameraSettings(_config.CamParams);
 
             Debug.Log($"[QuadPawn] {DroneID}: Applying config...");
 
@@ -706,6 +715,15 @@ namespace DroneCore
         private Quaternion _tpLocalRot;
         private bool _camInit;
 
+        private void EnsureCameraRig()
+        {
+            if (cameraRig == null)
+                cameraRig = GetComponent<DroneCameraRig>();
+            if (cameraRig == null)
+                cameraRig = gameObject.AddComponent<DroneCameraRig>();
+            cameraRig.Initialize(this, fpvCameraPoint);
+        }
+
         private void InitCameraRefs()
         {
             if (_camInit) return;
@@ -735,10 +753,20 @@ namespace DroneCore
         /// <summary>This drone's camera (may be null if prefab has none).</summary>
         public Camera DroneCamera { get { InitCameraRefs(); return droneCamera; } }
 
+        /// <summary>Mount-only camera data for the central CameraDirector.</summary>
+        public DroneCameraRig CameraRig { get { EnsureCameraRig(); return cameraRig; } }
+
         /// <summary>Enable/disable this drone's camera (+AudioListener). DroneManager
         /// calls this on selection so only the selected drone renders.</summary>
         public void SetCameraActive(bool active)
         {
+            CameraDirector director = CameraDirector.Get();
+            if (director != null)
+            {
+                if (active) director.Bind(this);
+                return;
+            }
+
             InitCameraRefs();
             if (droneCamera == null) return;
             droneCamera.enabled = active;
@@ -748,6 +776,15 @@ namespace DroneCore
 
         public void SetCameraMode(CameraMode mode)
         {
+            CameraDirector director = CameraDirector.Get();
+            if (director != null)
+            {
+                director.Bind(this, snap: false);
+                director.SetMode(mode == CameraMode.FPV ? CameraViewMode.FPV : CameraViewMode.Follow);
+                CamMode = mode;
+                return;
+            }
+
             InitCameraRefs();
             if (droneCamera == null) return;
 
@@ -779,7 +816,7 @@ namespace DroneCore
 
         public Transform GetFPVCameraPoint()
         {
-            return fpvCameraPoint != null ? fpvCameraPoint : transform;
+            return CameraRig.FpvMount;
         }
 
         // ============================================================================

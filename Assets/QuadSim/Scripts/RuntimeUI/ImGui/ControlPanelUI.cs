@@ -12,6 +12,7 @@ using SimCore;
 using SimCore.Common;
 using DroneCore;
 using DroneCore.Api;
+using DroneCore.CameraSystem;
 using DroneCore.Core;
 using MathUtil;
 using UnityEngine;
@@ -119,7 +120,7 @@ namespace QuadSim.RuntimeUI.ImGuiHud
                 ImGui.Spacing();
                 ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new ImVec2(16f, 9f));
 
-                if (ImGui.Button("Switch Camera##ControlPanelSwitchCamera"))
+                if (ImGui.Button("Follow / FPV##ControlPanelSwitchCamera"))
                     UiActions.Defer(() => pawn.SwitchCamera());
 
                 ImGui.SameLine();
@@ -148,10 +149,90 @@ namespace QuadSim.RuntimeUI.ImGuiHud
                 ImGui.EndDisabled();
                 ImGui.PopStyleVar();
 
+                DrawCameraControls(pawn);
+
                 ImGui.PopID();
             }
 
             ImGui.End();
+        }
+
+        private static void DrawCameraControls(QuadPawn pawn)
+        {
+            CameraDirector director = CameraDirector.Get();
+            if (director == null || !ImGui.CollapsingHeader("Camera##ControlPanelCamera"))
+                return;
+
+            string preview = director.Mode.ToString();
+            if (ImGui.BeginCombo("View Mode##ControlPanelCameraMode", preview))
+            {
+                CameraViewMode[] modes =
+                {
+                    CameraViewMode.Follow,
+                    CameraViewMode.Orbit,
+                    CameraViewMode.FPV,
+                    CameraViewMode.Free,
+                };
+
+                foreach (CameraViewMode mode in modes)
+                {
+                    bool selected = director.Mode == mode;
+                    CameraViewMode selectedMode = mode;
+                    if (ImGui.Selectable(mode.ToString(), selected))
+                    {
+                        UiActions.Defer(() =>
+                        {
+                            director.Bind(pawn, snap: false);
+                            director.SetMode(selectedMode);
+                        });
+                    }
+                    if (selected) ImGui.SetItemDefaultFocus();
+                }
+                ImGui.EndCombo();
+            }
+
+            float distance = director.FollowDistance;
+            if (ImGui.SliderFloat("Distance (m)##ControlPanelCameraDistance", ref distance, 0.25f, 10f, "%.2f"))
+                director.FollowDistance = distance;
+
+            float fov = director.FieldOfView;
+            if (ImGui.SliderFloat("FOV##ControlPanelCameraFov", ref fov, 30f, 120f, "%.0f deg"))
+                director.FieldOfView = fov;
+
+            if (director.Mode == CameraViewMode.Orbit)
+            {
+                ImGui.TextDisabled("Right-drag viewport to orbit | Wheel to zoom");
+                float yaw = director.OrbitYawDeg;
+                float pitch = director.OrbitPitchDeg;
+                if (ImGui.SliderFloat("Orbit Yaw##ControlPanelOrbitYaw", ref yaw, -180f, 180f, "%.1f deg"))
+                    director.OrbitYawDeg = yaw;
+                if (ImGui.SliderFloat("Orbit Pitch##ControlPanelOrbitPitch", ref pitch, -80f, 80f, "%.1f deg"))
+                    director.OrbitPitchDeg = pitch;
+                if (ImGui.SmallButton("Reset Orbit##ControlPanelResetOrbit"))
+                    director.ResetOrbit();
+            }
+            else if (director.Mode == CameraViewMode.Free)
+            {
+                ImGui.TextDisabled("Right-drag to look | WASD + Q/E to move | Shift boosts");
+                ImGui.TextDisabled("Wheel moves forward/backward");
+                ImGui.TextDisabled("Left-click a drone to select it | F toggles free follow");
+                string follow = director.FreeFollowTarget != null
+                    ? director.FreeFollowTarget.DroneID
+                    : "Off";
+                ImGui.TextDisabled($"Free follow: {follow}");
+            }
+            else if (director.Mode == CameraViewMode.Follow)
+            {
+                ImGui.TextDisabled("Wheel adjusts follow distance");
+            }
+            else if (director.Mode == CameraViewMode.FPV)
+            {
+                ImGui.TextDisabled("Wheel adjusts field of view");
+            }
+
+            string target = director.TargetDrone != null ? director.TargetDrone.DroneID : "None";
+            string source = director.CameraSourceDrone != null ? director.CameraSourceDrone.DroneID : "Scene camera";
+            ImGui.TextDisabled($"Target: {target} | Camera source: {source}");
         }
 
         private void DrawDroneCombo(DroneManager dm, QuadPawn active)

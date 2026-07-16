@@ -928,6 +928,7 @@ GameObject:
   - component: {fileID: 1051123925233867347}
   - component: {fileID: 5015867165408226507}
   - component: {fileID: 2748501231768571355}
+  - component: {fileID: 7872478391029384751}
   m_Layer: 0
   m_Name: Flightmare_Pawn
   m_TagString: Untagged
@@ -978,6 +979,7 @@ MonoBehaviour:
   modeCoordinator: {fileID: 5015867165408226507}
   quadSimApi: {fileID: 2748501231768571355}
   fpvCameraPoint: {fileID: 4696170263400134623}
+  cameraRig: {fileID: 7872478391029384751}
   propellerMeshes:
   - {fileID: 407844}
   - {fileID: 493132}
@@ -1026,6 +1028,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DroneCore.Controllers.CascadedController
   enableMotorLag: 0
   motorLagTauSeconds: 0.02
+  motorLagTauDownSeconds: 0.02
   allocatedMinIdle01: 0
 --- !u!114 &5865032621723652560
 MonoBehaviour:
@@ -1071,7 +1074,7 @@ MonoBehaviour:
     Y: 0
     Z: 0
     W: 0
-  _mode: 1
+  _mode: 2
   _lastWriter: 0
   _activeSource: 0
   _lastCommandTimeSec: 0
@@ -1115,7 +1118,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 85dd92ea9b21485e9c3cdfd83deeddde, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DroneCore.Core.ModeCoordinator
-  startingMode: 1
+  startingMode: 2
   startingController: 0
   resetDynamicsOnExternalAuthority: 1
   resetDynamicsOnAnyAuthoritySwitch: 0
@@ -1131,6 +1134,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2ece974aad3e3814f821ddec36eeb66b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DroneCore.Api.QuadSimApi
+--- !u!114 &7872478391029384751
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 157626}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6f0b542ec6f4bdbad0012bcf61b81dc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneCore.CameraSystem.DroneCameraRig
+  fpvMount: {fileID: 0}
+  followTarget: {fileID: 497770}
+  orbitTarget: {fileID: 497770}
+  defaultFpvOffset: {x: 0.15, y: 0.05, z: 0}
 --- !u!1 &163204
 GameObject:
   m_ObjectHideFlags: 0

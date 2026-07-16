@@ -665,6 +665,7 @@ GameObject:
   - component: {fileID: 6690948459528812482}
   - component: {fileID: 3739808548804034099}
   - component: {fileID: 828771821907083841}
+  - component: {fileID: -3945651209348172011}
   m_Layer: 0
   m_Name: ImGUI
   m_TagString: Untagged
@@ -742,6 +743,33 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e8214fada3b9428cb8c17192eca64523, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Nino.QuadSim::QuadSim.RuntimeUI.ImGuiHud.ImGuiRuntimeBootstrap
+--- !u!114 &-3945651209348172011
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9044988200301823076}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e3c54b23f8a14bd59a21f1c8d53257ab, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::DroneCore.CameraSystem.CameraDirector
+  viewCamera: {fileID: 0}
+  startupMode: 2
+  followDistance: 1.5
+  followPitchDeg: -15
+  lookHeight: 0.15
+  positionSharpness: 10
+  rotationSharpness: 14
+  orbitYawDeg: 0
+  orbitPitchDeg: 20
+  orbitMouseSensitivity: 0.2
+  zoomWheelSensitivity: 2
+  freeLookSensitivity: 0.15
+  freeMoveSpeed: 10
+  freeBoostMultiplier: 3
+  freeWheelDollyDistance: 3
 --- !u!1001 &3542119102496622940
 PrefabInstance:
   m_ObjectHideFlags: 0

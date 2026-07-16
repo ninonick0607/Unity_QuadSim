@@ -1,4 +1,5 @@
     using System.Collections.Generic;
+    using DroneCore.CameraSystem;
     using Experimental;
     using MathUtil;
     using SimCore;
@@ -199,14 +200,15 @@ namespace DroneCore.Core
             }
             else
             {
-                if (_hasCurrentConfig)
+                foreach (var d in _registeredDrones)
                 {
-                    foreach (var d in _registeredDrones)
-                    {
-                        if (d == null) continue;
-                        if (!d.HasConfigApplied)
-                            d.ApplyConfig(_currentConfig);
-                    }
+                    if (d == null) continue;
+
+                    if (d.Sensors != null)
+                        d.Sensors.Configure(masterSeed, enableSensorNoise, originLat, originLon, originAlt, frame);
+
+                    if (_hasCurrentConfig && !d.HasConfigApplied)
+                        d.ApplyConfig(_currentConfig);
                 }
             }
         }
@@ -494,10 +496,18 @@ namespace DroneCore.Core
             // Activate only the selected drone's camera; keep its current camera mode.
             if (alsoPossess)
             {
-                for (int i = 0; i < _registeredDrones.Count; i++)
+                CameraDirector director = CameraDirector.Get();
+                if (director != null && director.ViewCamera != null)
                 {
-                    if (_registeredDrones[i] != null)
-                        _registeredDrones[i].SetCameraActive(i == _selectedDroneIndex);
+                    director.Bind(target);
+                }
+                else
+                {
+                    for (int i = 0; i < _registeredDrones.Count; i++)
+                    {
+                        if (_registeredDrones[i] != null)
+                            _registeredDrones[i].SetCameraActive(i == _selectedDroneIndex);
+                    }
                 }
             }
 

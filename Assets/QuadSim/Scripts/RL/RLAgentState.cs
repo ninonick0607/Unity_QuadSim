@@ -56,7 +56,7 @@ namespace QuadSim.RL
                 OrientationFluToEnu = Frames.TransformQuaternion(body.rotation, SimFrame.FLU),
                 BodyVelocityFlu = Frames.TransformLinear(bodyVelocity, SimFrame.FLU),
                 BodyAngularVelocityFlu = Frames.TransformAngularVelocity(bodyAngularVelocity, SimFrame.FLU),
-                ForwardEnu = Frames.TransformWorldVector(transform.forward, SimFrame.FLU),
+                ForwardEnu = Frames.TransformWorldVector(transform.right, SimFrame.FLU),
                 UpEnu = Frames.TransformWorldVector(transform.up, SimFrame.FLU),
                 HasCollision = pawn.HasCollision,
                 IsGrounded = pawn.IsGrounded,

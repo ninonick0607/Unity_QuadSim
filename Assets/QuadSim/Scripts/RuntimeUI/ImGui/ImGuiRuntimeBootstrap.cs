@@ -3,6 +3,7 @@ using SimCore;
 using SimCore.Common;
 using DroneCore;
 using DroneCore.Api;
+using DroneCore.CameraSystem;
 using DroneCore.Core;
 using UnityEngine;
 using ImVec2 = System.Numerics.Vector2;
@@ -16,6 +17,7 @@ namespace QuadSim.RuntimeUI.ImGuiHud
         private DroneManager _dm;
         private UImGui.UImGui _ui;
         private Camera _boundCamera;
+        private CameraDirector _cameraDirector;
 
         private TaskbarUI _taskbar;
         private ControlPanelUI _controlPanel;
@@ -37,6 +39,7 @@ namespace QuadSim.RuntimeUI.ImGuiHud
             _stateHud = new StateHudUI();
             _settings = new SettingsUI();
             _joystickViz = new JoystickVizUI();
+            _cameraDirector = CameraDirector.GetOrCreate(gameObject);
 
             _taskbar.OnSettingsClicked = () => _settings.ToggleOpen();
             _taskbar.OnSimReset = () => _controlPanel.OnSimReset();
@@ -72,6 +75,10 @@ namespace QuadSim.RuntimeUI.ImGuiHud
             }
             if (_dm == null)
                 _dm = DroneManager.Get();
+            if (_cameraDirector == null)
+                _cameraDirector = CameraDirector.GetOrCreate(gameObject);
+            if (_cameraDirector != null)
+                _cameraDirector.EnsureBoundToFirstDrone(_dm);
         }
 
         private void UnsubscribeSim()
@@ -91,9 +98,10 @@ namespace QuadSim.RuntimeUI.ImGuiHud
         {
             if (_ui == null) return;
 
-            Camera target = null;
-            QuadPawn pawn = _dm != null ? _dm.SelectedDrone : null;
-            if (pawn != null) target = pawn.DroneCamera;
+            _cameraDirector?.EnsureBoundToFirstDrone(_dm);
+            Camera target = _cameraDirector != null ? _cameraDirector.ViewCamera : null;
+            if (target == null && _dm != null && _dm.DroneCount > 0)
+                target = _dm.RegisteredDrones[0]?.DroneCamera;
             if (target == null || !target.enabled || !target.gameObject.activeInHierarchy)
                 target = Camera.main;
 
@@ -182,6 +190,65 @@ namespace QuadSim.RuntimeUI.ImGuiHud
 
             DrawExternalApprovalPopup();   // safety-relevant: always drawn
             DrawHudToggleButton();         // last = topmost, always drawn
+            HandleCameraInput();
+        }
+
+        private void HandleCameraInput()
+        {
+            if (_cameraDirector == null) return;
+
+            var io = ImGui.GetIO();
+            if (!io.WantCaptureMouse)
+            {
+                var mouseDelta = ImGui.IsMouseDown(ImGuiMouseButton.Right)
+                    ? new Vector2(io.MouseDelta.X, io.MouseDelta.Y)
+                    : Vector2.zero;
+                _cameraDirector.AddMouseCameraInput(mouseDelta, io.MouseWheel);
+
+                if (_cameraDirector.Mode == CameraViewMode.Free
+                    && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                {
+                    TrySelectDroneUnderMouse(io.MousePos);
+                }
+            }
+
+            if (_cameraDirector.Mode != CameraViewMode.Free || io.WantCaptureKeyboard)
+                return;
+
+            Vector3 movement = Vector3.zero;
+            if (ImGui.IsKeyDown(ImGuiKey.W)) movement.z += 1f;
+            if (ImGui.IsKeyDown(ImGuiKey.S)) movement.z -= 1f;
+            if (ImGui.IsKeyDown(ImGuiKey.D)) movement.x += 1f;
+            if (ImGui.IsKeyDown(ImGuiKey.A)) movement.x -= 1f;
+            if (ImGui.IsKeyDown(ImGuiKey.E)) movement.y += 1f;
+            if (ImGui.IsKeyDown(ImGuiKey.Q)) movement.y -= 1f;
+
+            bool boosted = ImGui.IsKeyDown(ImGuiKey.LeftShift)
+                        || ImGui.IsKeyDown(ImGuiKey.RightShift);
+            _cameraDirector.AddFreeMovementInput(movement.normalized, boosted);
+
+            if (ImGui.IsKeyPressed(ImGuiKey.F, false))
+                _cameraDirector.ToggleFreeFollow(_dm != null ? _dm.SelectedDrone : null);
+        }
+
+        private void TrySelectDroneUnderMouse(System.Numerics.Vector2 mousePosition)
+        {
+            Camera camera = _cameraDirector.ViewCamera;
+            if (camera == null || _dm == null) return;
+
+            Rect pixelRect = camera.pixelRect;
+            Vector3 screenPoint = new Vector3(
+                pixelRect.x + mousePosition.X,
+                pixelRect.y + pixelRect.height - mousePosition.Y,
+                0f);
+
+            if (!Physics.Raycast(camera.ScreenPointToRay(screenPoint), out RaycastHit hit))
+                return;
+
+            QuadPawn drone = hit.collider.GetComponentInParent<QuadPawn>();
+            int index = drone != null ? _dm.GetDroneIndex(drone) : -1;
+            if (index >= 0)
+                _dm.SelectDroneByIndex(index, alsoPossess: false);
         }
 
         // ====================================================================

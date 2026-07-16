@@ -537,6 +537,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 481474396}
     - target: {fileID: 8210477119045688787, guid: f366a39f85cf3a68faaf6f1dbe3a123b, type: 3}
+      propertyPath: sensorManager
+      value: 
+      objectReference: {fileID: 5865032621723652560, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+    - target: {fileID: 8210477119045688787, guid: f366a39f85cf3a68faaf6f1dbe3a123b, type: 3}
       propertyPath: modeCoordinator
       value: 
       objectReference: {fileID: 5015867165408226507, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
@@ -546,6 +550,63 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f366a39f85cf3a68faaf6f1dbe3a123b, type: 3}
+--- !u!1001 &392209305
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 157626, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_Name
+      value: Flightmare_Pawn (2)
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.49220133
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.3199788
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.14879495
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
 --- !u!114 &481474396 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 3255322024149863400, guid: f366a39f85cf3a68faaf6f1dbe3a123b, type: 3}
@@ -557,6 +618,63 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 16cb25956d3b4704aa5895ad06b796a2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::QuadSim.SimCore.SimulationManager
+--- !u!1001 &585257804
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 157626, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_Name
+      value: Flightmare_Pawn (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.5315254
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.31999317
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 7.4009533
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
 --- !u!1 &1352268529
 GameObject:
   m_ObjectHideFlags: 0
@@ -879,6 +997,63 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &1609594160
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 157626, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_Name
+      value: Flightmare_Pawn
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 1.6187953
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.32
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 11.282115
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 497770, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
 --- !u!1001 &2022753064
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -946,3 +1121,6 @@ SceneRoots:
   - {fileID: 2022753064}
   - {fileID: 190327002}
   - {fileID: 1433324394}
+  - {fileID: 1609594160}
+  - {fileID: 585257804}
+  - {fileID: 392209305}
