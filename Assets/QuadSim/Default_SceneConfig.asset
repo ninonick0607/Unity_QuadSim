@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac58421b6963eb5b78405541ac5fd441, type: 3}
   m_Name: Default_SceneConfig
   m_EditorClassIdentifier: Assembly-CSharp::SimCore.QuadSimSceneConfig
-  RunMode: 0
-  droneConfigName: sentinel_quad
+  RunMode: 1
+  droneConfigName: flightmare_quad
   quadSimPrefab: {fileID: 4678018957320333326, guid: d95392c9ed694f54481d32ad68102df9, type: 3}
-  startupSpawnPolicy: 0
+  startupSpawnPolicy: 1
   payloadPrefab: {fileID: 463154142083670055, guid: fc1074fe6267f6e078f4cfb1f24f145b, type: 3}
   spawnPayload: 0
   payloadMountPath: Bottle
@@ -28,6 +28,6 @@ MonoBehaviour:
   originAltitudeM: 5
   masterSeed: 12345
   enableSensorNoise: 0
-  windEnabled: 0
+  windEnabled: 1
   windSpeed: 10
   windHeadingDeg: 0

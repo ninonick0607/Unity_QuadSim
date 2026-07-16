@@ -980,6 +980,7 @@ MonoBehaviour:
   quadSimApi: {fileID: 2748501231768571355}
   fpvCameraPoint: {fileID: 4696170263400134623}
   cameraRig: {fileID: 7872478391029384751}
+  imageSensor: {fileID: 0}
   propellerMeshes:
   - {fileID: 407844}
   - {fileID: 493132}

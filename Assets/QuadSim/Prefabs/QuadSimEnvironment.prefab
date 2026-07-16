@@ -757,7 +757,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DroneCore.CameraSystem.CameraDirector
   viewCamera: {fileID: 0}
   startupMode: 2
-  followDistance: 1.5
+  followDistance: 0.9
   followPitchDeg: -15
   lookHeight: 0.15
   positionSharpness: 10

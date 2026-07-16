@@ -21,7 +21,7 @@ namespace DroneCore.CameraSystem
         [SerializeField] private CameraViewMode startupMode = CameraViewMode.Follow;
 
         [Header("Follow")]
-        [SerializeField] private float followDistance = 1.5f;
+        [SerializeField] private float followDistance = 0.9f;
         [SerializeField] private float followPitchDeg = -15f;
         [SerializeField] private float lookHeight = 0.15f;
         [SerializeField] private float positionSharpness = 10f;
