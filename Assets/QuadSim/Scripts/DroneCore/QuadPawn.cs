@@ -63,6 +63,7 @@ namespace DroneCore
         [Header("Camera")]
         [SerializeField] private Transform fpvCameraPoint;
         [SerializeField] private DroneCameraRig cameraRig;
+        [SerializeField] private DroneImageSensor imageSensor;
 
         [Header("Visuals")]
         [SerializeField] private Transform[] propellerMeshes = new Transform[4];
@@ -133,6 +134,7 @@ namespace DroneCore
         public string AgentId => agentId;
         public string TeamId => teamId;
         public int DroneIndex => droneIndex;
+        public DroneImageSensor ImageSensor { get { EnsureCameraRig(); return imageSensor; } }
         public bool HasCollision => _activeColliders.Count > 0;
         public bool IsGrounded => _groundColliders.Count > 0;
 
@@ -231,6 +233,9 @@ namespace DroneCore
             QuadPawn otherPawn = collision.collider.GetComponentInParent<QuadPawn>();
             if (otherPawn != null && otherPawn != this)
                 AddRLEvent("agent_collision", otherPawn.AgentId);
+            RLSceneObject sceneObject = collision.collider.GetComponentInParent<RLSceneObject>();
+            if (sceneObject != null)
+                AddRLEvent("object_collision", objectId: sceneObject.ObjectId);
             if (isGroundContact && !wasGrounded)
                 AddRLEvent("ground_contact");
         }
@@ -271,12 +276,16 @@ namespace DroneCore
             return isGroundContact;
         }
 
-        private void AddRLEvent(string type, string otherAgentId = null)
+        private void AddRLEvent(
+            string type,
+            string otherAgentId = null,
+            string objectId = null)
         {
             double simTime = ClockFactory.IsInitialized
                 ? ClockFactory.Clock.NowNanos / 1_000_000_000.0
                 : 0.0;
-            _pendingRLEvents.Add(new RLAgentEvent(type, AgentId, otherAgentId, simTime));
+            _pendingRLEvents.Add(new RLAgentEvent(
+                type, AgentId, otherAgentId, simTime, objectId));
         }
 
         public void DrainRLEvents(List<RLAgentEvent> destination)
@@ -722,6 +731,12 @@ namespace DroneCore
             if (cameraRig == null)
                 cameraRig = gameObject.AddComponent<DroneCameraRig>();
             cameraRig.Initialize(this, fpvCameraPoint);
+
+            if (imageSensor == null)
+                imageSensor = GetComponent<DroneImageSensor>();
+            if (imageSensor == null)
+                imageSensor = gameObject.AddComponent<DroneImageSensor>();
+            imageSensor.Initialize(this, cameraRig);
         }
 
         private void InitCameraRefs()

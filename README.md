@@ -37,6 +37,7 @@ Use this README to install and run the Unity simulator. Use the Python SDK docs 
 
 - Python SDK repo: [github.com/ninonick0607/QuadSimLib](https://github.com/ninonick0607/QuadSimLib)
 - Detailed Python control modes: [QuadSimLib/docs/control_modes.md](https://github.com/ninonick0607/QuadSimLib/blob/master/docs/control_modes.md)
+- Reinforcement learning guide: [QuadSimLib/docs/reinforcement_learning.md](https://github.com/ninonick0607/QuadSimLib/blob/master/docs/reinforcement_learning.md)
 
 ---
 
@@ -182,6 +183,21 @@ For detailed mode-by-mode Python usage, see the SDK docs:
 ```text
 QuadSimLib/docs/control_modes.md
 ```
+
+---
+
+## Reinforcement Learning
+
+The Unity runtime provides the deterministic physics side of the RL boundary:
+atomic multi-drone reset/stepping, stable identities, privileged RL state,
+dedicated per-drone image sensors, pooled runtime obstacles/goals, and physical
+collision events. Scenario logic, rewards, observations, and training remain in
+Python.
+
+Setup, API schemas, obstacle spawning, image decoding, complete SDK command
+reference, and training-loop examples are documented in the SDK repository:
+
+- [QuadSim Reinforcement Learning Guide](https://github.com/ninonick0607/QuadSimLib/blob/master/docs/reinforcement_learning.md)
 
 ---
 

@@ -25,6 +25,7 @@ using UnityEngine;
 using SimCore.Common;
 using DroneCore;
 using DroneCore.Api;
+using DroneCore.CameraSystem;
 using DroneCore.Core;
 using MathUtil;
 using RobotCore;
@@ -151,7 +152,9 @@ namespace SimCore.Rpc
             ["rate"]        = GoalMode.Rate,
             ["passthrough"] = GoalMode.Passthrough,
             ["wrench"]      = GoalMode.Wrench,
+            ["wrench_allocated"] = GoalMode.Wrench,
             ["wrench_bypassed"] = GoalMode.WrenchBypassed,
+            ["wrench_bypass"] = GoalMode.WrenchBypassed,
 
         };
 
@@ -466,6 +469,7 @@ namespace SimCore.Rpc
                 ["set_mode"]         = HandleSetMode,
                 ["send_command"]     = HandleSendCommand,
                 ["get_sensor_data"]  = HandleGetSensorData,
+                ["capture_images"]   = HandleCaptureImages,
                 ["get_telemetry"]    = HandleGetTelemetry,
                 ["set_controller"]   = HandleSetController,
 
@@ -851,6 +855,72 @@ namespace SimCore.Rpc
  
             var s = drone.GetSensorData();
             return RpcResponse.Ok(req.RequestId, SensorDataToDict(s));
+        }
+
+        private RpcResponse HandleCaptureImages(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+            if (!req.TryGetArray("requests", out var rawRequests) || rawRequests.Count == 0)
+                return RpcResponse.Error("missing_or_invalid_param: requests", req.RequestId);
+
+            DroneManager manager = DroneManager.Get();
+            if (manager == null)
+                return RpcResponse.Error("no_drone_manager", req.RequestId);
+
+            var prepared = new List<(QuadPawn pawn, string type, int width, int height,
+                string encoding, int quality, float fov, float maxDepth)>(rawRequests.Count);
+
+            for (int i = 0; i < rawRequests.Count; i++)
+            {
+                if (!RpcRequest.TryGetMap(rawRequests[i], out var requestMap))
+                    return RpcResponse.Error($"invalid_image_request: {i}", req.RequestId);
+
+                var image = new RpcRequest("capture_image", requestMap);
+                string agentId = image.GetString("agent_id");
+                QuadPawn pawn = manager.GetDroneByAgentId(agentId);
+                if (pawn == null)
+                    return RpcResponse.Error($"unknown_agent: {agentId ?? "missing"}", req.RequestId);
+
+                string type = (image.GetString("image_type") ?? "rgb").ToLowerInvariant();
+                string encoding = (image.GetString("encoding") ?? "raw").ToLowerInvariant();
+                int width = image.GetInt("width", 64);
+                int height = image.GetInt("height", 64);
+                int quality = image.GetInt("quality", 90);
+                float fov = image.GetFloat("field_of_view_deg", 90f);
+                float maxDepth = image.GetFloat("max_depth_m", 100f);
+
+                if (type != "rgb" && type != "gray" && type != "depth")
+                    return RpcResponse.Error($"invalid_image_type: {type}", req.RequestId);
+                if (encoding != "raw" && encoding != "png" && encoding != "jpeg")
+                    return RpcResponse.Error($"invalid_image_encoding: {encoding}", req.RequestId);
+                if (type == "depth" && encoding != "raw")
+                    return RpcResponse.Error("depth_requires_raw_encoding", req.RequestId);
+                if (width < 16 || width > 512 || height < 16 || height > 512)
+                    return RpcResponse.Error("invalid_image_size: expected 16..512", req.RequestId);
+                if (!IsFinite(fov) || fov < 10f || fov > 160f)
+                    return RpcResponse.Error("invalid_field_of_view", req.RequestId);
+                if (!IsFinite(maxDepth) || maxDepth <= 0f || maxDepth > 1000f)
+                    return RpcResponse.Error("invalid_max_depth", req.RequestId);
+
+                prepared.Add((pawn, type, width, height, encoding,
+                    Mathf.Clamp(quality, 1, 100), fov, maxDepth));
+            }
+
+            object[] frames = new object[prepared.Count];
+            for (int i = 0; i < prepared.Count; i++)
+            {
+                var capture = prepared[i];
+                DroneImageSensor sensor = capture.pawn.ImageSensor;
+                frames[i] = sensor.Capture(
+                    capture.type, capture.width, capture.height, capture.encoding,
+                    capture.quality, capture.fov, capture.maxDepth, _sim.SimTimeSec);
+            }
+
+            return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
+            {
+                ["sim_time"] = _sim.SimTimeSec,
+                ["frames"] = frames,
+            });
         }
 
         // --- get_telemetry ---
@@ -1270,12 +1340,72 @@ namespace SimCore.Rpc
                     pawn, api, agentId, teamId, droneIndex, position, rotation));
             }
 
+            var preparedObjects = new List<ScenarioObjectSpec>();
+            var seenObjectIds = new HashSet<string>(StringComparer.Ordinal);
+            if (req.Params.ContainsKey("objects"))
+            {
+                if (!req.TryGetArray("objects", out var rawObjects))
+                    return RpcResponse.Error("missing_or_invalid_param: objects", req.RequestId);
+
+                for (int i = 0; i < rawObjects.Count; i++)
+                {
+                    if (!RpcRequest.TryGetMap(rawObjects[i], out var objectMap))
+                        return RpcResponse.Error($"invalid_object: {i}", req.RequestId);
+
+                    var sceneObject = new RpcRequest("reset_episode_object", objectMap);
+                    string objectId = sceneObject.GetString("object_id");
+                    string shape = sceneObject.GetString("shape")?.ToLowerInvariant();
+                    if (string.IsNullOrWhiteSpace(objectId))
+                        return RpcResponse.Error($"missing_object_id: {i}", req.RequestId);
+                    if (!seenObjectIds.Add(objectId))
+                        return RpcResponse.Error($"duplicate_object: {objectId}", req.RequestId);
+                    if (shape != "box" && shape != "sphere"
+                        && shape != "cylinder" && shape != "goal")
+                    {
+                        return RpcResponse.Error($"invalid_shape: {objectId}", req.RequestId);
+                    }
+                    if (!TryGetVector3(sceneObject, "position_enu", out Vector3 positionEnu))
+                        return RpcResponse.Error($"invalid_position_enu: {objectId}", req.RequestId);
+                    if (!TryGetVector3(sceneObject, "size_enu", out Vector3 sizeEnu)
+                        || sizeEnu.x <= 0f || sizeEnu.y <= 0f || sizeEnu.z <= 0f)
+                    {
+                        return RpcResponse.Error($"invalid_size_enu: {objectId}", req.RequestId);
+                    }
+
+                    float yawDeg = sceneObject.GetFloat("yaw_deg", 0f);
+                    if (!IsFinite(yawDeg))
+                        return RpcResponse.Error($"invalid_yaw_deg: {objectId}", req.RequestId);
+                    if (objectMap.TryGetValue("collision_enabled", out object collisionValue)
+                        && collisionValue is not bool)
+                    {
+                        return RpcResponse.Error(
+                            $"invalid_collision_enabled: {objectId}", req.RequestId);
+                    }
+
+                    bool collisionEnabled = sceneObject.GetBool(
+                        "collision_enabled", shape != "goal");
+                    Color defaultColor = shape == "goal"
+                        ? new Color(0.2f, 1f, 0.25f, 0.7f)
+                        : new Color(0.55f, 0.55f, 0.6f, 1f);
+                    if (!TryGetColor(sceneObject, "color_rgba", defaultColor, out Color color))
+                        return RpcResponse.Error($"invalid_color_rgba: {objectId}", req.RequestId);
+
+                    preparedObjects.Add(new ScenarioObjectSpec(
+                        objectId, shape, positionEnu, yawDeg, sizeEnu,
+                        collisionEnabled, color));
+                }
+            }
+
             prepared.Sort((a, b) => a.DroneIndex.CompareTo(b.DroneIndex));
 
             _sim.Pause();
             _sim.SimManager.ResetClock();
             _rlEpisodeId++;
             _rlStepIndex = 0;
+
+            ScenarioObjectManager objectManager =
+                ScenarioObjectManager.GetOrCreate(gameObject);
+            objectManager.Apply(preparedObjects);
 
             for (int i = 0; i < prepared.Count; i++)
             {
@@ -1303,6 +1433,7 @@ namespace SimCore.Rpc
                 ["settle_steps"] = settleSteps,
                 ["agents"] = CaptureRLStates(manager, _sim.SimTimeSec, out object[] events),
                 ["events"] = events,
+                ["objects"] = objectManager.Snapshot(),
             });
         }
         
@@ -1623,6 +1754,34 @@ namespace SimCore.Rpc
             return true;
         }
 
+        private static bool TryGetColor(
+            RpcRequest req, string key, Color defaultValue, out Color value)
+        {
+            value = defaultValue;
+            if (!req.Params.ContainsKey(key)) return true;
+            if (!req.TryGetArray(key, out var raw)
+                || (raw.Count != 3 && raw.Count != 4))
+            {
+                return false;
+            }
+            if (!RpcRequest.TryConvertFloat(raw[0], out float r)
+                || !RpcRequest.TryConvertFloat(raw[1], out float g)
+                || !RpcRequest.TryConvertFloat(raw[2], out float b)
+                || !IsFinite(r) || !IsFinite(g) || !IsFinite(b))
+            {
+                return false;
+            }
+
+            float a = defaultValue.a;
+            if (raw.Count == 4
+                && (!RpcRequest.TryConvertFloat(raw[3], out a) || !IsFinite(a)))
+            {
+                return false;
+            }
+            value = new Color(r, g, b, a);
+            return true;
+        }
+
         private static Dictionary<string, object> CaptureRLStates(
             DroneManager manager, double simTime, out object[] eventPayloads)
         {
@@ -1654,6 +1813,8 @@ namespace SimCore.Rpc
             };
             if (!string.IsNullOrEmpty(agentEvent.OtherAgentId))
                 payload["other_agent_id"] = agentEvent.OtherAgentId;
+            if (!string.IsNullOrEmpty(agentEvent.ObjectId))
+                payload["object_id"] = agentEvent.ObjectId;
             return payload;
         }
 

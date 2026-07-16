@@ -20,7 +20,7 @@ MonoBehaviour:
   spawnPayload: 0
   payloadMountPath: Bottle
   outputFrame: 1
-  startingMode: 4
+  startingMode: 2
   commandPort: 5555
   telemetryPort: 5556
   originLatitudeDeg: 33.49414

@@ -9,14 +9,21 @@ namespace QuadSim.RL
         public readonly string Type;
         public readonly string AgentId;
         public readonly string OtherAgentId;
+        public readonly string ObjectId;
         public readonly double SimTime;
 
-        public RLAgentEvent(string type, string agentId, string otherAgentId, double simTime)
+        public RLAgentEvent(
+            string type,
+            string agentId,
+            string otherAgentId,
+            double simTime,
+            string objectId = null)
         {
             Type = type;
             AgentId = agentId;
             OtherAgentId = otherAgentId;
             SimTime = simTime;
+            ObjectId = objectId;
         }
     }
 
