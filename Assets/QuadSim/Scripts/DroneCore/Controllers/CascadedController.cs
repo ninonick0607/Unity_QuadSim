@@ -223,24 +223,24 @@ namespace DroneCore.Controllers
                 float currentMass = _body.Rigidbody.mass;
                 _hoverThrottle01 = _rotorPhysics.ComputeHoverThrottle(currentMass, 4);
 
-                // --- FIX 1: Math/Physics Alignment ---
-                Vector3 centroid = Vector3.zero;
-                var rotors = _cachedConfig.RotorParams.Rotors;
-                
-                for (int i = 0; i < rotors.Length; i++)
-                    centroid += rotors[i].Location_Body;
-                
-                if (rotors.Length > 0) centroid /= rotors.Length;
-
-                // Shift Unity's physics pivot
-                _body.Rigidbody.centerOfMass = centroid;
-
-                // Shift mathematical pivot. This satisfies the Allocator's 
-                // decoupled pseudo-inverse requirement (Sum of positions = 0)
-                for (int i = 0; i < rotors.Length; i++)
-                {
-                    rotors[i].Location_Body -= centroid;
-                }
+                // // --- FIX 1: Math/Physics Alignment ---
+                // Vector3 centroid = Vector3.zero;
+                // var rotors = _cachedConfig.RotorParams.Rotors;
+                //
+                // for (int i = 0; i < rotors.Length; i++)
+                //     centroid += rotors[i].Location_Body;
+                //
+                // if (rotors.Length > 0) centroid /= rotors.Length;
+                //
+                // // Shift Unity's physics pivot
+                // _body.Rigidbody.centerOfMass = centroid;
+                //
+                // // Shift mathematical pivot. This satisfies the Allocator's 
+                // // decoupled pseudo-inverse requirement (Sum of positions = 0)
+                // for (int i = 0; i < rotors.Length; i++)
+                // {
+                //     rotors[i].Location_Body -= centroid;
+                // }
                 
                 float totalMaxThrust = _rotorPhysics.MaxThrust * 4.0f;
                 float hoverForce = currentMass * 9.81f;

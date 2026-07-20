@@ -7,20 +7,23 @@
 //
 // Create assets via:  Assets > Create > QuadSim > Scene Config
 //
+
+using System;
 using UnityEngine;
 using DroneCore.Core;
 using DroneCore;
 using Experimental;
 using MathUtil;
+using QuadSim.SimCore;
 using SimCore.Common;
 namespace SimCore
 {
-    [DefaultExecutionOrder(-1001)] // run as early as possible
-
+    
     [CreateAssetMenu(
         fileName = "QuadSimSceneConfig",
         menuName = "QuadSim/Scene Config",
         order = 0)]
+    
     public sealed class QuadSimSceneConfig : ScriptableObject
     {
         // =====================================================================
@@ -39,8 +42,7 @@ namespace SimCore
         
         [Header("Drone Prefab")]
         [Tooltip("Drag your Drone Model Prefab here")]
-        public QuadPawn quadSimPrefab;
-        
+        public DroneCatalog droneCatalog;        
         [Header("Spawning")]
         [Tooltip("Choose whether simulation startup may create a default drone when the scene contains none.")]
         public StartupSpawnPolicy startupSpawnPolicy = StartupSpawnPolicy.SpawnDefaultIfNone;

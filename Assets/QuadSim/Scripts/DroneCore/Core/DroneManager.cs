@@ -1,8 +1,9 @@
     using System.Collections.Generic;
     using DroneCore.CameraSystem;
-    using Experimental;
-    using MathUtil;
-    using SimCore;
+using Experimental;
+using MathUtil;
+using SimCore;
+using SimCore.Common;
 using UnityEngine;
 using Yaml.Drone;
 
@@ -68,6 +69,7 @@ namespace DroneCore.Core
         [SerializeField] private double  originLon        = -86.5533;
         [SerializeField] private double  originAlt        = 0.0;
         [SerializeField] private SimFrame frame = SimFrame.FLU;
+        [SerializeField] private GoalMode startingMode = GoalMode.Rate;
         // ============================================================================
         // Runtime State
         // ============================================================================
@@ -209,6 +211,9 @@ namespace DroneCore.Core
 
                     if (_hasCurrentConfig && !d.HasConfigApplied)
                         d.ApplyConfig(_currentConfig);
+
+                    if (d.Api != null && d.Api.IsInitialized)
+                        d.Api.SetMode(startingMode);
                 }
             }
         }
@@ -314,6 +319,11 @@ namespace DroneCore.Core
 
             // Apply config (triggers QuadPawn initialization)
             newDrone.ApplyConfig(config);
+
+            // The scene config owns the initial cascade entry point. Apply it
+            // to the instantiated pawn, after ModeCoordinator/QuadSimApi init.
+            if (newDrone.Api != null && newDrone.Api.IsInitialized)
+                newDrone.Api.SetMode(startingMode);
             
             if (spawnPayload && payloadPrefab != null)
             {
@@ -539,7 +549,10 @@ namespace DroneCore.Core
             Debug.Log($"[DroneManager] Selected config: {configName}");
         }
 
-        public void SetSceneEnv(int seed, bool noise, double lat, double lon, double alt,StartupSpawnPolicy _spawnPolicy, QuadPawn _quadSimPrefab, PayloadAttachment _payloadPrefab, bool spawnPayloads, string payloadMount,SimFrame _frame)
+        public void SetSceneEnv(int seed, bool noise, double lat, double lon, double alt,
+            StartupSpawnPolicy _spawnPolicy, QuadPawn _quadSimPrefab,
+            PayloadAttachment _payloadPrefab, bool spawnPayloads,
+            string payloadMount, SimFrame _frame, GoalMode _startingMode)
         {
             masterSeed = seed; 
             enableSensorNoise = noise;
@@ -552,6 +565,7 @@ namespace DroneCore.Core
             spawnPayload =  spawnPayloads;
             payloadMountPath = payloadMount;
             frame = _frame;
+            startingMode = _startingMode;
         }
         
         public List<string> GetAvailableConfigs()

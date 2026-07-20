@@ -360,8 +360,8 @@ namespace DroneCore
             else
                 rb.mass = 1.28f; // Default
 
-            if (_config.DroneParams.CenterOfMass != Vector3.zero)
-                rb.centerOfMass = _config.DroneParams.CenterOfMass;
+            rb.centerOfMass = _config.DroneParams.CenterOfMass;
+            
             if (_config.DroneParams.Inertia != Vector3.zero)
                  rb.inertiaTensor = _config.DroneParams.Inertia;
             if (_config.DroneParams.LinearDrag_Coeff >= 0)
@@ -377,6 +377,25 @@ namespace DroneCore
             rb.maxAngularVelocity = 100f;
             Debug.Log($"[QuadPawn] {DroneID}: Inertia tensor = {rb.inertiaTensor}");
             Debug.Log($"[QuadPawn] {DroneID}: Physical config applied (mass={rb.mass}kg)");
+            
+            var src = _config.RotorParams.Rotors;
+            if (src != null && src.Length > 0)
+            {
+                Vector3 com = rb.centerOfMass;
+                var rebased = new RotorInstance[src.Length];
+                for (int i = 0; i < src.Length; i++)
+                {
+                    rebased[i] = src[i];                                  // struct copy
+                    rebased[i].Location_Body = src[i].Location_Body - com;
+                }
+                _config.RotorParams.Rotors = rebased;
+
+                Vector3 resid = Vector3.zero;
+                for (int i = 0; i < rebased.Length; i++) resid += rebased[i].Location_Body;
+                resid /= rebased.Length;
+                Debug.Log($"[QuadPawn] {DroneID}: rotors rebased on CoM={com:F4}; " +
+                          $"residual centroid={resid:F4} (perp component couples thrust→torque)");
+            }
         }
 
         private void ApplyControllerConfig()

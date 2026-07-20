@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1d1515103784ad1bcce7b2db45a7322, type: 3}
+  m_Name: DroneCatalog
+  m_EditorClassIdentifier: Nino.QuadSim::QuadSim.SimCore.DroneCatalog
+  fallbackPawn: {fileID: 4436502927399878726, guid: 66a628493a0df52a98cfc54bdf7c2a9a, type: 3}
+  entries:
+  - configName: flightmare_quad
+    pawn: {fileID: 5909055088624131799, guid: 31fe9db5889aeef9aaa26bc935a505d7, type: 3}
+  - configName: crazyflie2_quad
+    pawn: {fileID: 680589187432453512, guid: b039efeaa9db92f9198ba90644464a67, type: 3}
+  - configName: standard_quad
+    pawn: {fileID: 7369674030872104845, guid: 2e5ce94195e2bbeb4bd792d784027dba, type: 3}

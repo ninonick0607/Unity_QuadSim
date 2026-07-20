@@ -30,6 +30,7 @@ namespace QuadSim.RuntimeUI.ImGuiHud
         private bool _layoutSeen;
         private bool _subscribed;
         private bool _hudVisible = true;
+        private bool _cameraLookDrag;
         private float _noLayoutWarnTimer;
 
         private void OnEnable()
@@ -198,9 +199,18 @@ namespace QuadSim.RuntimeUI.ImGuiHud
             if (_cameraDirector == null) return;
 
             var io = ImGui.GetIO();
+
+            // Camera look must begin as an intentional right-click in the
+            // unobstructed viewport. Do not let a drag that started on an
+            // ImGui window leak through when the cursor later leaves it.
+            if (ImGui.IsMouseReleased(ImGuiMouseButton.Right))
+                _cameraLookDrag = false;
+            if (ImGui.IsMouseClicked(ImGuiMouseButton.Right))
+                _cameraLookDrag = !io.WantCaptureMouse;
+
             if (!io.WantCaptureMouse)
             {
-                var mouseDelta = ImGui.IsMouseDown(ImGuiMouseButton.Right)
+                var mouseDelta = _cameraLookDrag && ImGui.IsMouseDown(ImGuiMouseButton.Right)
                     ? new Vector2(io.MouseDelta.X, io.MouseDelta.Y)
                     : Vector2.zero;
                 _cameraDirector.AddMouseCameraInput(mouseDelta, io.MouseWheel);

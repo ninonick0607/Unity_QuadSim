@@ -47,13 +47,10 @@ controller:
     yaw:   {p: 1.0, i: 0.0, d: 0.0}
 
 camera_parameters:
-  Cam_Arm_Length: 0.9
-  FOV: 60
-  Cam_Pitch: -15.0
-  Cam_Socket_Offset:
-    x: -5.0
-    y: 0.0
-    z: 2.0
+  Cam_Arm_Length: 0.9          # meters, orbit/follow distance
+  FOV: 65.0                    # clamped 20..140
+  Cam_Pitch: -0.0             # degrees, clamped -80..80
+  Cam_Socket_Offset: {x: 0.0, y: 0.0, z: 20.0}   # NOTE: cm, and UE axis order
     
 limits:
   max_velocity_xy: 8.0

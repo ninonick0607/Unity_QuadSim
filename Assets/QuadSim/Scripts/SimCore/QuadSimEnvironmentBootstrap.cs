@@ -84,21 +84,17 @@ namespace SimCore
                     config.originLongitudeDeg,
                     config.originAltitudeM,
                     config.startupSpawnPolicy,
-                    config.quadSimPrefab,
+                    config.droneCatalog != null ? config.droneCatalog.Resolve(config.droneConfigName) : null,
                     config.payloadPrefab,
                     config.spawnPayload,
                     config.payloadMountPath,
-                    config.outputFrame);
+                    config.outputFrame,
+                    config.startingMode);
             }
 
             if (simManager != null)
             {
                 simManager.SetMode(config.RunMode);
-            }
-
-            if (api != null)
-            {
-                api.SetMode(config.startingMode);
             }
 
             if (sensorManager != null)
