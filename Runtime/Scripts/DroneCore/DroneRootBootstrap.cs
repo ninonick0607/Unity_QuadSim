@@ -75,7 +75,7 @@ namespace DroneCore
             rb.mass = 1.28f;
             rb.useGravity = true;
             rb.isKinematic = false;
-            rb.interpolation = RigidbodyInterpolation.None;
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
             rb.collisionDetectionMode = CollisionDetectionMode.Discrete;
             rb.maxAngularVelocity = 100f; // Prevent Unity from clamping angular velocity
 
