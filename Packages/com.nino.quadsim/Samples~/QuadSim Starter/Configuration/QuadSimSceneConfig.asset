@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ac58421b6963eb5b78405541ac5fd441, type: 3}
+  m_Name: QuadSimSceneConfig
+  m_EditorClassIdentifier: Assembly-CSharp::SimCore.QuadSimSceneConfig
+  RunMode: 0
+  droneConfigName: flightmare_quad
+  droneCatalog: {fileID: 11400000, guid: 0ad1ad09475f47b192e60336df5e5ed4, type: 2}
+  startupSpawnPolicy: 0
+  payloadPrefab: {fileID: 463154142083670055, guid: fc1074fe6267f6e078f4cfb1f24f145b, type: 3}
+  spawnPayload: 0
+  payloadMountPath: Bottle
+  outputFrame: 1
+  startingMode: 2
+  commandPort: 5555
+  telemetryPort: 5556
+  originLatitudeDeg: 33.49414
+  originLongitudeDeg: -117.7391
+  originAltitudeM: 5
+  masterSeed: 12345
+  enableSensorNoise: 0
+  windEnabled: 0
+  windSpeed: 10
+  windHeadingDeg: 0

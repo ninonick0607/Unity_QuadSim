@@ -1,0 +1,41 @@
+{
+  "name": "com.nino.quadsim",
+  "version": "0.2.0",
+  "displayName": "QuadSim",
+  "description": "Deterministic Unity quadrotor simulation with editable starter content, sensors, controllers, RPC, and Python SDK integration.",
+  "unity": "6000.0",
+  "dependencies": {
+    "com.psydack.uimgui": "7.1.0",
+    "com.unity.inputsystem": "1.19.0",
+    "com.unity.render-pipelines.high-definition": "17.4.0"
+  },
+  "samples": [
+    {
+      "displayName": "QuadSim Starter",
+      "description": "Land scene, terrain, editable scene configuration, drone catalog, drone prefabs, example script, and YAML overrides.",
+      "path": "Samples~/QuadSim Starter"
+    },
+    {
+      "displayName": "PX4 SITL Tools",
+      "description": "Optional scripts and documentation for the PX4 SITL bridge workflow.",
+      "path": "Samples~/PX4 SITL Tools"
+    }
+  ],
+  "author": {
+    "name": "Nicolas Nino Fernandez"
+  },
+  "license": "MIT",
+  "documentationUrl": "https://github.com/ninonick0607/Unity_QuadSim#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ninonick0607/Unity_QuadSim.git",
+    "directory": "Packages/com.nino.quadsim"
+  },
+  "keywords": [
+    "drone",
+    "quadrotor",
+    "simulation",
+    "robotics",
+    "rpc"
+  ]
+}

@@ -1,11 +1,14 @@
 {
   "dependencies": {
-    "com.github-glitchenzo.nugetforunity": {
-      "version": "https://github.com/GlitchEnzo/NuGetForUnity.git?path=/src/NuGetForUnity",
+    "com.nino.quadsim": {
+      "version": "file:com.nino.quadsim",
       "depth": 0,
-      "source": "git",
-      "dependencies": {},
-      "hash": "acc1c7bc9ea34c33b830e40316fca52553878d29"
+      "source": "embedded",
+      "dependencies": {
+        "com.psydack.uimgui": "7.1.0",
+        "com.unity.inputsystem": "1.19.0",
+        "com.unity.render-pipelines.high-definition": "17.4.0"
+      }
     },
     "com.psydack.uimgui": {
       "version": "file:com.psydack.uimgui",

@@ -1,0 +1,86 @@
+# Drone Configuration File - Crazyflie 2.1
+name: "Crazyflie_Quad_V1"
+body_mesh: "/QuadSimPlugin/Assets/Drone_Models/CrazyFlie/cf2_assembly.cf2_assembly"
+
+physical_properties:
+  mass_kg: 0.029
+  com_offset: {x: 0.0, y: 0.0, z: 0.0}
+  inertia: {x: 0.00001657, y: 0.00001666, z: 0.00002926}
+  arm_length: 0.046
+  linear_drag_coef: 0.02
+  angular_drag_coef: 0.001
+
+propulsion:
+  prop_diameter: 0.045
+  max_rpm: 24000
+
+  # Bitcraze CF2.1+ default:
+  # THRUST_MAX = 0.12 N per motor
+  # THRUST2TORQUE = 0.0069928948992470565 m
+  max_thrust: 0.147
+  thrust_coef: 0.183
+  torque_coef: 0.0069928948992470565
+
+  # Firmware thrust curve, not directly represented by current QuadSim schema:
+  # VMOTOR2THRUST0 = -0.02476537915958403
+  # VMOTOR2THRUST1 =  0.06523793527519485
+  # VMOTOR2THRUST2 = -0.026792504967750107
+  # VMOTOR2THRUST3 =  0.006776789303971145
+  # THRUST_MIN = 0.012817578393224994 N per motor
+
+  # QuadSim canonical order: 0=FL, 1=FR, 2=BL, 3=BR
+  # Unity body: +x forward, +y up, +z left
+  # ARM_LENGTH = 0.046 m, so X/Z offsets are arm_length / sqrt(2)
+  propellers:
+    - {id: 0, x:  0.032527, y: 0.008, z:  0.032527, dir:  1}  # FL
+    - {id: 1, x:  0.032527, y: 0.008, z: -0.032527, dir: -1}  # FR
+    - {id: 2, x: -0.032527, y: 0.008, z:  0.032527, dir: -1}  # BL
+    - {id: 3, x: -0.032527, y: 0.008, z: -0.032527, dir:  1}  # BR
+
+controller:
+  position_gains:
+    x: {p: 4.0, i: 0.0, d: 0.0}
+    y: {p: 4.0, i: 0.0, d: 0.0}
+    z: {p: 4.0, i: 0.0, d: 0.0}
+
+  velocity_gains:
+    x: {p: 3.0, i: 0.0, d: 0.0}
+    y: {p: 3.0, i: 0.0, d: 0.0}
+    z: {p: 3.0, i: 0.0, d: 0.0}
+
+  attitude_gains:
+    roll:  {p: 5.0, i: 0.0, d: 0.0}
+    pitch: {p: 5.0, i: 0.0, d: 0.0}
+    yaw:   {p: 5.0, i: 0.0, d: 0.0}
+
+  rate_gains:
+    roll:  {p: 0.025, i: 0.0, d: 0.0}
+    pitch: {p: 0.025, i: 0.0, d: 0.0}
+    yaw:   {p: 0.008, i: 0.0, d: 0.0}
+camera_parameters:
+  Cam_Arm_Length: 0.05
+  FOV: 100.0
+  Cam_Pitch: -15.0
+  Cam_Socket_Offset:
+    x: -5.0
+    y: 0.0
+    z: 2.0
+
+limits:
+  max_velocity_xy: 1.0
+  max_velocity_z: 1.0
+  max_tilt_angle_deg: 20.0
+  max_angular_rate_RP_deg: 120.0
+  max_angular_rate_Yaw_deg: 90.0
+
+  # 0.12 N per motor * 4 motors
+  max_thrust_newtons: 0.6
+
+  max_pid_output: 1.0
+  altitude_threshold: 0.1
+  min_altitude_local: 0.05
+  acceptable_distance: 0.2
+
+  altitude_rate: 0.5
+  yaw_rate: 90.0
+  min_velocity_yaw: 0.1

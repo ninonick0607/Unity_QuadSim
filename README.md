@@ -64,30 +64,37 @@ Use this README to install and run the Unity simulator. Use the Python SDK docs 
 
 - Unity 6 / Unity 6000.x
 - Git
-- Git LFS if your project pulls large mesh or texture assets
+- Git LFS installed and available on `PATH` (the package contains large drone assets)
 - Python 3.8+ for Python SDK control
 - A QuadSim scene containing `SimRoot`, `ExternalRpcAdapter`, and at least one configured `QuadPawn` for RPC control
 
 ### Install the Unity Package
 
-In Unity:
-
-1. Open **Window → Package Manager**.
-2. Click **+**.
-3. Choose **Add package from git URL...**.
-4. Paste:
+QuadSim uses UImGui from OpenUPM. Add this scoped registry once in **Edit → Project Settings → Package Manager**:
 
 ```text
-https://github.com/ninonick0607/Unity-QuadSim-Plugin.git#v0.1.0
+Name: OpenUPM
+URL:  https://package.openupm.com
+Scope: com.psydack.uimgui
+```
+
+Then, in Unity:
+
+1. Open **Window → Package Manager**.
+2. Click **+** and choose **Add package from git URL...**.
+3. Paste:
+
+```text
+https://github.com/ninonick0607/Unity_QuadSim.git?path=/Packages/com.nino.quadsim#v0.2.0
 ```
 
 For active development, you can omit the tag and install the latest `main` branch:
 
 ```text
-https://github.com/ninonick0607/Unity-QuadSim-Plugin.git
+https://github.com/ninonick0607/Unity_QuadSim.git?path=/Packages/com.nino.quadsim
 ```
 
-For reproducible research or lab machines, prefer a tagged version like `#v0.1.0`.
+For reproducible research or lab machines, prefer a tagged version like `#v0.2.0`. The tag must exist before consumers can use that URL; until release, install `main` with the untagged URL.
 
 ### Import the Sample Scene
 
@@ -96,10 +103,12 @@ After the package installs:
 1. Open **Package Manager**.
 2. Select **QuadSim**.
 3. Open the **Samples** section.
-4. Import **QuadSim Scene**.
-5. Open the imported scene and press Play.
+4. Import **QuadSim Starter**.
+5. Open `Assets/Samples/QuadSim/0.2.0/QuadSim Starter/Maps/Land.unity` and press Play.
 
-The sample scene contains the demo environment and required simulation objects. Runtime scripts, prefabs, models, and third-party plugins remain inside the package under `Runtime/`.
+The imported sample owns the files users are expected to edit: the Land scene and terrain, `QuadSimSceneConfig`, `DroneCatalog`, drone prefabs, the example C# script, and YAML overrides under `StreamingAssets/Configs/Drones`. Simulation code, default fallback configs, models/materials, environment internals, and third-party plugins remain package-owned under `Packages/com.nino.quadsim/Runtime/`.
+
+Do not edit files directly under `Packages/`; Git-installed package changes can be replaced on update. Edit the imported copies under `Assets/Samples/QuadSim/...` instead.
 
 ---
 
@@ -459,22 +468,25 @@ The headless executable can override both ports:
 
 ## Project Structure
 
-Package-oriented layout:
+Repository and embedded-package layout:
 
 ```text
-Unity-QuadSim-Plugin/
-├── package.json
-├── Runtime/
-│   ├── DroneCore/
-│   ├── RobotCore/
-│   ├── SimCore/
-│   ├── Prefabs/
-│   ├── Configs/
-│   └── ThirdParty/
-├── Samples~/
-│   └── QuadSim Scene/
-├── Documentation~
-└── README.md
+Unity_QuadSim/
+├── Assets/                         # development project only
+├── Packages/
+│   └── com.nino.quadsim/           # installable UPM package
+│       ├── package.json
+│       ├── Runtime/
+│       │   ├── Scripts/
+│       │   ├── Prefabs/
+│       │   ├── Resources/
+│       │   └── Plugins/ThirdParty/
+│       ├── Editor/
+│       ├── Samples~/
+│       │   ├── QuadSim Starter/
+│       │   └── PX4 SITL Tools/
+│       └── Documentation~/
+└── ProjectSettings/                # development project only
 ```
 
 Development repository layout may contain additional editor-only scenes, experiments, assets, and test scripts.
@@ -484,7 +496,7 @@ Development repository layout may contain additional editor-only scenes, experim
 ## Related
 
 - **Python SDK / QuadSimLib**: [github.com/ninonick0607/QuadSimLib](https://github.com/ninonick0607/QuadSimLib)
-- **Unity plugin**: [github.com/ninonick0607/Unity-QuadSim-Plugin](https://github.com/ninonick0607/Unity-QuadSim-Plugin)
+- **Unity plugin**: [github.com/ninonick0607/Unity_QuadSim](https://github.com/ninonick0607/Unity_QuadSim)
 - **Research controller repo**: `Resnet-GeometricController`
 
 ---
