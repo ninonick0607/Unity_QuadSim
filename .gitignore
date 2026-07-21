@@ -7,6 +7,24 @@
 [Ll]ogs/
 [Uu]ser[Ss]ettings/
 
+# Local Unity host projects are not part of this package-root repository.
+/Assets/
+/Assets.meta
+/Packages/
+/Packages.meta
+/ProjectSettings/
+/ProjectSettings.meta
+/UIElementsSchema/
+/imgui.ini
+/imgui.ini.meta
+/runs/
+/runs.meta
+/Logs.meta
+/UserSettings.meta
+/obj.meta
+/*.csproj.meta
+/*.sln.meta
+
 # Rider / VS / CLion
 .idea/
 .vscode/
@@ -23,13 +41,5 @@ Thumbs.db
 # Crash reports
 sysinfo.txt
 
-# Addressables
-Assets/AddressableAssetsData/*/*.bin*
-
 # Gradle
 .gradle/
-runs/*.csv
-
-# Cesium
-Packages/com.cesium.unity/
-Assets/CesiumSettings/
