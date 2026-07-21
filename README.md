@@ -85,16 +85,16 @@ Then, in Unity:
 3. Paste:
 
 ```text
-https://github.com/ninonick0607/Unity_QuadSim.git?path=/Packages/com.nino.quadsim#v0.2.0
+https://github.com/ninonick0607/Unity_QuadSim.git#v0.2.1
 ```
 
 For active development, you can omit the tag and install the latest `main` branch:
 
 ```text
-https://github.com/ninonick0607/Unity_QuadSim.git?path=/Packages/com.nino.quadsim
+https://github.com/ninonick0607/Unity_QuadSim.git
 ```
 
-For reproducible research or lab machines, prefer a tagged version like `#v0.2.0`. The tag must exist before consumers can use that URL; until release, install `main` with the untagged URL.
+For reproducible research or lab machines, prefer a tagged version like `#v0.2.1`. The tag must exist before consumers can use that URL; until the release is tagged, install `main` with the untagged URL.
 
 ### Import the Sample Scene
 
@@ -104,7 +104,7 @@ After the package installs:
 2. Select **QuadSim**.
 3. Open the **Samples** section.
 4. Import **QuadSim Starter**.
-5. Open `Assets/Samples/QuadSim/0.2.0/QuadSim Starter/Maps/Land.unity` and press Play.
+5. Open `Assets/Samples/QuadSim/0.2.1/QuadSim Starter/Maps/Land.unity` and press Play.
 
 The imported sample owns the files users are expected to edit: the Land scene and terrain, `QuadSimSceneConfig`, `DroneCatalog`, drone prefabs, the example C# script, and YAML overrides under `StreamingAssets/Configs/Drones`. Simulation code, default fallback configs, models/materials, environment internals, and third-party plugins remain package-owned under `Packages/com.nino.quadsim/Runtime/`.
 
@@ -468,28 +468,24 @@ The headless executable can override both ports:
 
 ## Project Structure
 
-Repository and embedded-package layout:
+Package-root repository layout:
 
 ```text
 Unity_QuadSim/
-├── Assets/                         # development project only
-├── Packages/
-│   └── com.nino.quadsim/           # installable UPM package
-│       ├── package.json
-│       ├── Runtime/
-│       │   ├── Scripts/
-│       │   ├── Prefabs/
-│       │   ├── Resources/
-│       │   └── Plugins/ThirdParty/
-│       ├── Editor/
-│       ├── Samples~/
-│       │   ├── QuadSim Starter/
-│       │   └── PX4 SITL Tools/
-│       └── Documentation~/
-└── ProjectSettings/                # development project only
+├── package.json
+├── Runtime/
+│   ├── Scripts/
+│   ├── Prefabs/
+│   ├── Resources/
+│   └── Plugins/ThirdParty/
+├── Editor/
+├── Samples~/
+│   ├── QuadSim Starter/
+│   └── PX4 SITL Tools/
+└── Documentation~/
 ```
 
-Development repository layout may contain additional editor-only scenes, experiments, assets, and test scripts.
+The repository root is the installable UPM package. Develop and test it from a separate Unity host project by adding this repository as a local or Git package dependency.
 
 ---
 
