@@ -60,13 +60,11 @@ namespace DroneCore.Controllers.AxisControllers
                 return;
             }
 
-            if (_axis == 3)
-            {
-                float StateZ = StateData.ImuVel.z;
-                _output = _pidSet.Calculate(Goal, StateZ, deltaTime);
-                return;
-            }
-            float StateVel = StateData.ImuVel[_axis];
+            // Commands are heading-frame velocities: forward, left, and world-up.
+            // Do not use ImuVel here: it is expressed in the fully tilted body
+            // frame, so pitch/roll project horizontal flight onto its Z axis.
+            int headingAxis = _axis == 3 ? 2 : _axis;
+            float StateVel = StateData.HeadingVel[headingAxis];
             _output = _pidSet.Calculate(Goal, StateVel, deltaTime);
             
         }

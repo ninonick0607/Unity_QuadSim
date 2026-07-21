@@ -101,7 +101,7 @@ namespace DroneCore.Controllers
         private bool _hasValidSensorData;
 
         // Derived Controls
-        private Vector2 _desiredAttitude = Vector2.zero;
+        private float _desiredBodyUpCos = 1f;
         private readonly CascadeAxis[] _axes = new CascadeAxis[4];
         private ControlAllocator _controlAllocator = new ControlAllocator();
 
@@ -313,7 +313,7 @@ namespace DroneCore.Controllers
                 if (_axes[axis].Angle != null) _axes[axis].Angle.ClearExternalGoal();
             }
 
-            _desiredAttitude = Vector2.zero;
+            _desiredBodyUpCos = 1f;
 
             for (int axis = 0; axis < 4; axis++)
             {
@@ -446,6 +446,7 @@ namespace DroneCore.Controllers
             }
 
             Axis4 output = new Axis4();
+            _desiredBodyUpCos = 1f;
 
             // 1. Clear external goals
             for (int axis = 0; axis < 4; axis++)
@@ -542,6 +543,7 @@ namespace DroneCore.Controllers
                 {
                     _telemetry.DesiredAnglesDeg = new Vector3(cmd.X, cmd.Y, cmd.Z);
                     _telemetry.HasAngleSetpoint = true;
+                    _desiredBodyUpCos = AttitudeVerticalProjection(cmd.X, cmd.Y);
 
                     if (bGamepadAngle)
                     {
@@ -555,7 +557,7 @@ namespace DroneCore.Controllers
                 {
                     float velocityOutputX = _axes[0].Velocity.GetOutput();
                     float velocityOutputY = _axes[1].Velocity.GetOutput();
-                    Vector2 attCmd = AccelerationToAttitude(velocityOutputX, velocityOutputY);
+                    Vector2 attCmd = AccelerationToAttitude(velocityOutputX, velocityOutputY, out _desiredBodyUpCos);
 
                     _axes[1].Angle.SetExternalGoal(attCmd.x);
                     _axes[0].Angle.SetExternalGoal(attCmd.y);
@@ -563,10 +565,15 @@ namespace DroneCore.Controllers
                     _telemetry.DesiredAnglesDeg.x = attCmd.x;
                     _telemetry.DesiredAnglesDeg.y = attCmd.y;
                     _telemetry.HasAngleSetpoint = true;
+                    _telemetry.DesiredAccel = new Vector3(
+                        velocityOutputX,
+                        velocityOutputY,
+                        _axes[3].Velocity.GetOutput());
+                    _telemetry.HasAccelSetpoint = true;
                 }
                 else if (mode == GoalMode.Acceleration)
                 {
-                    Vector2 attCmd = AccelerationToAttitude(accelCmd.x, accelCmd.y);
+                    Vector2 attCmd = AccelerationToAttitude(accelCmd.x, accelCmd.y, out _desiredBodyUpCos);
 
                     _axes[1].Angle.SetExternalGoal(attCmd.x);
                     _axes[0].Angle.SetExternalGoal(attCmd.y);
@@ -646,7 +653,11 @@ namespace DroneCore.Controllers
                 float zAccel = (mode == GoalMode.Acceleration)
                     ? accelCmd.z
                     : _axes[3].Velocity.GetOutput();
-                output[3] = _hoverThrottle01 * (1.0f + zAccel / 9.81f);
+                // Project the requested world-vertical thrust onto the planned
+                // body-up direction. This matches PX4's essential operation:
+                // collective_thrust = thrust_z / cos(body_z, world_z).
+                output[3] = _hoverThrottle01 * (1.0f + zAccel / 9.81f)
+                            / Mathf.Max(0.1f, _desiredBodyUpCos);
             }
 
             if (mode == GoalMode.Passthrough)
@@ -707,14 +718,6 @@ namespace DroneCore.Controllers
             // Calculate throttle
             float throttle01 = Mathf.Clamp(thrustOut, 0f, 1f);
             
-            // Tilt compensation
-            float tiltRad = Mathf.Deg2Rad * Mathf.Sqrt(
-                _desiredAttitude.x * _desiredAttitude.x +
-                _desiredAttitude.y * _desiredAttitude.y
-            );
-            float tiltComp = 1f / Mathf.Max(0.5f, Mathf.Cos(tiltRad));
-            throttle01 *= tiltComp;
-
             const float MinIdleThrottle = 0.04f;
             throttle01 = Mathf.Clamp(throttle01, MinIdleThrottle, 1f);
 
@@ -753,17 +756,31 @@ namespace DroneCore.Controllers
         // Utilities
         // ============================================================================
 
-        private Vector2 AccelerationToAttitude(float accelX, float accelY)
+        private Vector2 AccelerationToAttitude(float accelX, float accelY, out float bodyUpCos)
         {
             const float g = 9.81f;
 
-            Vector3 bodyZ = new Vector3(accelX, accelY, g);
+            // Limit horizontal acceleration as a vector. Per-axis limiting alone
+            // permits sqrt(2) times the configured tilt on diagonal commands.
+            float maxHorizontalAccel = Mathf.Tan(_cachedConfig.FlightParams.MaxAngle * Mathf.Deg2Rad) * g;
+            Vector2 horizontalAccel = Vector2.ClampMagnitude(
+                new Vector2(accelX, accelY), maxHorizontalAccel);
+
+            Vector3 bodyZ = new Vector3(horizontalAccel.x, horizontalAccel.y, g);
             bodyZ.Normalize();
+            bodyUpCos = bodyZ.z;
 
             float pitchRad = Mathf.Atan2(bodyZ.x, bodyZ.z);
             float rollRad  = Mathf.Atan2(bodyZ.y, bodyZ.z);
             
             return new Vector2(Mathf.Rad2Deg * pitchRad, Mathf.Rad2Deg * -rollRad);
+        }
+
+        private static float AttitudeVerticalProjection(float rollDeg, float pitchDeg)
+        {
+            float rollRad = rollDeg * Mathf.Deg2Rad;
+            float pitchRad = pitchDeg * Mathf.Deg2Rad;
+            return Mathf.Max(0f, Mathf.Cos(rollRad) * Mathf.Cos(pitchRad));
         }
         private SimFrame GetCurrentFrame()
         {

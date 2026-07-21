@@ -363,19 +363,34 @@ namespace DroneCore.Controls
                 return 0f;
             }
 
-            // ── 1) Base motor outputs (roll + pitch + thrust, no yaw) ──
-
-            // Control setpoint: [roll, pitch, 0, 0, 0, thrust]
-            float[] uBase = { rollTorque01, pitchTorque01, 0f, 0f, 0f, thrustZ01 };
+            // ── 1) Thrust base, then roll/pitch within remaining headroom ──
+            // Keep collective thrust authoritative. The former final "shift down"
+            // preserved torque differences by removing collective, causing altitude
+            // loss during aggressive horizontal commands.
+            float[] uThrust = { 0f, 0f, 0f, 0f, 0f, thrustZ01 };
+            float[] uRollPitch = { rollTorque01, pitchTorque01, 0f, 0f, 0f, 0f };
 
             float[] baseMotor = new float[numMotors];
+            float[] rollPitchDirection = new float[numMotors];
             for (int m = 0; m < numMotors; m++)
             {
-                float o = 0f;
+                float thrust = 0f;
+                float rollPitch = 0f;
                 for (int axis = 0; axis < EffectivenessMatrix.NumAxes; axis++)
-                    o += _effectiveness.PseudoInverse[m, axis] * uBase[axis];
-                baseMotor[m] = o;
+                {
+                    thrust += _effectiveness.PseudoInverse[m, axis] * uThrust[axis];
+                    rollPitch += _effectiveness.PseudoInverse[m, axis] * uRollPitch[axis];
+                }
+
+                baseMotor[m] = thrust;
+                rollPitchDirection[m] = rollPitch;
             }
+
+            float rollPitchScale = ComputeDemandScaleFromHeadroom(
+                baseMotor, rollPitchDirection, numMotors, minMotorOutput, 1f);
+
+            for (int m = 0; m < numMotors; m++)
+                baseMotor[m] += rollPitchDirection[m] * rollPitchScale;
 
             // ── 2) Per-motor direction for +1.0 yaw command ──
             //   (column for yaw axis = axis 2 of pseudo-inverse)
@@ -403,23 +418,38 @@ namespace DroneCore.Controls
             float yawApplied01 = Mathf.Sign(yawTorque01) * Mathf.Min(yawAbs, sMax);
 
             // ── 4) Final allocation with applied yaw ──
-
-            float[] uFinal = { rollTorque01, pitchTorque01, yawApplied01, 0f, 0f, thrustZ01 };
-
             for (int m = 0; m < numMotors; m++)
             {
-                float o = 0f;
-                for (int axis = 0; axis < EffectivenessMatrix.NumAxes; axis++)
-                    o += _effectiveness.PseudoInverse[m, axis] * uFinal[axis];
-                outMotor01[m] = o;
+                outMotor01[m] = baseMotor[m]
+                                + _effectiveness.PseudoInverse[m, 2] * yawApplied01;
             }
 
-            // ── 5) Post-process: shift / clamp (mirrors UE PostProcessMotorOutputs) ──
-
-            PostProcessMotorOutputs(outMotor01, numMotors, minMotorOutput);
+            // Numerical guard only. Feasible torque demands were scaled above;
+            // do not translate all motors and thereby alter collective thrust.
+            for (int m = 0; m < numMotors; m++)
+                outMotor01[m] = Mathf.Clamp(outMotor01[m], minMotorOutput, 1f);
 
             return (yawAbs > 1e-6f) ? Mathf.Min(1f, sMax / yawAbs) : 1f;
             
+        }
+
+        private static float ComputeDemandScaleFromHeadroom(
+            float[] baseMotor, float[] direction, int numMotors,
+            float minMotorOutput, float maxMotorOutput)
+        {
+            float scale = 1f;
+
+            for (int m = 0; m < numMotors; m++)
+            {
+                float d = direction[m];
+
+                if (d > 1e-8f)
+                    scale = Mathf.Min(scale, (maxMotorOutput - baseMotor[m]) / d);
+                else if (d < -1e-8f)
+                    scale = Mathf.Min(scale, (baseMotor[m] - minMotorOutput) / -d);
+            }
+
+            return Mathf.Clamp01(scale);
         }
 
         // ────────────────────────────────────────────────────────────

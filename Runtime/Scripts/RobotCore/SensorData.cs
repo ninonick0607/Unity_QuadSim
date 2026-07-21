@@ -27,6 +27,11 @@ namespace RobotCore
         public double ImuTimestampSec;
         public bool ImuValid;
 
+        // Controller feedback — yaw/heading frame, independent of roll and pitch.
+        // X=forward, Y=left, Z=up. This is intentionally not the IMU body velocity:
+        // using a fully tilted body frame would project horizontal flight onto Z.
+        public Vector3 HeadingVel;
+
         // GPS — WORLD frame, always ENU (x=E, y=N, z=Up/altitude)
         public Vector3 GpsPosition;
         public double GpsTimestampSec;
