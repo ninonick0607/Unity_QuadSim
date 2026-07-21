@@ -12,7 +12,6 @@ namespace DroneCore.CameraSystem
         FPV = 3,
     }
 
-    [DefaultExecutionOrder(-100)]
     [DisallowMultipleComponent]
     public sealed class CameraDirector : MonoBehaviour
     {
@@ -308,7 +307,7 @@ namespace DroneCore.CameraSystem
             SaveRuntimeState();
         }
 
-        private void Update()
+        private void LateUpdate()
         {
             if (Application.isBatchMode)
             {
@@ -360,7 +359,6 @@ namespace DroneCore.CameraSystem
             if (_targetRig == null) return;
 
             Transform target = _targetRig.FollowTarget;
-            Vector3 focus = target.position + target.TransformVector(_socketOffset) + Vector3.up * lookHeight;
             Vector3 desiredPosition;
             Quaternion desiredRotation;
 
@@ -370,21 +368,36 @@ namespace DroneCore.CameraSystem
                 desiredPosition = mount.position;
                 desiredRotation = mount.rotation;
             }
-            else if (_mode == CameraViewMode.Orbit)
+            else
             {
-                Vector3 nose = Vector3.ProjectOnPlane(target.right, Vector3.up).normalized;
+                // The chase/orbit rig follows heading, not the aircraft attitude.
+                // In this project the drone's nose is its local +X (target.right).
+                // Flattening it keeps pitch and roll out of the camera position,
+                // while FPV above still inherits the real mount rotation.
+                Vector3 nose = Vector3.ProjectOnPlane(target.right, Vector3.up);
+                if (nose.sqrMagnitude < 0.0001f)
+                    nose = Vector3.right;
+                else
+                    nose.Normalize();
+
                 float targetYaw = nose.sqrMagnitude > 0f
                     ? Mathf.Atan2(nose.x, nose.z) * Mathf.Rad2Deg
                     : 0f;
-                Quaternion orbit = Quaternion.Euler(orbitPitchDeg, targetYaw + orbitYawDeg, 0f);
-                desiredPosition = focus + orbit * (Vector3.back * followDistance);
-                desiredRotation = Quaternion.LookRotation(focus - desiredPosition, Vector3.up);
-            }
-            else
-            {
-                float height = Mathf.Tan(-followPitchDeg * Mathf.Deg2Rad) * followDistance;
-                desiredPosition = focus - target.right * followDistance + Vector3.up * height;
-                desiredRotation = Quaternion.LookRotation(focus - desiredPosition, Vector3.up);
+                Quaternion heading = Quaternion.Euler(0f, targetYaw - 90f, 0f);
+                Vector3 focus = target.position + heading * _socketOffset + Vector3.up * lookHeight;
+
+                if (_mode == CameraViewMode.Orbit)
+                {
+                    Quaternion orbit = Quaternion.Euler(orbitPitchDeg, targetYaw + orbitYawDeg, 0f);
+                    desiredPosition = focus + orbit * (Vector3.back * followDistance);
+                    desiredRotation = Quaternion.LookRotation(focus - desiredPosition, Vector3.up);
+                }
+                else
+                {
+                    float height = Mathf.Tan(-followPitchDeg * Mathf.Deg2Rad) * followDistance;
+                    desiredPosition = focus - nose * followDistance + Vector3.up * height;
+                    desiredRotation = Quaternion.LookRotation(focus - desiredPosition, Vector3.up);
+                }
             }
 
             float positionT = deltaTime >= 1f ? 1f : 1f - Mathf.Exp(-positionSharpness * deltaTime);

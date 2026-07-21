@@ -372,8 +372,10 @@ namespace DroneCore
             // Rigidbody setup for simulation
             rb.useGravity = true;
             rb.isKinematic = false;
-           // rb.interpolation = RigidbodyInterpolation.None;
-           // rb.collisionDetectionMode = CollisionDetectionMode.Discrete;
+            // Smooth the rendered pose between fixed physics ticks. This does not
+            // alter the Rigidbody's simulated position, velocity, or applied forces.
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
+            // rb.collisionDetectionMode = CollisionDetectionMode.Discrete;
             rb.maxAngularVelocity = 100f;
             Debug.Log($"[QuadPawn] {DroneID}: Inertia tensor = {rb.inertiaTensor}");
             Debug.Log($"[QuadPawn] {DroneID}: Physical config applied (mass={rb.mass}kg)");
