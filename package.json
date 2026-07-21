@@ -1,11 +1,10 @@
 {
   "name": "com.nino.quadsim",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "displayName": "QuadSim",
   "description": "Deterministic Unity quadrotor simulation with editable starter content, sensors, controllers, RPC, and Python SDK integration.",
   "unity": "6000.0",
   "dependencies": {
-    "com.psydack.uimgui": "7.1.0",
     "com.unity.inputsystem": "1.19.0",
     "com.unity.render-pipelines.high-definition": "17.4.0"
   },

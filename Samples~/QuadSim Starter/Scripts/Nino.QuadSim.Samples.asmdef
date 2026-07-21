@@ -1,0 +1,16 @@
+{
+  "name": "Nino.QuadSim.Samples",
+  "rootNamespace": "Nino.QuadSim.Samples",
+  "references": [
+    "GUID:953ca8e47f8dbc604b521b39796f23d3"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

@@ -228,6 +228,20 @@ namespace RobotCore
             var latest = Latest;
             latest.BodyFrame = outputFrame;   // self-description for the RPC payload
 
+            // Translational control uses a yaw-only heading frame. Roll and pitch
+            // must not rotate horizontal motion into the vertical velocity loop.
+            // Unity local axes are X=forward, Y=up, Z=left; expose FLU ordering.
+            // Keep this explicit transform identical to the setpoint conversion
+            // in CascadedController.OutputFrameVelToHeadingVel.
+            float yawRad = bodyTransform.eulerAngles.y * Mathf.Deg2Rad;
+            float cosYaw = Mathf.Cos(yawRad);
+            float sinYaw = Mathf.Sin(yawRad);
+            Vector3 velocityWorld = rb.linearVelocity;
+            latest.HeadingVel = new Vector3(
+                cosYaw * velocityWorld.x + sinYaw * velocityWorld.z,
+                -sinYaw * velocityWorld.x + cosYaw * velocityWorld.z,
+                velocityWorld.y);
+
             // IMU
             if (_imuLimiter.ShouldRunAndConsume(nowNanos))
             {

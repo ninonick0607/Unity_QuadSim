@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.3] - 2026-07-21
+
+- Bundled the pinned UImGui 7.1.0 runtime and matching ImGui.NET binding directly with QuadSim.
+- Bundled native ImGui libraries for Windows, Linux, Intel macOS, and Apple Silicon macOS.
+- Marked the managed ImGui.NET assembly as `AnyCPU` so Apple Silicon Unity Editors load the correct binding.
+- Removed the external UImGui/OpenUPM installation requirement and warned against separately installed duplicate bindings.
+- Added an explicit sample assembly reference to `Nino.QuadSim` so `InternalApiExample` resolves the runtime API reliably in consumer projects.
+- Documented the required HDRP project configuration and stale-sample cleanup procedure.
+
 ## [0.2.2] - 2026-07-21
 
 - Fixed a global `Editor` namespace collision that prevented consumer projects containing common tutorial scripts from compiling.

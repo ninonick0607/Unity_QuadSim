@@ -63,6 +63,7 @@ Use this README to install and run the Unity simulator. Use the Python SDK docs 
 ### Requirements
 
 - Unity 6 / Unity 6000.x
+- An HDRP-configured project. The QuadSim scene and terrain use HDRP shaders; the easiest starting point is Unity Hub's **High Definition 3D** template.
 - Git
 - Git LFS installed and available on `PATH` (the package contains large drone assets)
 - Python 3.8+ for Python SDK control
@@ -70,23 +71,17 @@ Use this README to install and run the Unity simulator. Use the Python SDK docs 
 
 ### Install the Unity Package
 
-QuadSim uses UImGui for its runtime interface. Install the pinned UImGui dependency first through **Window → Package Manager → + → Add package from git URL...**:
-
-```text
-https://github.com/psydack/uimgui.git#7.1.0
-```
-
-Then install QuadSim:
-
 1. Open **Window → Package Manager**.
 2. Click **+** and choose **Add package from git URL...**.
 3. Paste:
 
 ```text
-https://github.com/ninonick0607/Unity_QuadSim.git#v0.2.2
+https://github.com/ninonick0607/Unity_QuadSim.git#v0.2.3
 ```
 
-Alternatively, UImGui can be resolved from OpenUPM by adding a scoped registry in **Edit → Project Settings → Package Manager** with name `OpenUPM`, URL `https://package.openupm.com`, and scope `com.psydack.uimgui` before installing QuadSim.
+QuadSim includes its pinned UImGui 7.1.0 runtime, matching ImGui.NET managed binding, and Windows, Linux, and universal macOS native libraries. Do not install UImGui or ImGui.NET separately; a second copy can cause duplicate or mismatched assembly errors.
+
+Installing the HDRP package does not by itself assign an HDRP pipeline asset to an existing Built-in project. If the scene is pink, open **Window → Rendering → HDRP Wizard**, select the HDRP tab, and run **Fix All** before importing or reopening the sample scene.
 
 For active development, you can omit the tag and install the latest `main` branch:
 
@@ -94,7 +89,7 @@ For active development, you can omit the tag and install the latest `main` branc
 https://github.com/ninonick0607/Unity_QuadSim.git
 ```
 
-For reproducible research or lab machines, prefer a tagged version like `#v0.2.2`. The tag must exist before consumers can use that URL; until the release is tagged, install `main` with the untagged URL.
+For reproducible research or lab machines, prefer a tagged version like `#v0.2.3`. The tag must exist before consumers can use that URL; until the release is tagged, install `main` with the untagged URL.
 
 ### Import the Sample Scene
 
@@ -104,7 +99,9 @@ After the package installs:
 2. Select **QuadSim**.
 3. Open the **Samples** section.
 4. Import **QuadSim Starter**.
-5. Open `Assets/Samples/QuadSim/0.2.2/QuadSim Starter/Maps/Land.unity` and press Play.
+5. Open `Assets/Samples/QuadSim/0.2.3/QuadSim Starter/Maps/Land.unity` and press Play.
+
+Delete older imported copies such as `Assets/Samples/QuadSim/0.2.0` before importing a newer sample version. Unity samples are copied into `Assets` and are not upgraded in place.
 
 The imported sample owns the files users are expected to edit: the Land scene and terrain, `Configuration/Default_SceneConfig`, `Prefabs/DroneCatalog`, the base and environment prefabs, every drone under `Prefabs/Quad Prefabs`, the example C# script, and YAML overrides under `StreamingAssets/Configs/Drones`. Simulation code, default fallback configs, models/materials, environment internals, and third-party plugins remain package-owned under `Packages/com.nino.quadsim/Runtime/`.
 
