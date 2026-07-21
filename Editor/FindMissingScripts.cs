@@ -1,7 +1,7 @@
 using UnityEditor;
 using UnityEngine;
 
-namespace Editor
+namespace Nino.QuadSim.Editor
 {
     public static class FindMissingScripts
     {

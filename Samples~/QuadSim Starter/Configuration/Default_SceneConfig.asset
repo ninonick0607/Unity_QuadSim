@@ -10,8 +10,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ac58421b6963eb5b78405541ac5fd441, type: 3}
-  m_Name: QuadSimSceneConfig
-  m_EditorClassIdentifier: Assembly-CSharp::SimCore.QuadSimSceneConfig
+  m_Name: Default_SceneConfig
+  m_EditorClassIdentifier: Nino.QuadSim::SimCore.QuadSimSceneConfig
   RunMode: 0
   droneConfigName: flightmare_quad
   droneCatalog: {fileID: 11400000, guid: 0ad1ad09475f47b192e60336df5e5ed4, type: 2}

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2] - 2026-07-21
+
+- Fixed a global `Editor` namespace collision that prevented consumer projects containing common tutorial scripts from compiling.
+- Restored the editable Starter sample hierarchy to `Configuration`, `Prefabs`, and `Prefabs/Quad Prefabs`.
+- Renamed the editable scene configuration to `Default_SceneConfig` and retained its complete simulation, mode, spawning, payload, RPC, origin, noise, and wind settings.
+- Documented the direct Git installation order for UImGui and QuadSim.
+
 ## [0.2.1] - 2026-07-21
 
 - Promoted the installable QuadSim package to the repository root.

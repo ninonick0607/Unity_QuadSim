@@ -70,23 +70,23 @@ Use this README to install and run the Unity simulator. Use the Python SDK docs 
 
 ### Install the Unity Package
 
-QuadSim uses UImGui from OpenUPM. Add this scoped registry once in **Edit → Project Settings → Package Manager**:
+QuadSim uses UImGui for its runtime interface. Install the pinned UImGui dependency first through **Window → Package Manager → + → Add package from git URL...**:
 
 ```text
-Name: OpenUPM
-URL:  https://package.openupm.com
-Scope: com.psydack.uimgui
+https://github.com/psydack/uimgui.git#7.1.0
 ```
 
-Then, in Unity:
+Then install QuadSim:
 
 1. Open **Window → Package Manager**.
 2. Click **+** and choose **Add package from git URL...**.
 3. Paste:
 
 ```text
-https://github.com/ninonick0607/Unity_QuadSim.git#v0.2.1
+https://github.com/ninonick0607/Unity_QuadSim.git#v0.2.2
 ```
+
+Alternatively, UImGui can be resolved from OpenUPM by adding a scoped registry in **Edit → Project Settings → Package Manager** with name `OpenUPM`, URL `https://package.openupm.com`, and scope `com.psydack.uimgui` before installing QuadSim.
 
 For active development, you can omit the tag and install the latest `main` branch:
 
@@ -94,7 +94,7 @@ For active development, you can omit the tag and install the latest `main` branc
 https://github.com/ninonick0607/Unity_QuadSim.git
 ```
 
-For reproducible research or lab machines, prefer a tagged version like `#v0.2.1`. The tag must exist before consumers can use that URL; until the release is tagged, install `main` with the untagged URL.
+For reproducible research or lab machines, prefer a tagged version like `#v0.2.2`. The tag must exist before consumers can use that URL; until the release is tagged, install `main` with the untagged URL.
 
 ### Import the Sample Scene
 
@@ -104,9 +104,9 @@ After the package installs:
 2. Select **QuadSim**.
 3. Open the **Samples** section.
 4. Import **QuadSim Starter**.
-5. Open `Assets/Samples/QuadSim/0.2.1/QuadSim Starter/Maps/Land.unity` and press Play.
+5. Open `Assets/Samples/QuadSim/0.2.2/QuadSim Starter/Maps/Land.unity` and press Play.
 
-The imported sample owns the files users are expected to edit: the Land scene and terrain, `QuadSimSceneConfig`, `DroneCatalog`, drone prefabs, the example C# script, and YAML overrides under `StreamingAssets/Configs/Drones`. Simulation code, default fallback configs, models/materials, environment internals, and third-party plugins remain package-owned under `Packages/com.nino.quadsim/Runtime/`.
+The imported sample owns the files users are expected to edit: the Land scene and terrain, `Configuration/Default_SceneConfig`, `Prefabs/DroneCatalog`, the base and environment prefabs, every drone under `Prefabs/Quad Prefabs`, the example C# script, and YAML overrides under `StreamingAssets/Configs/Drones`. Simulation code, default fallback configs, models/materials, environment internals, and third-party plugins remain package-owned under `Packages/com.nino.quadsim/Runtime/`.
 
 Do not edit files directly under `Packages/`; Git-installed package changes can be replaced on update. Edit the imported copies under `Assets/Samples/QuadSim/...` instead.
 
