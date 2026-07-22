@@ -23,7 +23,11 @@ namespace DroneCore.CameraSystem
         [SerializeField] private float followDistance = 0.9f;
         [SerializeField] private float followPitchDeg = -15f;
         [SerializeField] private float lookHeight = 0.15f;
+
+        [Header("Orbit Damping")]
+        [Tooltip("Orbit camera position response. Follow and FPV track exactly to avoid visual lag behind the Rigidbody.")]
         [SerializeField] private float positionSharpness = 10f;
+        [Tooltip("Orbit camera rotation response. Follow and FPV track exactly to avoid visual lag behind the Rigidbody.")]
         [SerializeField] private float rotationSharpness = 14f;
 
         [Header("Orbit / Free")]
@@ -400,8 +404,19 @@ namespace DroneCore.CameraSystem
                 }
             }
 
-            float positionT = deltaTime >= 1f ? 1f : 1f - Mathf.Exp(-positionSharpness * deltaTime);
-            float rotationT = deltaTime >= 1f ? 1f : 1f - Mathf.Exp(-rotationSharpness * deltaTime);
+            // Follow and FPV must use the same rendered target pose as the drone.
+            // Damping these modes adds a second delayed pose after Rigidbody
+            // interpolation, making the aircraft visibly hitch ahead of its camera.
+            // Orbit remains damped because its camera movement is user-directed and
+            // does not need to keep the aircraft rigidly fixed in the frame.
+            if (_mode != CameraViewMode.Orbit || deltaTime >= 1f)
+            {
+                viewCamera.transform.SetPositionAndRotation(desiredPosition, desiredRotation);
+                return;
+            }
+
+            float positionT = 1f - Mathf.Exp(-positionSharpness * deltaTime);
+            float rotationT = 1f - Mathf.Exp(-rotationSharpness * deltaTime);
             viewCamera.transform.position = Vector3.Lerp(viewCamera.transform.position, desiredPosition, positionT);
             viewCamera.transform.rotation = Quaternion.Slerp(viewCamera.transform.rotation, desiredRotation, rotationT);
         }
