@@ -396,6 +396,8 @@ For packaged builds, runtime-readable configs should live in Unity-accessible pa
 
 The sample scene can visualize the drone, ground plane, telemetry HUD, and optional ghost/setpoint markers.
 
+The runtime camera supports Follow, FPV, Orbit, and Free modes. Follow and FPV track the drone's rendered pose exactly so Rigidbody interpolation does not compound with camera damping or make the drone appear to hitch ahead of the view. Orbit mode retains position and rotation damping for smooth user-controlled movement.
+
 ### Headless UDP Viewer
 
 For headless runs, stream the state from Python to a separate UDP viewer:
