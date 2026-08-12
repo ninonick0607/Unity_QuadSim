@@ -98,9 +98,11 @@ namespace QuadSim.RuntimeUI.ImGuiHud
 
             var wFlags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.AlwaysAutoResize;
 
-            if (ImGui.Begin($"Control Panel - {pawn.DroneID}##CP_{pawn.GetInstanceID()}", ref _open, wFlags))
+            var entityId = pawn.GetEntityId();
+
+            if (ImGui.Begin($"Control Panel - {pawn.DroneID}##CP_{entityId}", ref _open, wFlags))
             {
-                ImGui.PushID(pawn.GetInstanceID());
+                ImGui.PushID(entityId.GetHashCode());
 
                 DrawDroneCombo(dm, pawn);
                 DrawAuthorityRow(sim, canCommand);

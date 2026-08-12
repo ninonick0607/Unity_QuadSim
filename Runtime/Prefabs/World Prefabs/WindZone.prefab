@@ -122,4 +122,4 @@ MonoBehaviour:
   _turbulenceStrength: 2
   _turbulenceFrequency: 5
   _toggle: 0
-  _logForces: 1
+  _logForces: 0

@@ -13,8 +13,9 @@ namespace Experimental
     /// multi-collider rigs would otherwise multiply the force).
     ///
     /// All timing is sim-time via ClockFactory — never UnityEngine.Time.
-    /// Logs applied force per step to CSV for ground-truth overlay against
-    /// the Python-side d_est / phi.
+    /// Can optionally log applied force per step to CSV for ground-truth overlay
+    /// against the Python-side d_est / phi. This is disabled by default because
+    /// per-step string formatting and disk I/O are expensive at simulation rates.
     /// </summary>
     [RequireComponent(typeof(BoxCollider))]
     public class WindModule : MonoBehaviour
@@ -36,8 +37,8 @@ namespace Experimental
         [SerializeField] private bool _toggle = false;
 
         [Header("Diagnostics")]
-        [Tooltip("Write per-step applied-force CSV to <project>/runs/wind_log_*.csv")]
-        [SerializeField] private bool _logForces = true;
+        [Tooltip("Write per-step applied-force CSV to <project>/runs/wind_log_*.csv. Expensive; enable only for diagnostics.")]
+        [SerializeField] private bool _logForces = false;
 
         private BoxCollider _boxCollider;
 
@@ -132,6 +133,11 @@ namespace Experimental
                 FlushPendingRows();          // write last step's rows (with final callback counts)
                 _lastStepCount = step;
             }
+
+            // With both force and diagnostics disabled there is nothing to do.
+            // Avoid geometry, turbulence, allocations, and dictionary work for
+            // every trigger callback while the wind zone is inactive.
+            if (!_toggle && _log == null) return;
 
             if (_pendingRows.TryGetValue(rb, out var existing))
             {

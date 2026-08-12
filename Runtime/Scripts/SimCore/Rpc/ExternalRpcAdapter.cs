@@ -339,10 +339,11 @@ namespace SimCore.Rpc
         }
 
         /// <summary>
-        /// NetMQ cleanup is process-global. Run it exactly once on Unity's main
-        /// thread, and only after the socket thread has fully stopped and joined.
-        /// Blocking cleanup prevents the next Editor play session from creating
-        /// sockets while the previous NetMQ context is still terminating.
+        /// NetMQ cleanup is process-global. Run it exactly once, and only after
+        /// the socket thread has fully stopped and joined. The sockets use zero
+        /// linger, so there are no pending messages that justify blocking cleanup.
+        /// In particular, Cleanup(true) can wait forever for NetMQ's reaper on
+        /// macOS and freeze Unity's main thread while exiting Play mode.
         /// </summary>
         private void ShutdownNetMq()
         {
@@ -357,7 +358,8 @@ namespace SimCore.Rpc
 
             try
             {
-                NetMQConfig.Cleanup(true);
+                NetMQConfig.Cleanup(false);
+                Debug.Log("[RpcAdapter] NetMQ cleanup completed.");
             }
             catch (Exception ex)
             {
