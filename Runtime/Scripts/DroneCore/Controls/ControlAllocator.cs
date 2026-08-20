@@ -36,28 +36,15 @@ namespace DroneCore.Controls
         }
     }
 
-    // ────────────────────────────────────────────────────────────────
-    //  Allocation constraints  (mirrors UE FAllocationConstraints)
-    // ────────────────────────────────────────────────────────────────
-
     [Serializable]
-    public struct AllocationConstraints
+    public sealed class AllocationDiagnostics
     {
-        /// <summary>Reserve headroom at top so torque axes still work at high thrust.</summary>
-        public float ThrottleReserve01;
-
-        /// <summary>Enable yaw limiting based on remaining headroom.</summary>
-        public bool LimitYaw;
-
-        /// <summary>Optional safety margin for saturation checks.</summary>
-        public float SafetyMargin01;
-
-        public static AllocationConstraints Default => new AllocationConstraints
-        {
-            ThrottleReserve01 = 0f,
-            LimitYaw          = true,
-            SafetyMargin01    = 0f,
-        };
+        public Vector4 Requested;
+        public Vector4 Achieved;
+        public float RollPitchScale = 1f;
+        public float YawScale = 1f;
+        public float Residual;
+        public bool[] SaturatedMotors = Array.Empty<bool>();
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -67,10 +54,6 @@ namespace DroneCore.Controls
     /// <summary>
     /// Allocates (roll, pitch, yaw, thrustZ) control demands into motor outputs [0..1]
     /// using an effectiveness-matrix-based approach.
-    ///
-    /// Note: current "pseudo inverse" is a normalised transpose with authority clamping
-    /// (not a true SVD pseudo-inverse). That's fine; encapsulating here makes it easy
-    /// to evolve later.
     ///
     /// Unity body frame convention:
     ///   +X forward (nose)   = transform.right
@@ -89,6 +72,7 @@ namespace DroneCore.Controls
 
         // ── Internal state ─────────────────────────────────────────
         private readonly EffectivenessMatrix _effectiveness = new EffectivenessMatrix();
+        private AllocationDiagnostics _lastAllocation = new AllocationDiagnostics();
 
         public ControlAllocator()
         {
@@ -98,12 +82,20 @@ namespace DroneCore.Controls
         // ── Public accessors ───────────────────────────────────────
         public int                      NumMotors       => _effectiveness.NumMotors;
         public EffectivenessMatrix      Effectiveness   => _effectiveness;
-        private int _allocDebugTick;
+        public AllocationDiagnostics    LastAllocation  => _lastAllocation;
+        public int                      Rank            { get; private set; }
+        public float                    ConditionNumber { get; private set; }
+        public bool IsFullRank => Rank == Mathf.Min(ControlAxes.Length, NumMotors);
         // ── Reset ──────────────────────────────────────────────────
         public void Reset()
         {
             _effectiveness.Clear();
+            Rank = 0;
+            ConditionNumber = float.PositiveInfinity;
+            ResetDiagnostics();
         }
+
+        public void ResetDiagnostics() => _lastAllocation = new AllocationDiagnostics();
         
         public float AllocateWrench(
             float thrustN, float torqueXNm, float torqueYNm, float torqueZNm,
@@ -113,6 +105,7 @@ namespace DroneCore.Controls
             if (numMotors <= 0 || maxThrust <= 1e-6f)
             {
                 if (outMotor01 != null) Array.Clear(outMotor01, 0, outMotor01.Length);
+                ResetDiagnostics();
                 return 0f;
             }
 
@@ -193,6 +186,7 @@ namespace DroneCore.Controls
             }
 
             ComputePseudoInverse();
+            AnalyzeEffectiveness();
         }
         // Control axes routed through the allocator: Roll, Pitch, Yaw, Thrust.
         // (Fx/Fy rows are unused for a standard quad and stay zero.)
@@ -349,6 +343,74 @@ namespace DroneCore.Controls
             return true;
         }
 
+        private void AnalyzeEffectiveness()
+        {
+            int rows = ControlAxes.Length;
+            int cols = _effectiveness.NumMotors;
+            double[,] work = new double[rows, cols];
+            double maxMagnitude = 0.0;
+            for (int r = 0; r < rows; r++)
+            {
+                for (int c = 0; c < cols; c++)
+                {
+                    double value = _effectiveness.Data[ControlAxes[r], c];
+                    work[r, c] = value;
+                    maxMagnitude = Math.Max(maxMagnitude, Math.Abs(value));
+                }
+            }
+
+            Rank = 0;
+            double tolerance = Math.Max(1e-10, maxMagnitude * 1e-7);
+            for (int col = 0; col < cols && Rank < rows; col++)
+            {
+                int pivot = Rank;
+                for (int r = Rank + 1; r < rows; r++)
+                    if (Math.Abs(work[r, col]) > Math.Abs(work[pivot, col])) pivot = r;
+                if (Math.Abs(work[pivot, col]) <= tolerance) continue;
+
+                for (int c = col; c < cols; c++)
+                {
+                    double temp = work[Rank, c];
+                    work[Rank, c] = work[pivot, c];
+                    work[pivot, c] = temp;
+                }
+                double divisor = work[Rank, col];
+                for (int c = col; c < cols; c++) work[Rank, c] /= divisor;
+                for (int r = 0; r < rows; r++)
+                {
+                    if (r == Rank) continue;
+                    double factor = work[r, col];
+                    for (int c = col; c < cols; c++) work[r, c] -= factor * work[Rank, c];
+                }
+                Rank++;
+            }
+
+            if (!IsFullRank)
+            {
+                ConditionNumber = float.PositiveInfinity;
+                return;
+            }
+
+            double aNorm = 0.0;
+            for (int r = 0; r < rows; r++)
+            {
+                double sum = 0.0;
+                for (int c = 0; c < cols; c++)
+                    sum += Math.Abs(_effectiveness.Data[ControlAxes[r], c]);
+                aNorm = Math.Max(aNorm, sum);
+            }
+
+            double inverseNorm = 0.0;
+            for (int m = 0; m < cols; m++)
+            {
+                double sum = 0.0;
+                for (int r = 0; r < rows; r++)
+                    sum += Math.Abs(_effectiveness.PseudoInverse[m, ControlAxes[r]]);
+                inverseNorm = Math.Max(inverseNorm, sum);
+            }
+            ConditionNumber = (float)(aNorm * inverseNorm);
+        }
+
         public float AllocateYawLimited(float rollTorque01,float pitchTorque01,float yawTorque01,float thrustZ01,float minMotorOutput, float[] outMotor01)
         {
             int numMotors = _effectiveness.NumMotors;
@@ -360,6 +422,7 @@ namespace DroneCore.Controls
             if (numMotors <= 0)
             {
                 if (outMotor01 != null) Array.Clear(outMotor01, 0, outMotor01.Length);
+                ResetDiagnostics();
                 return 0f;
             }
 
@@ -429,8 +492,43 @@ namespace DroneCore.Controls
             for (int m = 0; m < numMotors; m++)
                 outMotor01[m] = Mathf.Clamp(outMotor01[m], minMotorOutput, 1f);
 
-            return (yawAbs > 1e-6f) ? Mathf.Min(1f, sMax / yawAbs) : 1f;
+            float yawScale = (yawAbs > 1e-6f) ? Mathf.Min(1f, sMax / yawAbs) : 1f;
+            UpdateDiagnostics(
+                rollTorque01, pitchTorque01, yawTorque01, thrustZ01,
+                rollPitchScale, yawScale, minMotorOutput, outMotor01);
+            return yawScale;
             
+        }
+
+        private void UpdateDiagnostics(
+            float roll, float pitch, float yaw, float thrust,
+            float rollPitchScale, float yawScale, float minMotorOutput,
+            float[] motor01)
+        {
+            int n = _effectiveness.NumMotors;
+            var achieved = new Vector4();
+            for (int m = 0; m < n; m++)
+            {
+                achieved.x += _effectiveness.Data[0, m] * motor01[m];
+                achieved.y += _effectiveness.Data[1, m] * motor01[m];
+                achieved.z += _effectiveness.Data[2, m] * motor01[m];
+                achieved.w += _effectiveness.Data[5, m] * motor01[m];
+            }
+
+            Vector4 requested = new Vector4(roll, pitch, yaw, thrust);
+            bool[] saturated = new bool[n];
+            for (int m = 0; m < n; m++)
+                saturated[m] = motor01[m] <= minMotorOutput + 1e-6f || motor01[m] >= 1f - 1e-6f;
+
+            _lastAllocation = new AllocationDiagnostics
+            {
+                Requested = requested,
+                Achieved = achieved,
+                RollPitchScale = rollPitchScale,
+                YawScale = yawScale,
+                Residual = (requested - achieved).magnitude,
+                SaturatedMotors = saturated,
+            };
         }
 
         private static float ComputeDemandScaleFromHeadroom(

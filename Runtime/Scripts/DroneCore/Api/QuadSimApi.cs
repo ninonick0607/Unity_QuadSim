@@ -321,11 +321,13 @@ namespace DroneCore.Api
             Debug.Log($"[QuadSimApi] {DroneID}: Pose reset to {position}");
         }
 
-        public void ResetEpisodeState(Vector3 position, Quaternion rotation, int seed, int droneIndex)
+        public void ResetEpisodeState(
+            Vector3 position, Quaternion rotation, long episodeId, int seed, int droneIndex)
         {
             if (!AssertInitialized("ResetEpisodeState")) return;
 
-            _sensorManager?.ReseedForEpisode(seed, droneIndex);
+            _sensorManager?.BeginEpisode(episodeId, seed, droneIndex);
+            _pawn?.ImageSensor?.ResetSequence();
             _pawn?.ResetPosition(position, rotation);
             _modeCoordinator?.SetMode(GoalMode.None);
             _proxy?.ResetToSafe(GoalMode.None);
@@ -403,7 +405,15 @@ namespace DroneCore.Api
                 DroneID = DroneID,
                 Mode = CurrentMode,
                 Controller = CurrentController,
-                ControllerTelemetry = GetControllerTelemetry()
+                ControllerTelemetry = GetControllerTelemetry(),
+                AchievedForceBody = _controller != null
+                    ? _controller.LastAchievedForceBody : Vector3.zero,
+                AchievedTorqueBody = _controller != null
+                    ? _controller.LastAchievedTorqueBody : Vector3.zero,
+                AllocatorRank = _controller != null ? _controller.AllocatorRank : 0,
+                AllocatorConditionNumber = _controller != null
+                    ? _controller.AllocatorConditionNumber : float.PositiveInfinity,
+                Allocation = _controller != null ? _controller.LastAllocation : null,
             };
 
             if (_controller != null && _controller.LastMotor01 != null)
@@ -488,5 +498,10 @@ namespace DroneCore.Api
         public Motor4 MotorOutputs;   
         public Motor4 MotorThrusts;  
         public CascadedController.CascadeTelemetrySnapshot ControllerTelemetry;
+        public Vector3 AchievedForceBody;
+        public Vector3 AchievedTorqueBody;
+        public int AllocatorRank;
+        public float AllocatorConditionNumber;
+        public DroneCore.Controls.AllocationDiagnostics Allocation;
     }
 }

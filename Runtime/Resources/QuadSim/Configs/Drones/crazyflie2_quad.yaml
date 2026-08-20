@@ -20,6 +20,7 @@ propulsion:
   max_thrust: 0.147
   thrust_coef: 0.183
   torque_coef: 0.0069928948992470565
+  torque_coefficient_convention: legacy_2_5_pi
 
   # Firmware thrust curve, not directly represented by current QuadSim schema:
   # VMOTOR2THRUST0 = -0.02476537915958403

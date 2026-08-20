@@ -20,8 +20,8 @@ namespace DroneCore.Core
     /// It handles spawning, selection, configuration, and drives the physics step pipeline.
     ///
     /// Implements ISimulatable so SimulationManager drives the loop:
-    ///   PrePhysicsStep  → iterate QuadPawns → pawn.PhysicsStep(dt, now)
-    ///   PostPhysicsStep → (reserved for future use)
+    ///   PrePhysicsStep  → controllers and body wrenches
+    ///   PostPhysicsStep → post-step sensor samples
     ///   Update()        → visual updates (prop spin, effects)
     /// </summary>
     ///
@@ -227,7 +227,7 @@ namespace DroneCore.Core
         /// <summary>
         /// Drive the physics step for all drones.
         /// SimulationManager calls this BEFORE Physics.Simulate().
-        /// Each QuadPawn runs: Sensors → Controller → Apply Wrench.
+        /// Each QuadPawn runs its controller and applies the next body wrench.
         /// </summary>
         public void PrePhysicsStep(double dtSec, long nowNanos)
         {
@@ -238,14 +238,19 @@ namespace DroneCore.Core
                 QuadPawn drone = _registeredDrones[i];
                 if (drone != null)
                 {
-                    drone.PhysicsStep(dtSec, nowNanos);
+                    drone.PrePhysicsStep(dtSec, nowNanos);
                 }
             }
         }
 
         public void PostPhysicsStep(double dtSec, long nowNanos)
         {
-            // Reserved for future use (logging, telemetry publish, etc.)
+            for (int i = 0; i < _registeredDrones.Count; i++)
+            {
+                QuadPawn drone = _registeredDrones[i];
+                if (drone != null)
+                    drone.PostPhysicsStep(dtSec, nowNanos);
+            }
         }
 
         // ============================================================================

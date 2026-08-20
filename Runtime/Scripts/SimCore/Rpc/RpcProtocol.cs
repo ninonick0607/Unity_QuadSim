@@ -127,6 +127,25 @@ namespace SimCore.Rpc
             }
         }
 
+        public bool TryGetLong(string key, out long value)
+        {
+            value = 0;
+            if (!Params.TryGetValue(key, out var raw)) return false;
+
+            switch (raw)
+            {
+                case byte b: value = b; return true;
+                case sbyte sb: value = sb; return true;
+                case short s: value = s; return true;
+                case ushort us: value = us; return true;
+                case int i: value = i; return true;
+                case uint ui: value = ui; return true;
+                case long l: value = l; return true;
+                case ulong ul when ul <= long.MaxValue: value = (long)ul; return true;
+                default: return false;
+            }
+        }
+
         /// <summary>Get a bool parameter, with default.</summary>
         public bool GetBool(string key, bool defaultValue = false)
         {

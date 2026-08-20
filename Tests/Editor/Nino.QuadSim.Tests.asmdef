@@ -1,0 +1,14 @@
+{
+  "name": "Nino.QuadSim.Tests",
+  "rootNamespace": "Nino.QuadSim.Tests",
+  "references": [
+    "Nino.QuadSim"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": false
+}

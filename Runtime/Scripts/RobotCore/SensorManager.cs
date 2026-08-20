@@ -56,6 +56,8 @@ namespace RobotCore
 
         public SensorData Latest { get; private set; }
         public int noiseSeed = 12345; 
+        private long _episodeId;
+        private ulong _sequence;
         public int ExecutionOrder => 50;
         public string DebugName => name;
         
@@ -116,6 +118,13 @@ namespace RobotCore
             GPS?.Reseed(DeriveSeed(episodeSeed, agentIndex, 2));
             Baro?.Reseed(DeriveSeed(episodeSeed, agentIndex, 3));
             Mag?.Reseed(DeriveSeed(episodeSeed, agentIndex, 4));
+        }
+
+        public void BeginEpisode(long episodeId, int episodeSeed, int agentIndex)
+        {
+            _episodeId = episodeId;
+            _sequence = 0;
+            ReseedForEpisode(episodeSeed, agentIndex);
         }
 
         private static int DeriveSeed(int episodeSeed, int agentIndex, int streamId)
@@ -179,6 +188,7 @@ namespace RobotCore
 
         public void OnReset()
         {
+            _sequence = 0;
             IMU.Reset();
             IMU.Initialize(rb);
             
@@ -227,6 +237,13 @@ namespace RobotCore
 
             var latest = Latest;
             latest.BodyFrame = outputFrame;   // self-description for the RPC payload
+            latest.EpisodeId = _episodeId;
+            latest.StepIndex = ClockFactory.Clock.StepCount;
+            latest.SimTimeNanos = nowNanos;
+            latest.Sequence = ++_sequence;
+            latest.SourceFrame = outputFrame == SimFrame.FRD
+                ? "body_frd/world_enu"
+                : "body_flu/world_enu";
 
             // Translational control uses a yaw-only heading frame. Roll and pitch
             // must not rotate horizontal motion into the vertical velocity loop.

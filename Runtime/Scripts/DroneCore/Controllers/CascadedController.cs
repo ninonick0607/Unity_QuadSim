@@ -121,6 +121,8 @@ namespace DroneCore.Controllers
         // Motor outputs
         private readonly float[] _motor = new float[4];
         private readonly float[] _thrusts = new float[4];
+        private Vector3 _lastAchievedForceBody;
+        private Vector3 _lastAchievedTorqueBody;
         private int _waDebugTick;
         private bool _initialized;
 
@@ -140,6 +142,12 @@ namespace DroneCore.Controllers
         public IReadOnlyList<float> Thrusts => _thrusts;
         public CascadeTelemetrySnapshot TelemetrySnapshot => _telemetry;
         public IReadOnlyDictionary<PIDKey, PIDInfo> PIDMap => _pidMap;
+        public EffectivenessMatrix Effectiveness => _controlAllocator.Effectiveness;
+        public AllocationDiagnostics LastAllocation => _controlAllocator.LastAllocation;
+        public int AllocatorRank => _controlAllocator.Rank;
+        public float AllocatorConditionNumber => _controlAllocator.ConditionNumber;
+        public Vector3 LastAchievedForceBody => _lastAchievedForceBody;
+        public Vector3 LastAchievedTorqueBody => _lastAchievedTorqueBody;
         
         /// <summary>Debug visuals hook. RuntimeUI writes this; consume in a future debug-draw pass. TODO.</summary>
         public bool DebugVisualsEnabled { get; set; }
@@ -216,6 +224,10 @@ namespace DroneCore.Controllers
                 motorLagTauDownSeconds = configuredTauDown;
                 _motorLag.Reset(4);
             }
+            else
+            {
+                enableMotorLag = false;
+            }
             
             // Compute hover throttle from mass
             if (_body != null && _body.Rigidbody != null)
@@ -253,14 +265,15 @@ namespace DroneCore.Controllers
                 Debug.Log($"  - TWR: {twr:F2}");
             }
             
-            if (_axesBuilt) return;
             if (!_configApplied) return;
             if (_goalSource == null || _sensorManager == null) return;
-            // Setup axes and rebuild allocator
-            AxisSetup();
-            BuildPIDTuningMap();
+            if (!_axesBuilt)
+            {
+                AxisSetup();
+                BuildPIDTuningMap();
+                _axesBuilt = true;
+            }
             _controlAllocator.RebuildEffectiveness(_cachedConfig.RotorParams.Rotors, _rotorPhysics, GetCurrentFrame());
-            _axesBuilt = true;
 
             Debug.Log($"[CascadedController] {name}: RotorConfig applied");
         }
@@ -314,6 +327,9 @@ namespace DroneCore.Controllers
             }
 
             _desiredBodyUpCos = 1f;
+            _lastAchievedForceBody = Vector3.zero;
+            _lastAchievedTorqueBody = Vector3.zero;
+            _controlAllocator.ResetDiagnostics();
 
             for (int axis = 0; axis < 4; axis++)
             {
@@ -326,8 +342,8 @@ namespace DroneCore.Controllers
             {
                 _thrusts[i] = 0f;
                 _motor[i] = 0f;
-                _motorLag.Reset(4);
             }
+            _motorLag.Reset(4);
 
             // Preserve mode/source, just zero the command
             if (_body != null && _body.CommandProxy != null)
@@ -394,6 +410,8 @@ namespace DroneCore.Controllers
                 Vector3 torque = new Vector3(cmd.X, cmd.Y, cmd.Z);
                 Vector3 force = new Vector3(0, cmd.W, 0); 
                 _body.SetBodyWrench(force, torque);
+                _lastAchievedForceBody = force;
+                _lastAchievedTorqueBody = torque;
                 return;
             }
 
@@ -427,6 +445,8 @@ namespace DroneCore.Controllers
                 );
                 
                 _body.SetBodyWrench(netForce, netTorque);
+                _lastAchievedForceBody = netForce;
+                _lastAchievedTorqueBody = netTorque;
 
                 for (int i = 0; i < 4; i++)
                 {
@@ -441,7 +461,13 @@ namespace DroneCore.Controllers
             if (mode == GoalMode.None)
             {
                 _body.SetBodyWrench(Vector3.zero, Vector3.zero);
-                for (int i = 0; i < 4; i++) _thrusts[i] = 0.0f;
+                _lastAchievedForceBody = Vector3.zero;
+                _lastAchievedTorqueBody = Vector3.zero;
+                for (int i = 0; i < 4; i++)
+                {
+                    _motor[i] = 0f;
+                    _thrusts[i] = 0f;
+                }
                 return;
             }
 
@@ -685,6 +711,8 @@ namespace DroneCore.Controllers
                     out netTorque
                 );
                 _body.SetBodyWrench(netForce, netTorque);
+                _lastAchievedForceBody = netForce;
+                _lastAchievedTorqueBody = netTorque;
 
                 // Store for telemetry / UI
                 for (int i = 0; i < 4; i++)
@@ -743,6 +771,8 @@ namespace DroneCore.Controllers
             Vector3 netForce, netTorque;
             QuadActuationModel.ComputeBodyWrench(motor01,_cachedConfig.RotorParams.Rotors,_rotorPhysics,out netForce,out netTorque);
             _body.SetBodyWrench(netForce, netTorque);
+            _lastAchievedForceBody = netForce;
+            _lastAchievedTorqueBody = netTorque;
 
             // Store for UI/debugging
             for (int i = 0; i < 4; i++)

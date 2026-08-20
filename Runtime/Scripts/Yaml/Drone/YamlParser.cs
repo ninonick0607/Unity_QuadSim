@@ -4,6 +4,7 @@ using YamlDotNet.RepresentationModel;
 using System.Globalization;
 using System.IO;
 using System.Collections.Generic;
+using MathUtil;
 
 namespace Yaml.Drone
 {
@@ -286,6 +287,18 @@ namespace Yaml.Drone
                     if (TryGetFloat(prop, "max_rpm", out float rpm)) outProp.Model.MaxRPM = rpm;
                     if (TryGetFloat(prop, "thrust_coef", out float thCo)) outProp.Model.ThrustCoeff = thCo;
                     if (TryGetFloat(prop, "torque_coef", out float toCo)) outProp.Model.TorqueCoeff = toCo;
+                    if (TryGetString(prop, "torque_coefficient_convention", out string torqueConvention))
+                    {
+                        if (torqueConvention == "power_coefficient_2_pi")
+                            outProp.Model.TorqueConvention = RotorTorqueConvention.PowerCoefficient2Pi;
+                        else if (torqueConvention == "legacy_2_5_pi")
+                            outProp.Model.TorqueConvention = RotorTorqueConvention.Legacy2Point5Pi;
+                        else
+                        {
+                            Debug.LogError($"[Drone.YamlParser] Unknown torque coefficient convention '{torqueConvention}': {sourceLabel}");
+                            return false;
+                        }
+                    }
                     if (TryGetFloat(prop, "motor_time_constant_up_s", out float tauUp))
                         outProp.Model.MotorTimeConstantUp = tauUp;
                     if (TryGetFloat(prop, "motor_time_constant_down_s", out float tauDown))
@@ -314,9 +327,13 @@ namespace Yaml.Drone
                             }
                         }
 
+                        rotorList.Sort((a, b) => a.ID.CompareTo(b.ID));
                         outProp.Rotors = rotorList.ToArray();
                     }
                 }
+
+                if (!ValidateRotors(outProp.Rotors, sourceLabel))
+                    return false;
 
                 // 4. Controller Gains
                 if (TryGetNode(rootNode, "controller", out YamlNode ctrlNode) && ctrlNode is YamlMappingNode ctrl)
@@ -382,6 +399,36 @@ namespace Yaml.Drone
                 Debug.LogError($"[Drone.YamlParser] Parsing logic error in {sourceLabel}: {e.Message}\n{e.StackTrace}");
                 return false;
             }
+        }
+
+        private static bool ValidateRotors(RotorInstance[] rotors, string sourceLabel)
+        {
+            if (rotors == null || rotors.Length == 0)
+            {
+                Debug.LogError($"[Drone.YamlParser] No propellers declared: {sourceLabel}");
+                return false;
+            }
+            if (rotors.Length != 4)
+            {
+                Debug.LogError($"[Drone.YamlParser] Expected exactly four propellers: {sourceLabel}");
+                return false;
+            }
+
+            var ids = new HashSet<int>();
+            for (int i = 0; i < rotors.Length; i++)
+            {
+                if (!ids.Add(rotors[i].ID))
+                {
+                    Debug.LogError($"[Drone.YamlParser] Duplicate propeller id {rotors[i].ID}: {sourceLabel}");
+                    return false;
+                }
+                if (rotors[i].Spin_Dir != -1 && rotors[i].Spin_Dir != 1)
+                {
+                    Debug.LogError($"[Drone.YamlParser] Propeller {rotors[i].ID} dir must be -1 or 1: {sourceLabel}");
+                    return false;
+                }
+            }
+            return true;
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using MathUtil;
 using Yaml.Drone;
 
 namespace DroneCore.Controls
@@ -23,11 +24,8 @@ namespace DroneCore.Controls
 
             for (int i = 0; i < motor01.Length; i++)
             {
-                float tau = motor01[i] >= _state[i]
-                    ? Mathf.Max(1e-4f, TauUpSeconds)
-                    : Mathf.Max(1e-4f, TauDownSeconds);
-                float alpha = 1f - Mathf.Exp(-Mathf.Max(0f, dt) / tau);
-                _state[i] += (motor01[i] - _state[i]) * alpha;
+                _state[i] = RotorMath.FirstOrderStep(
+                    _state[i], motor01[i], dt, TauUpSeconds, TauDownSeconds);
                 motor01[i] = _state[i];
             }
         }
@@ -64,6 +62,14 @@ namespace DroneCore.Controls
                 outForceBody  += forceVec;
                 outTorqueBody += thrustMoment + dragTorque;
             }
+        }
+
+        public static void BodyToWorldWrench(
+            Quaternion bodyToWorld, Vector3 forceBody, Vector3 torqueBody,
+            out Vector3 forceWorld, out Vector3 torqueWorld)
+        {
+            forceWorld = bodyToWorld * forceBody;
+            torqueWorld = bodyToWorld * torqueBody;
         }
     }
 }

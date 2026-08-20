@@ -96,7 +96,10 @@ namespace SimCore.Rpc
         private float _publishTimer;
         private HashSet<string> _subscribedTopics = new() { "sensors", "telemetry" };
         private long _rlEpisodeId = 0;
-        private long _rlStepIndex;
+        private ulong _telemetrySequence;
+        private ulong _imageSequence;
+        private ulong _stateSequence;
+        private ulong _eventSequence;
 
         private readonly struct PreparedMultiAction
         {
@@ -655,6 +658,9 @@ namespace SimCore.Rpc
                 ["is_paused"] = status.IsPaused,
                 ["time_scale"] = status.TimeScale,
                 ["sim_time"] = status.SimTimeSec,
+                ["sim_time_ns"] = _sim.SimTimeNanos,
+                ["step_index"] = ClockFactory.Clock.StepCount,
+                ["episode_id"] = _rlEpisodeId,
                 ["fixed_dt"] = status.FixedDtSec,
                 ["authority"] = status.CurrentAuthority.ToString(),
                 ["ui_status"] = status.UIStatus.ToString(),
@@ -915,12 +921,17 @@ namespace SimCore.Rpc
                 DroneImageSensor sensor = capture.pawn.ImageSensor;
                 frames[i] = sensor.Capture(
                     capture.type, capture.width, capture.height, capture.encoding,
-                    capture.quality, capture.fov, capture.maxDepth, _sim.SimTimeSec);
+                    capture.quality, capture.fov, capture.maxDepth);
             }
 
             return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
             {
+                ["episode_id"] = _rlEpisodeId,
+                ["step_index"] = ClockFactory.Clock.StepCount,
+                ["sim_time_ns"] = _sim.SimTimeNanos,
                 ["sim_time"] = _sim.SimTimeSec,
+                ["sequence"] = _imageSequence++,
+                ["source_frame"] = "camera_optical/body_flu/world_enu",
                 ["frames"] = frames,
             });
         }
@@ -933,25 +944,7 @@ namespace SimCore.Rpc
             if (!TryGetSelectedDrone(req, out var drone, out var droneErr)) return droneErr;
 
             var t = drone.GetTelemetry();
-
-            return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
-            {
-                ["drone_id"]           = t.DroneID ?? "",
-                ["mode"]               = GoalModeReverseMap.GetValueOrDefault(t.Mode, "unknown"),
-                ["controller"]         = ControllerKindReverseMap.GetValueOrDefault(t.Controller, "unknown"),
-                ["motors"]             = new object[] { t.MotorOutputs.FL, t.MotorOutputs.FR,
-                                                        t.MotorOutputs.BL, t.MotorOutputs.BR },
-                ["desired_rates_deg"]  = Vec3ToArray(t.ControllerTelemetry.DesiredRatesDeg),
-                ["desired_angles_deg"] = Vec3ToArray(t.ControllerTelemetry.DesiredAnglesDeg),
-                ["desired_vel"]        = Vec3ToArray(t.ControllerTelemetry.DesiredVel),
-                ["desired_accel"]      = Vec3ToArray(t.ControllerTelemetry.DesiredAccel),
-                ["external_cmd"]       = new object[] { t.ControllerTelemetry.ExternalCmd.X,
-                                                        t.ControllerTelemetry.ExternalCmd.Y,
-                                                        t.ControllerTelemetry.ExternalCmd.Z,
-                                                        t.ControllerTelemetry.ExternalCmd.W },
-                ["motor_thrusts"]      = new object[] { t.MotorThrusts.FL, t.MotorThrusts.FR,
-                    t.MotorThrusts.BL, t.MotorThrusts.BR },
-            });
+            return RpcResponse.Ok(req.RequestId, TelemetryToDict(t, _telemetrySequence++));
         }
 
         // --- set_controller ---
@@ -1146,6 +1139,7 @@ namespace SimCore.Rpc
         private RpcResponse HandleStep(RpcRequest req)
         {
             if (!RequireConnected(req, out var err)) return err;
+            if (!ValidateTargetStep(req, out err)) return err;
 
             int count = req.GetInt("count", 1);
             if (count <= 0)
@@ -1159,6 +1153,8 @@ namespace SimCore.Rpc
             return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
             {
                 ["sim_time"] = _sim.SimTimeSec,
+                ["sim_time_ns"] = _sim.SimTimeNanos,
+                ["step_index"] = ClockFactory.Clock.StepCount,
                 ["steps_ran"] = count,
             });
         }
@@ -1177,6 +1173,10 @@ namespace SimCore.Rpc
 
         private RpcResponse HandleStepWithCommand(RpcRequest req)
         {
+            if (!RequireConnected(req, out RpcResponse connectionError)) return connectionError;
+            if (!ValidateTargetStep(req, out RpcResponse targetError)) return targetError;
+            if (req.GetInt("count", 1) <= 0)
+                return RpcResponse.Error("invalid_param: count must be > 0", req.RequestId);
             var cmdResp = HandleSendCommand(req);
             if (!cmdResp.Success) return cmdResp;
 
@@ -1189,6 +1189,7 @@ namespace SimCore.Rpc
         private RpcResponse HandleStepMulti(RpcRequest req)
         {
             if (!RequireConnected(req, out var err)) return err;
+            if (!ValidateTargetStep(req, out err)) return err;
             if (_sim.CurrentAuthority != InputSource.External)
                 return RpcResponse.Error("authority_rejected", req.RequestId);
             if (_sim.SimManager == null)
@@ -1262,7 +1263,6 @@ namespace SimCore.Rpc
             }
 
             _sim.SimManager.StepImmediate(count);
-            _rlStepIndex++;
 
             Dictionary<string, object> states = CaptureRLStates(
                 manager, _sim.SimTimeSec, out object[] events);
@@ -1270,7 +1270,8 @@ namespace SimCore.Rpc
             return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
             {
                 ["episode_id"] = _rlEpisodeId,
-                ["step_index"] = _rlStepIndex,
+                ["step_index"] = ClockFactory.Clock.StepCount,
+                ["sim_time_ns"] = _sim.SimTimeNanos,
                 ["sim_time"] = _sim.SimTimeSec,
                 ["steps_ran"] = count,
                 ["agents"] = states,
@@ -1399,11 +1400,16 @@ namespace SimCore.Rpc
             }
 
             prepared.Sort((a, b) => a.DroneIndex.CompareTo(b.DroneIndex));
+            preparedObjects.Sort((a, b) =>
+                string.CompareOrdinal(a.ObjectId, b.ObjectId));
 
             _sim.Pause();
             _sim.SimManager.ResetClock();
             _rlEpisodeId++;
-            _rlStepIndex = 0;
+            _telemetrySequence = 0;
+            _imageSequence = 0;
+            _stateSequence = 0;
+            _eventSequence = 0;
 
             ScenarioObjectManager objectManager =
                 ScenarioObjectManager.GetOrCreate(gameObject);
@@ -1419,7 +1425,8 @@ namespace SimCore.Rpc
             for (int i = 0; i < prepared.Count; i++)
             {
                 PreparedEpisodeReset reset = prepared[i];
-                reset.Api.ResetEpisodeState(reset.Position, reset.Rotation, seed, reset.DroneIndex);
+                reset.Api.ResetEpisodeState(
+                    reset.Position, reset.Rotation, _rlEpisodeId, seed, reset.DroneIndex);
             }
             Physics.SyncTransforms();
 
@@ -1429,7 +1436,8 @@ namespace SimCore.Rpc
             return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
             {
                 ["episode_id"] = _rlEpisodeId,
-                ["step_index"] = _rlStepIndex,
+                ["step_index"] = ClockFactory.Clock.StepCount,
+                ["sim_time_ns"] = _sim.SimTimeNanos,
                 ["sim_time"] = _sim.SimTimeSec,
                 ["seed"] = seed,
                 ["settle_steps"] = settleSteps,
@@ -1485,6 +1493,12 @@ namespace SimCore.Rpc
 
         private static Dictionary<string, object> SensorDataToDict(SensorData s) => new Dictionary<string, object>
         {
+            ["episode_id"]     = s.EpisodeId,
+            ["step_index"]     = s.StepIndex,
+            ["sim_time_ns"]    = s.SimTimeNanos,
+            ["sim_time"]       = s.SimTimeNanos * 1e-9,
+            ["sequence"]       = s.Sequence,
+            ["source_frame"]   = s.SourceFrame ?? "body_flu/world_enu",
             // Body-axis convention of the imu_*/mag_* fields ("flu" or "frd").
             // World-frame fields are unaffected: gps_position is always ENU,
             // gps_vel_ned is always NED, gps_lat/lon/alt is WGS84.
@@ -1516,6 +1530,47 @@ namespace SimCore.Rpc
             ["gps_alt"]     = s.GpsAltM,
             ["gps_vel_ned"] = Vec3ToArray(s.GpsVelNED),
         };
+
+        private Dictionary<string, object> TelemetryToDict(DroneTelemetry t, ulong sequence)
+        {
+            var allocation = t.Allocation;
+            return new Dictionary<string, object>
+            {
+                ["episode_id"] = _rlEpisodeId,
+                ["step_index"] = ClockFactory.Clock.StepCount,
+                ["sim_time_ns"] = _sim.SimTimeNanos,
+                ["sim_time"] = _sim.SimTimeSec,
+                ["sequence"] = sequence,
+                ["source_frame"] = "body_unity",
+                ["drone_id"] = t.DroneID ?? "",
+                ["mode"] = GoalModeReverseMap.GetValueOrDefault(t.Mode, "unknown"),
+                ["controller"] = ControllerKindReverseMap.GetValueOrDefault(t.Controller, "unknown"),
+                ["motors"] = new object[] { t.MotorOutputs.FL, t.MotorOutputs.FR,
+                    t.MotorOutputs.BL, t.MotorOutputs.BR },
+                ["motor_thrusts"] = new object[] { t.MotorThrusts.FL, t.MotorThrusts.FR,
+                    t.MotorThrusts.BL, t.MotorThrusts.BR },
+                ["desired_rates_deg"] = Vec3ToArray(t.ControllerTelemetry.DesiredRatesDeg),
+                ["desired_angles_deg"] = Vec3ToArray(t.ControllerTelemetry.DesiredAnglesDeg),
+                ["desired_vel"] = Vec3ToArray(t.ControllerTelemetry.DesiredVel),
+                ["desired_accel"] = Vec3ToArray(t.ControllerTelemetry.DesiredAccel),
+                ["external_cmd"] = new object[] { t.ControllerTelemetry.ExternalCmd.X,
+                    t.ControllerTelemetry.ExternalCmd.Y,
+                    t.ControllerTelemetry.ExternalCmd.Z,
+                    t.ControllerTelemetry.ExternalCmd.W },
+                ["achieved_force_body"] = Vec3ToArray(t.AchievedForceBody),
+                ["achieved_torque_body"] = Vec3ToArray(t.AchievedTorqueBody),
+                ["allocator_rank"] = t.AllocatorRank,
+                ["allocator_condition_number"] = t.AllocatorConditionNumber,
+                ["allocation_requested_flu"] = allocation == null
+                    ? Vec4ToArray(Vector4.zero) : Vec4ToArray(allocation.Requested),
+                ["allocation_achieved_flu"] = allocation == null
+                    ? Vec4ToArray(Vector4.zero) : Vec4ToArray(allocation.Achieved),
+                ["allocation_residual"] = allocation?.Residual ?? 0f,
+                ["roll_pitch_scale"] = allocation?.RollPitchScale ?? 1f,
+                ["yaw_scale"] = allocation?.YawScale ?? 1f,
+                ["saturated_motors"] = allocation?.SaturatedMotors ?? Array.Empty<bool>(),
+            };
+        }
         
         
         private RpcResponse HandleSubscribe(RpcRequest req)
@@ -1612,22 +1667,7 @@ namespace SimCore.Rpc
             if (_subscribedTopics.Contains("telemetry"))
             {
                 var t = drone.GetTelemetry();
-                var telemData = new Dictionary<string, object>
-                {
-                    ["drone_id"]           = t.DroneID ?? "",
-                    ["mode"]               = GoalModeReverseMap.GetValueOrDefault(t.Mode, "unknown"),
-                    ["controller"]         = ControllerKindReverseMap.GetValueOrDefault(t.Controller, "unknown"),
-                    ["motors"]             = new object[] { t.MotorOutputs.FL, t.MotorOutputs.FR,
-                                                            t.MotorOutputs.BL, t.MotorOutputs.BR },
-                    ["desired_rates_deg"]  = Vec3ToArray(t.ControllerTelemetry.DesiredRatesDeg),
-                    ["desired_angles_deg"] = Vec3ToArray(t.ControllerTelemetry.DesiredAnglesDeg),
-                    ["desired_vel"]        = Vec3ToArray(t.ControllerTelemetry.DesiredVel),
-                    ["desired_accel"]      = Vec3ToArray(t.ControllerTelemetry.DesiredAccel),
-                    ["external_cmd"]       = new object[] { t.ControllerTelemetry.ExternalCmd.X,
-                                                            t.ControllerTelemetry.ExternalCmd.Y,
-                                                            t.ControllerTelemetry.ExternalCmd.Z,
-                                                            t.ControllerTelemetry.ExternalCmd.W },
-                };
+                var telemData = TelemetryToDict(t, _telemetrySequence++);
 
                 byte[] frame = RpcSerializer.SerializePublish("telemetry", telemData);
                 _server.EnqueuePublish(frame);
@@ -1705,6 +1745,43 @@ namespace SimCore.Rpc
             return false;
         }
 
+        private bool ValidateTargetStep(RpcRequest req, out RpcResponse errorResponse)
+        {
+            bool strict = req.GetBool("strict_lockstep", false);
+            if (strict && !_sim.IsPaused)
+            {
+                errorResponse = RpcResponse.Error(
+                    "strict_lockstep_requires_pause", req.RequestId);
+                return false;
+            }
+            bool hasTarget = req.TryGetLong("target_step", out long targetStep);
+            StepTargetStatus status = StepContract.Validate(
+                (long)ClockFactory.Clock.StepCount,
+                req.GetInt("count", 1), strict, hasTarget, targetStep,
+                out long expected);
+            if (status == StepTargetStatus.Accepted)
+            {
+                errorResponse = default;
+                return true;
+            }
+
+            string reason = status switch
+            {
+                StepTargetStatus.Missing => "missing_param: target_step",
+                StepTargetStatus.LateOrDuplicate => "late_or_duplicate_step",
+                StepTargetStatus.CountMismatch => "target_step_count_mismatch",
+                _ => "skipped_step",
+            };
+            if (status == StepTargetStatus.Missing)
+            {
+                errorResponse = RpcResponse.Error(reason, req.RequestId);
+                return false;
+            }
+            errorResponse = RpcResponse.Error(
+                $"{reason}: expected {expected}, got {targetStep}", req.RequestId);
+            return false;
+        }
+
         /// <summary>
         /// Guard: resolve the selected drone via QuadSimApi.Selected().
         /// Returns false and sets the error response if no drone is available.
@@ -1728,6 +1805,11 @@ namespace SimCore.Rpc
         private static object[] Vec3ToArray(Vector3 v)
         {
             return new object[] { v.x, v.y, v.z };
+        }
+
+        private static object[] Vec4ToArray(Vector4 v)
+        {
+            return new object[] { v.x, v.y, v.z, v.w };
         }
 
         /// <summary>Convert Quaternion to float[] for MessagePack serialization.</summary>
@@ -1784,7 +1866,7 @@ namespace SimCore.Rpc
             return true;
         }
 
-        private static Dictionary<string, object> CaptureRLStates(
+        private Dictionary<string, object> CaptureRLStates(
             DroneManager manager, double simTime, out object[] eventPayloads)
         {
             var states = new Dictionary<string, object>(manager.DroneCount);
@@ -1793,25 +1875,43 @@ namespace SimCore.Rpc
             {
                 QuadPawn pawn = manager.RegisteredDrones[i];
                 RLAgentState state = pawn.Api.GetRLState();
-                states[state.AgentId] = RLAgentStateToDict(state);
+                states[state.AgentId] = RLAgentStateToDict(state, _stateSequence++);
                 pawn.DrainRLEvents(events);
                 if (!state.IsValid)
                     events.Add(new RLAgentEvent("invalid_state", state.AgentId, null, simTime));
             }
 
+            events.Sort((a, b) =>
+            {
+                int order = string.CompareOrdinal(a.AgentId, b.AgentId);
+                if (order != 0) return order;
+                order = string.CompareOrdinal(a.Type, b.Type);
+                if (order != 0) return order;
+                order = string.CompareOrdinal(a.OtherAgentId, b.OtherAgentId);
+                return order != 0
+                    ? order
+                    : string.CompareOrdinal(a.ObjectId, b.ObjectId);
+            });
+
             eventPayloads = new object[events.Count];
             for (int i = 0; i < events.Count; i++)
-                eventPayloads[i] = RLAgentEventToDict(events[i]);
+                eventPayloads[i] = RLAgentEventToDict(events[i], _eventSequence++);
             return states;
         }
 
-        private static Dictionary<string, object> RLAgentEventToDict(RLAgentEvent agentEvent)
+        private Dictionary<string, object> RLAgentEventToDict(
+            RLAgentEvent agentEvent, ulong sequence)
         {
             var payload = new Dictionary<string, object>
             {
+                ["episode_id"] = _rlEpisodeId,
+                ["step_index"] = ClockFactory.Clock.StepCount,
+                ["sim_time_ns"] = (long)Math.Round(agentEvent.SimTime * 1e9),
                 ["type"] = agentEvent.Type,
                 ["agent_id"] = agentEvent.AgentId,
                 ["sim_time"] = agentEvent.SimTime,
+                ["sequence"] = sequence,
+                ["source_frame"] = "world_enu",
             };
             if (!string.IsNullOrEmpty(agentEvent.OtherAgentId))
                 payload["other_agent_id"] = agentEvent.OtherAgentId;
@@ -1820,10 +1920,17 @@ namespace SimCore.Rpc
             return payload;
         }
 
-        private static Dictionary<string, object> RLAgentStateToDict(RLAgentState state)
+        private Dictionary<string, object> RLAgentStateToDict(
+            RLAgentState state, ulong sequence)
         {
             return new Dictionary<string, object>
             {
+                ["episode_id"] = _rlEpisodeId,
+                ["step_index"] = ClockFactory.Clock.StepCount,
+                ["sim_time_ns"] = _sim.SimTimeNanos,
+                ["sim_time"] = _sim.SimTimeSec,
+                ["sequence"] = sequence,
+                ["source_frame"] = "body_flu/world_enu",
                 ["agent_id"] = state.AgentId,
                 ["team_id"] = state.TeamId,
                 ["drone_index"] = state.DroneIndex,

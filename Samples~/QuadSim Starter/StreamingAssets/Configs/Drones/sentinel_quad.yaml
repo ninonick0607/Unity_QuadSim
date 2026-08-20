@@ -34,6 +34,7 @@ propulsion:
   # Previously validated QuadSim yaw-torque coefficient. Keep this empirical
   # plant value until a controlled PX4 yaw-rate sweep justifies changing it.
   torque_coef: 0.0303
+  torque_coefficient_convention: legacy_2_5_pi
 
   # Gazebo MulticopterMotorModel asymmetric response constants. QuadSim applies
   # them to its normalized motor command; the remaining motor-law difference is

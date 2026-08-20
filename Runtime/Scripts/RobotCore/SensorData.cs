@@ -12,6 +12,12 @@ namespace RobotCore
     // ========================================================================
     public struct SensorData
     {
+        public long EpisodeId;
+        public ulong StepIndex;
+        public long SimTimeNanos;
+        public ulong Sequence;
+        public string SourceFrame;
+
         /// <summary>Body-axis convention of all body-frame fields below
         /// (ImuAngVel/ImuAttitude/ImuAccel/ImuVel/ImuOrientation/MagField).
         /// FLU by default; FRD when the sim is in PX4 mode. World-frame

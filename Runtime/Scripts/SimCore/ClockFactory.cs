@@ -39,8 +39,8 @@ namespace SimCore
         {
             if (baseHz <= 0) throw new ArgumentOutOfRangeException(nameof(baseHz), "baseHz must be > 0.");
 
-            BaseDtSec = 1.0 / baseHz;
-            _clock = new SteppableClock(BaseDtSec, startNanos);
+            _clock = new SteppableClock(1.0 / baseHz, startNanos);
+            BaseDtSec = _clock.StepSizeSec;
             _clock.Reset(startNanos);
 
             _scaled.SetPaused(paused);

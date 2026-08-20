@@ -17,6 +17,7 @@ propulsion:
   max_thrust: 6.98 
   thrust_coef: 0.101 
   torque_coef: 0.016
+  torque_coefficient_convention: legacy_2_5_pi
   # FRotorInstance array
   # FIX THESE
   propellers:

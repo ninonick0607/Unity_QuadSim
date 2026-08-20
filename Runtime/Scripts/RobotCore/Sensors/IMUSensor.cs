@@ -124,7 +124,7 @@ namespace RobotCore.Sensors
             
             LastVel = Frames.TransformLinear(vBody, OutputFrame);
         }
-        // Call from SensorManager.PrePhysicsStep() using deterministic dt.
+        // Call from SensorManager's post-physics sample phase using deterministic dt.
         public void Sample(double nowSec, float deltaTime, bool addNoise = false)
         {
             if (_rb == null || _bodyTransform == null || deltaTime <= 0f)

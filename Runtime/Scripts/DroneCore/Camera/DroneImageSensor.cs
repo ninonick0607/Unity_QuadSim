@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using RobotCore;
 using UnityEngine;
 
 namespace DroneCore.CameraSystem
@@ -16,6 +17,8 @@ namespace DroneCore.CameraSystem
         private Texture2D _readback;
         private int _sequence;
 
+        public void ResetSequence() => _sequence = 0;
+
         public void Initialize(QuadPawn owner, DroneCameraRig rig)
         {
             _owner = owner;
@@ -29,8 +32,7 @@ namespace DroneCore.CameraSystem
             string encoding,
             int quality,
             float fieldOfViewDeg,
-            float maxDepthM,
-            double simTime)
+            float maxDepthM)
         {
             EnsureCamera();
             _camera.fieldOfView = fieldOfViewDeg;
@@ -84,6 +86,9 @@ namespace DroneCore.CameraSystem
             }
 
             _sequence++;
+            SensorData metadata = _owner != null && _owner.Sensors != null
+                ? _owner.Sensors.Latest
+                : default;
             return new Dictionary<string, object>
             {
                 ["agent_id"] = _owner != null ? _owner.AgentId : string.Empty,
@@ -97,7 +102,11 @@ namespace DroneCore.CameraSystem
                 ["origin"] = "bottom_left",
                 ["field_of_view_deg"] = fieldOfViewDeg,
                 ["max_depth_m"] = maxDepthM,
-                ["sim_time"] = simTime,
+                ["episode_id"] = metadata.EpisodeId,
+                ["step_index"] = metadata.StepIndex,
+                ["sim_time_ns"] = metadata.SimTimeNanos,
+                ["sim_time"] = metadata.SimTimeNanos * 1e-9,
+                ["source_frame"] = "camera_optical_unity",
                 ["sequence"] = _sequence,
                 ["data"] = data,
             };

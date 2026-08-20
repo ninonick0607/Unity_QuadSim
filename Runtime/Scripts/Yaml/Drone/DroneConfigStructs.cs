@@ -1,6 +1,7 @@
 ﻿//using UnityEngine.Addres; // Required
 
 using System;
+using MathUtil;
 using UnityEngine;
 using Mathf = UnityEngine.Mathf;
 
@@ -29,6 +30,7 @@ namespace Yaml.Drone
         public float MaxRPM;
         public float ThrustCoeff;
         public float TorqueCoeff;
+        public RotorTorqueConvention TorqueConvention;
         public float MotorTimeConstantUp;
         public float MotorTimeConstantDown;
 
@@ -202,44 +204,18 @@ namespace Yaml.Drone
     // Math Stuff for Rotors
     public struct RotorPhysicsDerived
     {
-        private float RevPerSec;
-        private float MaxOmega;
-        private float MaxOmegaSqr;
         public float MaxThrust;
         public float MaxTorque;
-        private float MaxRollTorqueBody;
-        private float MaxPitchTorqueBody;
-        private float MaxYawTorqueBody;
 
-        private const float AirDensity = 1.225f;
-
-        private  RotorModel Model;
-        private float ArmLengthMeters;
-        
-        // TODO: Out InModel? 
         public void ComputeRotor(RotorModel InModel,float InArmLengthMeters)
         {
-            Model = InModel;
-            ArmLengthMeters = InArmLengthMeters;
-            
-            RevPerSec = Model.MaxRPM / 60.0f;
-            MaxOmega = RevPerSec * 2.0f * (float)Math.PI;
-            MaxOmegaSqr = MaxOmega * MaxOmega;
-            
-            float n2 = RevPerSec * RevPerSec;
-            float D = Model.Prop_Diameter;
-            
-            // Thrust  = Ct * rho * n^2 * D^4
-            MaxThrust = Model.ThrustCoeff * AirDensity * n2 * (float)Math.Pow(D, 4);
-            // Torque = Cp * rho * n^2 * D^5/2PI
-            MaxTorque = Model.TorqueCoeff * AirDensity * n2 * (((float)Math.Pow(D, 5))/ ((float)(2.5 * Math.PI)));
-            
-            // TODO: Original code says MaxThrust instead of MaxTorque, veriy this
-            MaxRollTorqueBody = MaxTorque * ArmLengthMeters;
-            MaxPitchTorqueBody = MaxTorque * ArmLengthMeters;
-            
-            // TODO: Hardcoded max yaw torque for 4 motors
-            MaxYawTorqueBody = 4.0f * MaxTorque;
+            float revPerSec = InModel.MaxRPM / 60.0f;
+            MaxThrust = RotorMath.StaticThrust(
+                InModel.ThrustCoeff, RotorMath.SeaLevelAirDensity,
+                revPerSec, InModel.Prop_Diameter);
+            MaxTorque = RotorMath.StaticYawTorque(
+                InModel.TorqueCoeff, RotorMath.SeaLevelAirDensity, revPerSec,
+                InModel.Prop_Diameter, InModel.TorqueConvention);
         }
 
         public float ComputeHoverThrottle(float VehicleMassKg, int MotorCount = 4)
@@ -251,12 +227,12 @@ namespace Yaml.Drone
         
         public float ControlToThrust(float Control01, float AirDensityRatio = 1.0f)
         {
-            return Mathf.Clamp(Control01, 0.0f, 1.0f) * MaxThrust * AirDensityRatio;
+            return RotorMath.CommandToThrust(Control01, MaxThrust, AirDensityRatio);
         }
 
         public float ControlToYawTorque(float Control01, int TurningDir, float AirDensityRatio = 1.0f)
         {
-            return Mathf.Clamp(Control01, 0.0f, 1.0f) * MaxTorque * (float)TurningDir * AirDensityRatio;
+            return RotorMath.CommandToYawTorque(Control01, MaxTorque, TurningDir, AirDensityRatio);
         }
         
     }

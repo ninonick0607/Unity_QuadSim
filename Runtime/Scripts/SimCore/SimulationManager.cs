@@ -56,6 +56,8 @@ namespace SimCore
         private int _stepsThisInterval;
 
         public double BaseDtSec => ClockFactory.BaseDtSec;
+        public ulong StepIndex => ClockFactory.Clock.StepCount;
+        public long SimTimeNanos => ClockFactory.Clock.NowNanos;
         public RunMode Mode => runMode;
 
         public bool IsPaused => ClockFactory.Scaled.IsPaused;
@@ -210,6 +212,7 @@ namespace SimCore
             if (!RegisteredManagers.Contains(manager))
             {
                 RegisteredManagers.Add(manager);
+                RegisteredManagers.Sort(CompareSimulatables);
                 // If Start already ran, catch up the late registrant
                 if (_startFired)
                     manager.OnSimulationStart(this);
@@ -283,6 +286,12 @@ namespace SimCore
         public void SetMode(RunMode mode)
         {
             runMode = mode;
+        }
+
+        private static int CompareSimulatables(ISimulatable a, ISimulatable b)
+        {
+            int order = a.ExecutionOrder.CompareTo(b.ExecutionOrder);
+            return order != 0 ? order : string.CompareOrdinal(a.DebugName, b.DebugName);
         }
     }
 

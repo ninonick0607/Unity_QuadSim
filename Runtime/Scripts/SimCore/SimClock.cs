@@ -16,6 +16,7 @@ namespace SimCore
 
         /// <summary>Base fixed step size in seconds (e.g. 0.004 for 250 Hz).</summary>
         double StepSizeSec { get; }
+        long StepSizeNanos { get; }
 
         /// <summary>Advance exactly one fixed step.</summary>
         long Step();
@@ -36,6 +37,7 @@ namespace SimCore
         public abstract long NowNanos { get; }
         public abstract long StartNanos { get; }
         public virtual double StepSizeSec => 0.0;
+        public virtual long StepSizeNanos => 0;
         public ulong StepCount => _stepCount;
 
         public virtual long Step()
@@ -72,6 +74,9 @@ namespace SimCore
             if (dtSec < 0) dtSec = 0;
             return tNanos + (long)(dtSec * 1.0e9);
         }
+
+        protected void AdvanceSteps(ulong count) => _stepCount += count;
+        protected void SetStepCount(ulong count) => _stepCount = count;
     }
 
     /// <summary>
@@ -79,47 +84,51 @@ namespace SimCore
     /// </summary>
     public sealed class SteppableClock : ClockBase
     {
-        private long _current;
         private long _start;
         private readonly double _stepSec;
+        private readonly long _stepNanos;
 
         public SteppableClock(double stepSec, long startNanos = 0)
         {
             if (stepSec <= 0) throw new ArgumentOutOfRangeException(nameof(stepSec), "Step must be > 0.");
-            _stepSec = stepSec;
+            _stepNanos = (long)Math.Round(stepSec * 1.0e9);
+            if (_stepNanos <= 0) throw new ArgumentOutOfRangeException(nameof(stepSec), "Step is below one nanosecond.");
+            _stepSec = _stepNanos / 1.0e9;
 
             _start = startNanos;
-            _current = _start;
         }
 
-        public override long NowNanos => _current;
+        public override long NowNanos => _start + (long)StepCount * _stepNanos;
         public override long StartNanos => _start;
         public override double StepSizeSec => _stepSec;
+        public override long StepSizeNanos => _stepNanos;
 
         public override long Step()
         {
             base.Step(); // increments StepCount
-            _current = AddTo(_current, _stepSec);
-            return _current;
+            return NowNanos;
         }
 
         public override long StepBy(double seconds)
         {
-            base.StepBy(seconds);
-            _current = AddTo(_current, seconds);
-            return _current;
+            if (seconds <= 0.0) return NowNanos;
+            ulong steps = (ulong)Math.Round(seconds * 1.0e9 / _stepNanos);
+            AdvanceSteps(steps);
+            return NowNanos;
         }
 
         public override void Reset(long? newStartNanos = null)
         {
             base.Reset(newStartNanos);
             _start = newStartNanos ?? _start;
-            _current = _start;
         }
 
         public void SetNowNanos(long nowNanos)
         {
-            _current = nowNanos;
+            ulong step = nowNanos <= _start
+                ? 0
+                : (ulong)((nowNanos - _start) / _stepNanos);
+            SetStepCount(step);
         }
     }
 

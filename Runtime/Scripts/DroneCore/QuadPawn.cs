@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using DroneCore.Controllers;
+using DroneCore.Controls;
 using DroneCore.CameraSystem;
 using DroneCore.Core;
 using DroneCore.Interfaces;
@@ -17,9 +18,9 @@ namespace DroneCore
     /// <summary>
     /// QuadPawn is the physical drone entity — the "vehicle" that exists in the world.
     /// It owns references to all drone subsystems and orchestrates the physics step:
-    ///   Sensors → Controller → Apply Wrench to Rigidbody
+    ///   Controller → Apply Wrench → Physics → Sensors
     ///
-    /// DroneManager iterates QuadPawns in PrePhysicsStep and calls PhysicsStep().
+    /// DroneManager iterates QuadPawns in the pre- and post-physics phases.
     /// QuadPawn is NOT an ISimulatable — DroneManager drives it.
     ///
     /// Mirrors UE's AQuadPawn: owns the CustomPhysicsTick sequence,
@@ -459,26 +460,25 @@ namespace DroneCore
             Debug.Log($"[QuadPawn] {DroneID}: Initialization complete");
         }
         
-        public void PhysicsStep(double dtSec, long nowNanos)
+        public void PrePhysicsStep(double dtSec, long nowNanos)
         {
             if (!_initialized) return;
 
             float dt = (float)dtSec;
 
-            // --- Step 1: Update Sensors ---
-            if (sensorManager != null && _sensorsReady)
-            {
-                sensorManager.UpdateSensors(dtSec, nowNanos);
-            }
-
-            // --- Step 2: Run Active Controller ---
             if (_controllerReady)
             {
                 RunController(dt);
             }
 
-            // --- Step 3: Apply Buffered Wrench to Rigidbody ---
             ApplyBufferedForces();
+        }
+
+        public void PostPhysicsStep(double dtSec, long nowNanos)
+        {
+            if (!_initialized) return;
+            if (sensorManager != null && _sensorsReady)
+                sensorManager.UpdateSensors(dtSec, nowNanos);
         }
 
         private void RunController(float dt)
@@ -532,11 +532,9 @@ namespace DroneCore
             if (rb == null) return;
             if (_wrenchGeneration == _lastAppliedGeneration) return;
 
-            Vector3 bodyForce = new Vector3(0, _bufferedForce.y, 0);            
-            
-            // Transform body-local force/torque to world space
-            Vector3 worldForce = transform.TransformDirection(_bufferedForce);
-            Vector3 worldTorque = transform.TransformDirection(_bufferedTorque);
+            QuadActuationModel.BodyToWorldWrench(
+                transform.rotation, _bufferedForce, _bufferedTorque,
+                out Vector3 worldForce, out Vector3 worldTorque);
 
             rb.AddForce(worldForce, ForceMode.Force);
             rb.AddTorque(worldTorque, ForceMode.Force);
