@@ -54,6 +54,7 @@ namespace UImGui.Renderer
 		public Camera Camera;
 		[HideInInspector]
 		public global::UImGui.UImGui UImGui;
+		[System.NonSerialized]
 		public CommandBuffer CommandBuffer;
 		public RenderPassEvent RenderPassEvent = RenderPassEvent.AfterRenderingPostProcessing;
 
@@ -85,6 +86,7 @@ namespace UImGui.Renderer
 	[UnityEngine.CreateAssetMenu(menuName = "Dear ImGui/Render ImGui")]
 	public class RenderImGui : UnityEngine.ScriptableObject
 	{
+		[System.NonSerialized]
 		public CommandBuffer CommandBuffer;
 	}
 #endif

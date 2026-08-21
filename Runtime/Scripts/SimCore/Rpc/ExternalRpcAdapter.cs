@@ -56,6 +56,9 @@ namespace SimCore.Rpc
         [Tooltip("Port for the PUB telemetry socket.")]
         [SerializeField] private int telemetryPort = 5556;
 
+        [Tooltip("Address exposed by the RPC sockets. Use 0.0.0.0 only for an explicitly secured remote deployment.")]
+        [SerializeField] private string bindAddress = "127.0.0.1";
+
         [Tooltip("Start the RPC server automatically on Awake.")]
         [SerializeField] private bool autoStart = true;
 
@@ -206,12 +209,20 @@ namespace SimCore.Rpc
 
         /// <summary>Telemetry port number.</summary>
         public int TelemetryPort => telemetryPort;
+
+        public string BindAddress => bindAddress;
         
         /// <summary>Set ports before StartServer(). CLI overrides still win (applied in Start).</summary>
         public void ConfigurePorts(int cmd, int tel)
         {
             commandPort = cmd;
             telemetryPort = tel;
+        }
+
+        public void ConfigureEndpoint(string address, int cmd, int tel)
+        {
+            bindAddress = string.IsNullOrWhiteSpace(address) ? "127.0.0.1" : address.Trim();
+            ConfigurePorts(cmd, tel);
         }
         public event Action<Dictionary<string, object>> OnVizPayload;
 
@@ -291,8 +302,13 @@ namespace SimCore.Rpc
                     commandPort = rp;
                 if (args[i] == "-telemetryPort" && int.TryParse(args[i + 1], out int tp))
                     telemetryPort = tp;
+                if (args[i] == "-rpcBindAddress")
+                    bindAddress = args[i + 1];
             }
-            Debug.Log($"[RpcAdapter] Ports: REP={commandPort} PUB={telemetryPort}");
+            if (string.IsNullOrWhiteSpace(bindAddress)) bindAddress = "127.0.0.1";
+            if (bindAddress != "127.0.0.1" && bindAddress != "localhost" && bindAddress != "::1")
+                Debug.LogWarning($"[RpcAdapter] RPC is remotely exposed on '{bindAddress}'.");
+            Debug.Log($"[RpcAdapter] Endpoint: {bindAddress} REP={commandPort} PUB={telemetryPort}");
         }
         public void StartServer()
         {
@@ -305,7 +321,7 @@ namespace SimCore.Rpc
             }
 
             _netMqCleanedUp = false;
-            _server = new RpcServerThread(commandPort, telemetryPort);
+            _server = new RpcServerThread(commandPort, telemetryPort, bindAddress);
             _server.Start();
 
             Debug.Log($"[RpcAdapter] Starting RPC server — REP:{commandPort} PUB:{telemetryPort}");
@@ -527,6 +543,14 @@ namespace SimCore.Rpc
 
             string clientName = req.GetString("client_name") ?? "unknown";
 
+            if (req.TryGetInt("protocol_major", out int clientProtocolMajor)
+                && clientProtocolMajor != RpcCapabilities.ProtocolMajor)
+            {
+                return RpcResponse.Error(
+                    $"incompatible_protocol: server={RpcCapabilities.ProtocolMajor}, client={clientProtocolMajor}",
+                    req.RequestId);
+            }
+
             Debug.Log($"[RpcAdapter] Connection request from '{clientName}'");
 
             // Check if External is denied for this session
@@ -545,13 +569,8 @@ namespace SimCore.Rpc
             {
                 // Auto-accepted
                 CompleteConnection(clientName);
-                return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
-                {
-                    ["message"] = "connected",
-                    ["server"] = "QuadSim",
-                    ["command_port"] = commandPort,
-                    ["telemetry_port"] = telemetryPort,
-                });
+                return RpcResponse.Ok(req.RequestId,
+                    RpcCapabilities.ConnectData(commandPort, telemetryPort, bindAddress));
             }
 
             if (externalStatus == SourceStatus.Denied)
@@ -563,13 +582,8 @@ namespace SimCore.Rpc
             _sim.AcceptExternalConnection();
             CompleteConnection(clientName);
 
-            return RpcResponse.Ok(req.RequestId, new Dictionary<string, object>
-            {
-                ["message"] = "connected",
-                ["server"] = "QuadSim",
-                ["command_port"] = commandPort,
-                ["telemetry_port"] = telemetryPort,
-            });
+            return RpcResponse.Ok(req.RequestId,
+                RpcCapabilities.ConnectData(commandPort, telemetryPort, bindAddress));
         }
 
         private void CompleteConnection(string clientName)

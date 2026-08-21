@@ -9,6 +9,13 @@ namespace DroneCore.Controllers.AxisControllers
 {
     public class VelocityController
     {
+        private const float Gravity = 9.81f;
+
+        // Keep half of hover lift available while braking an ascent. A full
+        // -g request turns the motors effectively off until the vehicle slows,
+        // which presents as a stall after a large vertical velocity step.
+        public const float ClosedLoopMinLiftFraction = 0.5f;
+
         [SerializeField] private QuadPIDController _pidSet = new QuadPIDController();
         public QuadPIDController Pid => _pidSet;
 
@@ -33,11 +40,16 @@ namespace DroneCore.Controllers.AxisControllers
             _sensorManager = sensors;
             VelocityPID PID = _config.Velocity;
 
-            float maxAccelLimit = Mathf.Tan(_config.FlightParams.MaxAngle * Mathf.Deg2Rad) * 9.81f;
+            float maxAccelLimit = Mathf.Tan(_config.FlightParams.MaxAngle * Mathf.Deg2Rad) * Gravity;
             if (axis == 3)
-                maxAccelLimit = 9.81f;
-    
-            _pidSet.SetLimits(-maxAccelLimit, maxAccelLimit);
+            {
+                float maxDownwardAccel = Gravity * (1f - ClosedLoopMinLiftFraction);
+                _pidSet.SetLimits(-maxDownwardAccel, Gravity);
+            }
+            else
+            {
+                _pidSet.SetLimits(-maxAccelLimit, maxAccelLimit);
+            }
             _pidSet.SetGains(PID.GetPGains()[_axis], PID.GetIGains()[_axis], PID.GetDGains()[_axis]);
 
             _bInitialized = true;

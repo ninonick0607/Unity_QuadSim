@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0] - Unreleased
+
+- Added protocol 1.0 negotiation with SDK, feature, frame, and time contracts.
+- Bound RPC to localhost by default and added request size, shape, and rate limits.
+- Added schema-v1 drone profiles and Unity protocol/YAML tests.
+- Added a Drone YAML Inspector with rotor-layout and effectiveness previews.
+- Added EditMode/PlayMode, Linux/Windows build, built-player smoke, log, and
+  security CI definitions for the prepared release candidate.
+- Added Phase 3/4 validation, compatibility, security, and authoring documentation.
+- Updated runtime and bundled UImGui code for Unity 6000.5 compiler and
+  serialization-analyzer compatibility.
+
 ## [0.2.3] - 2026-07-21
 
 - Bundled the pinned UImGui 7.1.0 runtime and matching ImGui.NET binding directly with QuadSim.

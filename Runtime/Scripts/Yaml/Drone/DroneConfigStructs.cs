@@ -9,6 +9,7 @@ namespace Yaml.Drone
 {
     public struct ModelType
     {
+        public int SchemaVersion;
         public string Name;
         //public AssetReference BodyMesh;
         

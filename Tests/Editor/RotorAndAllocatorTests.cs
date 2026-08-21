@@ -1,4 +1,7 @@
 using System.Linq;
+using DroneCore.Common;
+using DroneCore.Controllers;
+using DroneCore.Controllers.AxisControllers;
 using DroneCore.Controls;
 using MathUtil;
 using NUnit.Framework;
@@ -130,6 +133,100 @@ namespace Nino.QuadSim.Tests
             Assert.That(allocator.LastAllocation.SaturatedMotors.Any(value => value), Is.True);
         }
 
+        [Test]
+        public void DownstreamSaturationStopsPidFromWindingFurther()
+        {
+            var pid = new QuadPIDController
+            {
+                Kp = 0f,
+                Ki = 1f,
+                Kd = 0f,
+                DecayFactor = 1f,
+                IntegralLimit = 100f,
+                MinOutput = -100f,
+                MaxOutput = 100f,
+            };
+
+            pid.SetSaturationFromTracking(1f, 0f);
+            pid.Calculate(1f, 0f, 1f);
+            Assert.That(pid.IntegralState, Is.EqualTo(0f).Within(1e-6f));
+
+            pid.ClearSaturation();
+            pid.Calculate(1f, 0f, 1f);
+            Assert.That(pid.IntegralState, Is.EqualTo(1f).Within(1e-6f));
+        }
+
+        [Test]
+        public void DisabledIntegralDoesNotAccumulateHiddenState()
+        {
+            var pid = new QuadPIDController
+            {
+                Kp = 0f,
+                Ki = 0f,
+                Kd = 0f,
+                DecayFactor = 1f,
+            };
+
+            pid.Calculate(10f, 0f, 1f);
+            Assert.That(pid.IntegralState, Is.EqualTo(0f));
+        }
+
+        [Test]
+        public void DesiredForceCouplesVerticalAccelerationIntoTilt()
+        {
+            Vector3 force = CascadedController.ConstrainDesiredSpecificForce(
+                9.81f, 0f, 9.81f, 45f, float.PositiveInfinity);
+
+            Assert.That(force.x, Is.EqualTo(9.81f).Within(1e-5f));
+            Assert.That(force.z, Is.EqualTo(19.62f).Within(1e-5f));
+            float tiltDeg = Mathf.Atan2(force.x, force.z) * Mathf.Rad2Deg;
+            Assert.That(tiltDeg, Is.EqualTo(26.565f).Within(1e-3f));
+        }
+
+        [Test]
+        public void NearFreeFallCannotDemandHorizontalForce()
+        {
+            Vector3 force = CascadedController.ConstrainDesiredSpecificForce(
+                9.81f, 4f, -9.81f, 45f, float.PositiveInfinity);
+
+            Assert.That(force, Is.EqualTo(Vector3.zero));
+        }
+
+        [Test]
+        public void VerticalVelocityBrakingRetainsHalfHoverLift()
+        {
+            var config = new DroneConfig
+            {
+                FlightParams = new FlightParameters { MaxAngle = 45f },
+                Velocity = new VelocityPID()
+            };
+            var controller = new VelocityController(config);
+
+            controller.Initialize(3, null, null);
+
+            float expectedMinimumAccel =
+                -9.81f * (1f - VelocityController.ClosedLoopMinLiftFraction);
+            Assert.That(controller.Pid.MinOutput,
+                Is.EqualTo(expectedMinimumAccel).Within(1e-6f));
+            Assert.That(controller.Pid.MaxOutput, Is.EqualTo(9.81f).Within(1e-6f));
+
+            Vector3 force = CascadedController.ConstrainDesiredSpecificForce(
+                0f, 0f, controller.Pid.MinOutput, 45f, float.PositiveInfinity);
+            Assert.That(force.z,
+                Is.EqualTo(9.81f * VelocityController.ClosedLoopMinLiftFraction)
+                    .Within(1e-6f));
+        }
+
+        [TestCase(179f, -179f, 181f)]
+        [TestCase(-179f, 179f, -181f)]
+        public void YawGoalUsesShortestEquivalentAngle(
+            float measuredDeg, float goalDeg, float expectedGoalDeg)
+        {
+            Assert.That(
+                AngleController.NearestEquivalentAngle(measuredDeg, goalDeg),
+                Is.EqualTo(expectedGoalDeg).Within(1e-5f));
+        }
+
         [TestCase("standard_quad")]
         [TestCase("sentinel_quad")]
         [TestCase("crazyflie2_quad")]
@@ -145,6 +242,20 @@ namespace Nino.QuadSim.Tests
             var allocator = new ControlAllocator();
             allocator.RebuildEffectiveness(propulsion.Rotors, physics, SimFrame.FLU);
             Assert.That(allocator.Rank, Is.EqualTo(4));
+        }
+
+        [TestCase("standard_quad")]
+        [TestCase("sentinel_quad")]
+        [TestCase("crazyflie2_quad")]
+        [TestCase("flightmare_quad")]
+        public void PackagedQuadProfilesProvideYawAngleGain(string profile)
+        {
+            TextAsset yaml = Resources.Load<TextAsset>($"QuadSim/Configs/Drones/{profile}");
+            Assert.That(yaml, Is.Not.Null);
+            Assert.That(YamlParser.LoadDroneConfigFromString(
+                yaml.text, profile, out _, out _, out _, out _, out _,
+                out AnglePID angle, out _, out _, out _), Is.True);
+            Assert.That(angle.AngleYaw.P, Is.GreaterThan(0f));
         }
 
         [Test]

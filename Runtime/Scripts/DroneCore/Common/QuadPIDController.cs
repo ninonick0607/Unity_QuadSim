@@ -18,6 +18,10 @@ namespace DroneCore.Common
         private float _integralSum = 0f;
         private float _prevError = 0f;
         private bool _hasLastError = false;
+        private bool _positiveOutputSaturated;
+        private bool _negativeOutputSaturated;
+
+        public float IntegralState => _integralSum;
 
         public void SetGains(float p, float i, float d) { Kp = p; Ki = i; Kd = d; }
         public void SetLimits(float min, float max) { MinOutput = min; MaxOutput = max; }
@@ -29,6 +33,24 @@ namespace DroneCore.Common
             _integralSum = 0f;
             _prevError = 0f;
             _hasLastError = false;
+            ClearSaturation();
+        }
+
+        /// <summary>
+        /// Feed downstream actuator tracking back into the integrator. This is
+        /// evaluated on the next controller update, which matches the one-step
+        /// delay between PID calculation and motor allocation.
+        /// </summary>
+        public void SetSaturationFromTracking(float requested, float achieved, float tolerance = 1e-4f)
+        {
+            _positiveOutputSaturated = requested > achieved + tolerance;
+            _negativeOutputSaturated = requested < achieved - tolerance;
+        }
+
+        public void ClearSaturation()
+        {
+            _positiveOutputSaturated = false;
+            _negativeOutputSaturated = false;
         }
 
         public float Calculate(float desired, float measured, float dt)
@@ -40,9 +62,23 @@ namespace DroneCore.Common
             // P
             float pTerm = Kp * error;
 
-            // I (decay + clamp)
-            _integralSum = DecayFactor * _integralSum + error * dt;
-            _integralSum = Mathf.Clamp(_integralSum, -IntegralLimit, IntegralLimit);
+            // I (leak + conditional integration). Do not retain hidden state
+            // while Ki is disabled, and do not integrate farther into a
+            // downstream actuator limit reported by the mixer/allocator.
+            if (Ki > Mathf.Epsilon)
+            {
+                _integralSum *= DecayFactor;
+                bool pushesFurtherIntoSaturation =
+                    (error > 0f && _positiveOutputSaturated) ||
+                    (error < 0f && _negativeOutputSaturated);
+                if (!pushesFurtherIntoSaturation)
+                    _integralSum += error * dt;
+                _integralSum = Mathf.Clamp(_integralSum, -IntegralLimit, IntegralLimit);
+            }
+            else
+            {
+                _integralSum = 0f;
+            }
             float iTerm = Ki * _integralSum;
 
             // D

@@ -1,0 +1,164 @@
+name: Phase 3 platform gate
+
+on:
+  pull_request:
+  push:
+    branches: [main, test]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  package-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate package and mirrored YAML
+        run: |
+          python -m json.tool package.json >/dev/null
+          python - <<'PY'
+          import json, pathlib, re
+          root = pathlib.Path('.')
+          version = json.loads((root / 'package.json').read_text())['version']
+          protocol = (root / 'Runtime/Scripts/SimCore/Rpc/RpcProtocol.cs').read_text()
+          advertised = re.search(r'UnityPackageVersion = "([^"]+)"', protocol).group(1)
+          assert version == advertised, (version, advertised)
+          for source in (root / 'Runtime/Resources/QuadSim/Configs/Drones').glob('*.yaml'):
+              mirror = root / 'Samples~/QuadSim Starter/StreamingAssets/Configs/Drones' / source.name
+              assert source.read_bytes() == mirror.read_bytes(), source.name
+          PY
+
+  sdk:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ninonick0607/QuadSimLib
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -e ".[test]"
+      - name: Run supported SDK matrix
+        run: |
+          python -m pytest -q \
+            Testing/test_lockstep.py \
+            Testing/test_multi_agent.py \
+            Testing/test_replay.py \
+            Testing/test_rl_foundation_verifier.py \
+            Testing/test_drone_config.py \
+            Testing/test_protocol.py
+      - name: Build and inspect distributions
+        if: matrix.python == '3.12'
+        run: |
+          python -m build
+          python -m twine check dist/*
+          python -m zipfile -l dist/quadsim_sdk-0.16.0-py3-none-any.whl | grep quadsim/calibration.py
+
+  unity-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [editmode, playmode]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Place package below repository root for GameCI package mode
+        run: |
+          mkdir package-under-test
+          rsync -a --exclude .git --exclude package-under-test ./ package-under-test/
+      - uses: game-ci/unity-test-runner@v4
+        id: unity-tests
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          packageMode: true
+          projectPath: package-under-test
+          unityVersion: 6000.5.8f1
+          testMode: ${{ matrix.mode }}
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          checkName: Unity ${{ matrix.mode }}
+      - name: Reject unexpected Unity errors
+        if: always()
+        run: python ci~/check_unity_log.py "${{ steps.unity-tests.outputs.artifactsPath }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unity-${{ matrix.mode }}-results
+          path: ${{ steps.unity-tests.outputs.artifactsPath }}
+
+  player-build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [StandaloneLinux64, StandaloneWindows64]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Import the build sample into the Unity host
+        run: |
+          mkdir -p ci~/UnityTestProject/Assets/QuadSimStarter
+          rsync -a "Samples~/QuadSim Starter/" \
+            ci~/UnityTestProject/Assets/QuadSimStarter/
+      - uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: ci~/UnityTestProject
+          unityVersion: 6000.5.8f1
+          targetPlatform: ${{ matrix.target }}
+          buildName: QuadSim
+      - uses: actions/checkout@v4
+        if: matrix.target == 'StandaloneLinux64'
+        with:
+          repository: ninonick0607/QuadSimLib
+          path: ci-sdk
+      - uses: actions/setup-python@v5
+        if: matrix.target == 'StandaloneLinux64'
+        with:
+          python-version: "3.12"
+      - name: Run built-player RPC smoke
+        if: matrix.target == 'StandaloneLinux64'
+        run: |
+          python -m pip install -e ci-sdk
+          chmod +x build/StandaloneLinux64/QuadSim
+          build/StandaloneLinux64/QuadSim \
+            -batchmode -nographics \
+            -logFile "$RUNNER_TEMP/quadsim-player.log" &
+          PLAYER_PID=$!
+          trap 'kill "$PLAYER_PID" 2>/dev/null || true' EXIT
+          SDK_REVISION=$(git -C ci-sdk rev-parse HEAD)
+          python ci~/built_player_smoke.py \
+            --sdk-revision "$SDK_REVISION" \
+            --scene-config \
+              "Samples~/QuadSim Starter/Configuration/Default_SceneConfig.asset" \
+            --vehicle-config \
+              Runtime/Resources/QuadSim/Configs/Drones/flightmare_quad.yaml \
+            --output "$RUNNER_TEMP/quadsim-smoke-manifest.json"
+          kill "$PLAYER_PID" 2>/dev/null || true
+          wait "$PLAYER_PID" || true
+          trap - EXIT
+          python ci~/check_unity_log.py "$RUNNER_TEMP/quadsim-player.log"
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.target == 'StandaloneLinux64'
+        with:
+          name: quadsim-built-player-smoke
+          path: |
+            ${{ runner.temp }}/quadsim-player.log
+            ${{ runner.temp }}/quadsim-smoke-manifest.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: quadsim-${{ matrix.target }}
+          path: build/${{ matrix.target }}

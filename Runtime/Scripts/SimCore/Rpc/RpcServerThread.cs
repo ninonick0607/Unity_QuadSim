@@ -64,6 +64,11 @@ namespace SimCore.Rpc
         private readonly int _repPort;
         private readonly int _pubPort;
         private readonly int _pollTimeoutMs;
+        private readonly string _bindAddress;
+        private readonly int _maxRequestBytes;
+        private readonly int _maxRequestsPerSecond;
+        private long _rateWindowStartedMs;
+        private int _requestsInWindow;
 
         // ============================================================================
         // Thread Communication
@@ -110,11 +115,18 @@ namespace SimCore.Rpc
         /// <param name="repPort">Port for REQ/REP command socket (default 5555).</param>
         /// <param name="pubPort">Port for PUB telemetry socket (default 5556).</param>
         /// <param name="pollTimeoutMs">ZMQ poll interval in ms. Lower = more responsive, higher = less CPU (default 10).</param>
-        public RpcServerThread(int repPort = 5555, int pubPort = 5556, int pollTimeoutMs = 10)
+        public RpcServerThread(
+            int repPort = 5555, int pubPort = 5556,
+            string bindAddress = "127.0.0.1", int pollTimeoutMs = 10,
+            int maxRequestBytes = 1024 * 1024, int maxRequestsPerSecond = 1000)
         {
             _repPort = repPort;
             _pubPort = pubPort;
+            _bindAddress = string.IsNullOrWhiteSpace(bindAddress) ? "127.0.0.1" : bindAddress;
             _pollTimeoutMs = pollTimeoutMs;
+            _maxRequestBytes = maxRequestBytes;
+            _maxRequestsPerSecond = maxRequestsPerSecond;
+            _rateWindowStartedMs = MonotonicMilliseconds();
         }
 
         // ============================================================================
@@ -232,8 +244,8 @@ namespace SimCore.Rpc
 
                 if (_shutdownRequested) return;
 
-                string repAddress = $"tcp://*:{_repPort}";
-                string pubAddress = $"tcp://*:{_pubPort}";
+                string repAddress = $"tcp://{_bindAddress}:{_repPort}";
+                string pubAddress = $"tcp://{_bindAddress}:{_pubPort}";
 
                 repSocket.Bind(repAddress);
                 pubSocket.Bind(pubAddress);
@@ -260,8 +272,8 @@ namespace SimCore.Rpc
             {
                 _isRunning = false;
 
-                try { repSocket?.Unbind($"tcp://*:{_repPort}"); } catch { }
-                try { pubSocket?.Unbind($"tcp://*:{_pubPort}"); } catch { }
+                try { repSocket?.Unbind($"tcp://{_bindAddress}:{_repPort}"); } catch { }
+                try { pubSocket?.Unbind($"tcp://{_bindAddress}:{_pubPort}"); } catch { }
 
                 repSocket?.Dispose();
                 pubSocket?.Dispose();
@@ -279,6 +291,19 @@ namespace SimCore.Rpc
             if (repSocket.TryReceiveFrameBytes(TimeSpan.FromMilliseconds(_pollTimeoutMs),
                     out byte[] requestBytes))
             {
+                if (requestBytes.Length > _maxRequestBytes)
+                {
+                    repSocket.SendFrame(RpcSerializer.SerializeResponse(
+                        RpcResponse.Error("request_too_large")));
+                    return;
+                }
+                if (!AcceptRequestRate())
+                {
+                    repSocket.SendFrame(RpcSerializer.SerializeResponse(
+                        RpcResponse.Error("rate_limited")));
+                    return;
+                }
+
                 // Deserialize
                 var parsed = RpcSerializer.DeserializeRequest(requestBytes);
                 if (parsed == null)
@@ -342,6 +367,24 @@ namespace SimCore.Rpc
         private void Log(LogLevel level, string message)
         {
             _logQueue.Enqueue((level, $"[RpcServer] {message}"));
+        }
+
+        private bool AcceptRequestRate()
+        {
+            long now = MonotonicMilliseconds();
+            if (now - _rateWindowStartedMs >= 1000)
+            {
+                _rateWindowStartedMs = now;
+                _requestsInWindow = 0;
+            }
+            _requestsInWindow++;
+            return _requestsInWindow <= _maxRequestsPerSecond;
+        }
+
+        private static long MonotonicMilliseconds()
+        {
+            return (long)(System.Diagnostics.Stopwatch.GetTimestamp() * 1000.0
+                / System.Diagnostics.Stopwatch.Frequency);
         }
 
         public void Dispose()

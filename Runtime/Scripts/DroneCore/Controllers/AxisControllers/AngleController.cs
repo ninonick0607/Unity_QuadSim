@@ -56,13 +56,24 @@ namespace DroneCore.Controllers.AxisControllers
             float StateAngle = StateData.ImuAttitude[_axis];
             float Goal = _bUseExternalGoal ? _externalGoal :  _cmdGoal.GetCommandValue()[_axis];
             
-            if (_axis == 2 || _axis == 3)
+            if (_axis == 3)
             {
                 _output = Goal;
                 return;
             }
 
+            // Euler yaw wraps at +/-180 degrees. Move the goal to the
+            // equivalent angle nearest the measurement before applying PID,
+            // matching AirSim's shortest-arc yaw handling.
+            if (_axis == 2)
+                Goal = NearestEquivalentAngle(StateAngle, Goal);
+
             _output = _pidSet.Calculate(Goal, StateAngle, deltaTime);
+        }
+
+        public static float NearestEquivalentAngle(float measuredDeg, float goalDeg)
+        {
+            return measuredDeg + Mathf.DeltaAngle(measuredDeg, goalDeg);
         }
         public void Reset()
         {

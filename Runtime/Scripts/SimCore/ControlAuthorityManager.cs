@@ -98,7 +98,7 @@ namespace SimCore
         public static ControlAuthorityManager Get()
         {
             if (_instance != null) return _instance;
-            _instance = FindFirstObjectByType<ControlAuthorityManager>();
+            _instance = FindAnyObjectByType<ControlAuthorityManager>();
             if (_instance != null)
                 Debug.LogWarning("[AuthorityManager] Instance resolved via Find. Prefer direct reference.");
             return _instance;
@@ -136,6 +136,12 @@ namespace SimCore
             }
             
             Debug.Log($"[AuthorityManager] Initialized: default={defaultSource}, authority={_effectiveAuthority}");
+        }
+
+        private void Start()
+        {
+            if (_waitingForConnection)
+                OnWaitingForSource?.Invoke(_configuredDefault);
         }
 
         private void Update()

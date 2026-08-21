@@ -256,6 +256,20 @@ namespace Yaml.Drone
             try
             {
                 // 1. Model Name & Mesh
+                if (TryGetFloat(rootNode, "schema_version", out float schemaVersion))
+                {
+                    if (schemaVersion != 1f)
+                    {
+                        Debug.LogError($"[Drone.YamlParser] Unsupported schema_version {schemaVersion}: {sourceLabel}");
+                        return false;
+                    }
+                    outModel.SchemaVersion = 1;
+                }
+                else
+                {
+                    Debug.LogWarning($"[Drone.YamlParser] Legacy unversioned drone config: {sourceLabel}");
+                }
+
                 if (TryGetString(rootNode, "name", out string name)) outModel.Name = name;
 
                 if (TryGetString(rootNode, "body_mesh", out string meshPath))
@@ -356,6 +370,7 @@ namespace Yaml.Drone
                     {
                         if (TryGetNode(attMap, "roll", out YamlNode ar) && ParsePID(ar, out PID tmpR)) outAngle.AngleRoll = tmpR;
                         if (TryGetNode(attMap, "pitch", out YamlNode ap) && ParsePID(ap, out PID tmpP)) outAngle.AnglePitch = tmpP;
+                        if (TryGetNode(attMap, "yaw", out YamlNode ay) && ParsePID(ay, out PID tmpY)) outAngle.AngleYaw = tmpY;
                     }
 
                     if (TryGetNode(ctrl, "rate_gains", out YamlNode rateNode) && rateNode is YamlMappingNode rateMap)

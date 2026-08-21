@@ -62,7 +62,8 @@ namespace SimCore
 
             // --- RPC ports -> adapter (read later in adapter.Start/StartServer) ---
             if (rpcAdapter != null)
-                rpcAdapter.ConfigurePorts(config.commandPort, config.telemetryPort);
+                rpcAdapter.ConfigureEndpoint(
+                    config.rpcBindAddress, config.commandPort, config.telemetryPort);
 
             // --- Drone selection + spawn point -> DroneManager (read in OnSimulationStart) ---
             if (droneManager != null)
@@ -132,11 +133,11 @@ namespace SimCore
         private void ResolveReferences()
         {
             if (rpcAdapter == null)
-                rpcAdapter = FindFirstObjectByType<ExternalRpcAdapter>();
+                rpcAdapter = FindAnyObjectByType<ExternalRpcAdapter>();
             if (droneManager == null)
-                droneManager = FindFirstObjectByType<DroneManager>();
+                droneManager = FindAnyObjectByType<DroneManager>();
             if (windZone == null)
-                windZone = FindFirstObjectByType<Experimental.WindModule>();
+                windZone = FindAnyObjectByType<Experimental.WindModule>();
 
             if (rpcAdapter == null)
                 Debug.LogWarning("[EnvBootstrap] No ExternalRpcAdapter found; ports not applied.");

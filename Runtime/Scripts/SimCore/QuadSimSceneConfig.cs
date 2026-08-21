@@ -73,6 +73,9 @@ namespace SimCore
         // RPC (Python SDK boundary)
         // =====================================================================
         [Header("RPC Ports")]
+        [Tooltip("RPC bind address. Loopback is the secure default; remote exposure must be explicit.")]
+        public string rpcBindAddress = "127.0.0.1";
+
         [Tooltip("ZMQ REQ/REP command port. SDK default 5555.")]
         public int commandPort = 5555;
 

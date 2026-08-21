@@ -153,7 +153,7 @@ namespace DroneCore.CameraSystem
         public static CameraDirector Get()
         {
             if (_instance != null) return _instance;
-            _instance = FindFirstObjectByType<CameraDirector>();
+            _instance = FindAnyObjectByType<CameraDirector>();
             return _instance;
         }
 

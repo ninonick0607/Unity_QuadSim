@@ -44,7 +44,7 @@ namespace QuadSim.RL
         public static ScenarioObjectManager GetOrCreate(GameObject host)
         {
             if (_instance != null) return _instance;
-            _instance = FindFirstObjectByType<ScenarioObjectManager>();
+            _instance = FindAnyObjectByType<ScenarioObjectManager>();
             if (_instance == null && host != null)
                 _instance = host.AddComponent<ScenarioObjectManager>();
             return _instance;

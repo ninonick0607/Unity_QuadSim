@@ -29,6 +29,48 @@ using UnityEngine;
 
 namespace SimCore.Rpc
 {
+    public static class RpcCapabilities
+    {
+        public const int ProtocolMajor = 1;
+        public const int ProtocolMinor = 0;
+        public const string UnityPackageVersion = "0.3.0";
+        public const int FrameSchemaVersion = 1;
+        public const int TimeSchemaVersion = 1;
+
+        public static readonly object[] Features =
+        {
+            "protocol_negotiation",
+            "strict_lockstep",
+            "post_step_observations",
+            "episode_reset",
+            "multi_agent_step",
+            "allocation_diagnostics",
+            "seeded_sensor_noise",
+            "collision_events",
+            "yaml_schema_v1",
+            "rpc_request_limits",
+        };
+
+        public static Dictionary<string, object> ConnectData(
+            int commandPort, int telemetryPort, string bindAddress)
+        {
+            return new Dictionary<string, object>
+            {
+                ["message"] = "connected",
+                ["server"] = "QuadSim",
+                ["protocol_major"] = ProtocolMajor,
+                ["protocol_minor"] = ProtocolMinor,
+                ["unity_package_version"] = UnityPackageVersion,
+                ["features"] = Features,
+                ["frame_schema_version"] = FrameSchemaVersion,
+                ["time_schema_version"] = TimeSchemaVersion,
+                ["command_port"] = commandPort,
+                ["telemetry_port"] = telemetryPort,
+                ["bind_address"] = bindAddress,
+            };
+        }
+    }
+
     // ============================================================================
     // Wire-Level Types (MessagePack dictionaries)
     // ============================================================================
@@ -254,6 +296,11 @@ namespace SimCore.Rpc
                 if (dict == null || !dict.TryGetValue("method", out var methodObj) || methodObj is not string method)
                 {
                     Debug.LogWarning("[RpcProtocol] Request missing 'method' field.");
+                    return null;
+                }
+                if (dict.Count > 64 || string.IsNullOrWhiteSpace(method) || method.Length > 64)
+                {
+                    Debug.LogWarning("[RpcProtocol] Request shape exceeds protocol limits.");
                     return null;
                 }
 

@@ -1,3 +1,4 @@
+schema_version: 1
 name: "ModalAI_Sentinel_RB5_S500"
 
 body_mesh: "/QuadSimPlugin/Assets/Drone_Models/Sentinel/Sentinel.Sentinel"
@@ -52,6 +53,10 @@ propulsion:
     - {id: 2, x: -0.174, y: 0.0, z:  0.174, dir:  1}
     - {id: 3, x: -0.174, y: 0.0, z: -0.174, dir: -1}
 
+runtime:
+  physics_rate_hz: 250
+  controller_rate_hz: 250
+
 controller:
 
   position_gains:
@@ -67,6 +72,7 @@ controller:
   attitude_gains:
     roll:  {p: 5.5, i: 0.0, d: 0.0}
     pitch: {p: 5.5, i: 0.0, d: 0.0}
+    yaw:   {p: 2.5, i: 0.0, d: 0.0}
 
   rate_gains:
     roll:  {p: 0.08, i: 0.4, d: 0.0}

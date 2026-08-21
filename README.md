@@ -66,7 +66,7 @@ Use this README to install and run the Unity simulator. Use the Python SDK docs 
 - An HDRP-configured project. The QuadSim scene and terrain use HDRP shaders; the easiest starting point is Unity Hub's **High Definition 3D** template.
 - Git
 - Git LFS installed and available on `PATH` (the package contains large drone assets)
-- Python 3.8+ for Python SDK control
+- Python 3.10+ for Python SDK control
 - A QuadSim scene containing `SimRoot`, `ExternalRpcAdapter`, and at least one configured `QuadPawn` for RPC control
 
 ### Install the Unity Package
@@ -76,7 +76,7 @@ Use this README to install and run the Unity simulator. Use the Python SDK docs 
 3. Paste:
 
 ```text
-https://github.com/ninonick0607/Unity_QuadSim.git#v0.2.3
+https://github.com/ninonick0607/Unity_QuadSim.git#v0.3.0
 ```
 
 QuadSim includes its pinned UImGui 7.1.0 runtime, matching ImGui.NET managed binding, and Windows, Linux, and universal macOS native libraries. Do not install UImGui or ImGui.NET separately; a second copy can cause duplicate or mismatched assembly errors.
@@ -89,7 +89,7 @@ For active development, you can omit the tag and install the latest `main` branc
 https://github.com/ninonick0607/Unity_QuadSim.git
 ```
 
-For reproducible research or lab machines, prefer a tagged version like `#v0.2.3`. The tag must exist before consumers can use that URL; until the release is tagged, install `main` with the untagged URL.
+For reproducible research or lab machines, prefer a tagged version like `#v0.3.0`. The tag must exist before consumers can use that URL; until the release is tagged, use a local checkout of the prepared release or install `main` with the untagged URL.
 
 ### Import the Sample Scene
 
@@ -99,7 +99,7 @@ After the package installs:
 2. Select **QuadSim**.
 3. Open the **Samples** section.
 4. Import **QuadSim Starter**.
-5. Open `Assets/Samples/QuadSim/0.2.3/QuadSim Starter/Maps/Land.unity` and press Play.
+5. Open `Assets/Samples/QuadSim/0.3.0/QuadSim Starter/Maps/Land.unity` and press Play.
 
 Delete older imported copies such as `Assets/Samples/QuadSim/0.2.0` before importing a newer sample version. Unity samples are copied into `Assets` and are not upgraded in place.
 
@@ -353,40 +353,26 @@ derived by pure relabels.
 
 ## Drone Configuration
 
-Drone parameters are loaded from YAML/model configuration and applied to the spawned `QuadPawn`.
+Drone parameters are loaded from a versioned YAML configuration and applied to
+the spawned `QuadPawn`. Schema v1 defines the mass, inertia, center of mass,
+rotor geometry and direction, propulsion coefficients, motor response,
+controller gains, limits, and runtime rates in explicit units.
 
-Typical configuration includes:
+Create and validate a complete conventional-quad profile with the Python SDK:
 
-```yaml
-name: "StandardDrone"
-
-physical_properties:
-  mass_kg: 0.73
-  com_offset: { x: 0, y: 0, z: 0 }
-  inertia: { x: 0.00791, y: 0.00791, z: 0.01231 }
-
-propulsion:
-  max_rpm: 10000
-  thrust_coef: 0.025
-  torque_coef: 0.0005
-  propellers:
-    - { id: 0, x:  0.17, y: 0, z:  0.17, dir:  1 }
-    - { id: 1, x:  0.17, y: 0, z: -0.17, dir: -1 }
-    - { id: 2, x: -0.17, y: 0, z:  0.17, dir: -1 }
-    - { id: 3, x: -0.17, y: 0, z: -0.17, dir:  1 }
-
-controller:
-  position_gains:
-    x: { p: 1.0, i: 0.0, d: 0.0 }
-  velocity_gains:
-    x: { p: 2.0, i: 0.1, d: 0.0 }
-  angle_gains:
-    roll: { p: 6.0, i: 0.0, d: 0.0 }
-  rate_gains:
-    roll: { p: 0.1, i: 0.0, d: 0.0 }
+```bash
+quadsim create-drone my_quad.yaml --name MyQuad
+quadsim validate-drone my_quad.yaml
+quadsim inspect-drone my_quad.yaml --output my_quad.report.json
 ```
 
-For packaged builds, runtime-readable configs should live in Unity-accessible package resources or `StreamingAssets`, depending on how the project loads drone models/configs.
+Use `extends` for a small tuning overlay, then run `quadsim resolve-drone` before
+copying the self-contained result into `StreamingAssets/Configs/Drones`. The
+Unity runtime does not resolve external inheritance paths in a player build.
+
+Open **Tools → QuadSim → Drone YAML Inspector** to preview the rotor layout,
+coefficient-derived plant values, effectiveness rank, and condition estimate.
+The full schema and calibration workflow are in `Documentation~/`.
 
 ---
 
@@ -457,11 +443,15 @@ The external interface uses two sockets:
 | REQ/REP | `5555` | Commands, queries, mode changes, stepping |
 | PUB/SUB | `5556` | Telemetry streaming |
 
-The headless executable can override both ports:
+Both sockets bind to `127.0.0.1` by default. The headless executable can
+override the address and ports explicitly:
 
 ```bash
--rpcPort 5555 -telemetryPort 5556
+-rpcBindAddress 127.0.0.1 -rpcPort 5555 -telemetryPort 5556
 ```
+
+Remote binding is not authenticated or encrypted and is outside the supported
+0.3.0 configuration.
 
 ---
 

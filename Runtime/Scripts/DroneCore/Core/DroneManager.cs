@@ -124,9 +124,9 @@ namespace DroneCore.Core
         {
             if (_instance != null) return _instance;
 
-            _instance = FindFirstObjectByType<DroneManager>();
+            _instance = FindAnyObjectByType<DroneManager>();
             if (_instance != null)
-                Debug.LogWarning("[DroneManager] Instance resolved via FindFirstObjectByType. Prefer direct reference.");
+                Debug.LogWarning("[DroneManager] Instance resolved via FindAnyObjectByType. Prefer direct reference.");
 
             return _instance;
         }
@@ -149,7 +149,7 @@ namespace DroneCore.Core
             // before SimulationManager.Start() fires OnSimulationStart
             if (simManager == null)
             {
-                simManager = FindFirstObjectByType<SimulationManager>();
+                simManager = FindAnyObjectByType<SimulationManager>();
                 if (simManager != null)
                     Debug.LogWarning("[DroneManager] SimulationManager resolved via find. Prefer inspector assignment.");
             }

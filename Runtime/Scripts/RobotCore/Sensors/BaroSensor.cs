@@ -7,8 +7,6 @@ namespace RobotCore.Sensors
 {
     public sealed class BaroSensor
     {
-        private float UpdateRate = 50.0f; // documented intent; cadence is owned by SensorManager's limiter
-
         private float BaroDriftPa = 0.0f;
         private float PressureNoiseStdDev = 0.5f;
         private float DriftPaPerSec = 0.005f;

@@ -16,8 +16,6 @@ namespace QuadSim.RuntimeUI.ImGuiHud
 
         private bool _open;
         private List<string> _configCache;
-        private int _configIndex = -1;
-
         public bool IsOpen => _open;
         public void ToggleOpen() => _open = !_open;
 

@@ -9,7 +9,7 @@ namespace Nino.QuadSim.Editor
         private static void FindInOpenScenes()
         {
             int total = 0;
-            foreach (var go in Object.FindObjectsOfType<GameObject>(true))
+            foreach (var go in Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include))
             {
                 var components = go.GetComponents<Component>();
                 for (int i = 0; i < components.Length; i++)

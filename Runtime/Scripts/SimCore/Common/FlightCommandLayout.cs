@@ -13,13 +13,13 @@
         public static Axis4 Position(float x_m, float y_m, float z_m, float yaw_deg)
             => new Axis4(x_m, y_m, yaw_deg, z_m);
 
-        // Velocity mode expects: (Vx_mps, Vy_mps, Yaw_deg_or_nan, Vz_mps)
-        public static Axis4 Velocity(float vx_mps, float vy_mps, float vz_mps, float yaw_deg)
-            => new Axis4(vx_mps, vy_mps, yaw_deg, vz_mps);
+        // Velocity mode expects: (Vx_mps, Vy_mps, YawRate_deg_s, Vz_mps)
+        public static Axis4 Velocity(float vx_mps, float vy_mps, float vz_mps, float yawRate_deg_s)
+            => new Axis4(vx_mps, vy_mps, yawRate_deg_s, vz_mps);
 
-        // Angle mode: (Roll_deg, Pitch_deg, Yaw_deg, Throttle01)
-        public static Axis4 Angle(float roll_deg, float pitch_deg, float yaw_deg, float throttle01)
-            => new Axis4(roll_deg, pitch_deg, yaw_deg, throttle01);
+        // Angle mode: (Roll_deg, Pitch_deg, YawRate_deg_s, Throttle01)
+        public static Axis4 Angle(float roll_deg, float pitch_deg, float yawRate_deg_s, float throttle01)
+            => new Axis4(roll_deg, pitch_deg, yawRate_deg_s, throttle01);
 
         // Rate mode: (RollRate_deg_s, PitchRate_deg_s, YawRate_deg_s, Throttle01)
         public static Axis4 Rate(float rollRate_deg_s, float pitchRate_deg_s, float yawRate_deg_s, float throttle01)

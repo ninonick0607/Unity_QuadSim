@@ -91,8 +91,6 @@ namespace RobotCore.Core_Utils
 		};
         
         private static readonly float WMM_DECLINATION_SCALE_TO_DEGREES = 0.00545143529f;
-        private static readonly float WMM_DECLINATION_MIN_DEGREES = -176.9f; // latitude: 90, longitude: 170
-        private static readonly float WMM_DECLINATION_MAX_DEGREES = 178.6f; // latitude: -90, longitude: 150
         
 	// Magnetic inclination data in 0.002699 degrees
 	// Model: WMM-2020,
@@ -122,8 +120,6 @@ namespace RobotCore.Core_Utils
 		};
 
 		 private static readonly float WMM_INCLINATION_SCALE_TO_DEGREES = 0.00269892697f;
-		 private static readonly float WMM_INCLINATION_MIN_DEGREES = -87.4f; // latitude: -60, longitude: 130
-		 private static readonly float WMM_INCLINATION_MAX_DEGREES = 88.4f; // latitude: 80, longitude: 110
         
 		
 		// Magnetic totalintensity data in 2.042 nanoTesla
@@ -153,8 +149,6 @@ namespace RobotCore.Core_Utils
 			/* LAT:  90 */ {  27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, 27849, }, // WARNING! black out zone
 		};
 		private static readonly float WMM_TOTALINTENSITY_SCALE_TO_NANOTESLA = 2.042f;
-		private static readonly float WMM_TOTALINTENSITY_MIN_NANOTESLA = 22226.9f; // latitude: -30, longitude: -60
-		private static readonly float WMM_TOTALINTENSITY_MAX_NANOTESLA = 66904.8f; // latitude: -60, longitude: 130 
 		 
 		 
 		 

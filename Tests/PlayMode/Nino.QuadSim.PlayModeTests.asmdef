@@ -1,0 +1,11 @@
+{
+  "name": "Nino.QuadSim.PlayModeTests",
+  "rootNamespace": "Nino.QuadSim.PlayModeTests",
+  "references": [
+    "Nino.QuadSim"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "autoReferenced": false
+}

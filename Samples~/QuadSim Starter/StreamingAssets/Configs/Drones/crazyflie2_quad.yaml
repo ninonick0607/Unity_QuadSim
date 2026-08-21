@@ -1,4 +1,5 @@
 # Drone Configuration File - Crazyflie 2.1
+schema_version: 1
 name: "Crazyflie_Quad_V1"
 body_mesh: "/QuadSimPlugin/Assets/Drone_Models/CrazyFlie/cf2_assembly.cf2_assembly"
 
@@ -37,6 +38,10 @@ propulsion:
     - {id: 1, x:  0.032527, y: 0.008, z: -0.032527, dir: -1}  # FR
     - {id: 2, x: -0.032527, y: 0.008, z:  0.032527, dir: -1}  # BL
     - {id: 3, x: -0.032527, y: 0.008, z: -0.032527, dir:  1}  # BR
+
+runtime:
+  physics_rate_hz: 250
+  controller_rate_hz: 250
 
 controller:
   position_gains:

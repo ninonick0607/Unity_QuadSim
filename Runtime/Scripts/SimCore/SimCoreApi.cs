@@ -75,7 +75,7 @@ namespace SimCore
         public static SimCoreApi Get()
         {
             if (_instance != null) return _instance;
-            _instance = FindFirstObjectByType<SimCoreApi>();
+            _instance = FindAnyObjectByType<SimCoreApi>();
             if (_instance != null)
                 Debug.LogWarning("[SimCoreApi] Instance resolved via Find. Prefer direct reference.");
             return _instance;
@@ -139,7 +139,7 @@ namespace SimCore
             {
                 simManager = GetComponent<SimulationManager>();
                 if (simManager == null)
-                    simManager = FindFirstObjectByType<SimulationManager>();
+                    simManager = FindAnyObjectByType<SimulationManager>();
             }
 
             if (authorityManager == null)

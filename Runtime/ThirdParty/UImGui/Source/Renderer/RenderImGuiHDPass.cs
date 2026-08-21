@@ -5,6 +5,7 @@ using UnityEngine.Rendering.HighDefinition;
 
 namespace UImGui.Renderer
 {
+	[System.Serializable]
 	public class RenderImGuiPass : CustomPass
 	{
 		private UImGui[] _uimguis;
@@ -20,7 +21,7 @@ namespace UImGui.Renderer
 
 			// Cache once per session; Cleanup() resets so the next Play re-discovers.
 			if (_uimguis == null)
-				_uimguis = Object.FindObjectsByType<UImGui>(FindObjectsSortMode.None);
+				_uimguis = Object.FindObjectsByType<UImGui>(FindObjectsInactive.Exclude);
 
 			if (_uimguis == null || _uimguis.Length == 0) return;
 

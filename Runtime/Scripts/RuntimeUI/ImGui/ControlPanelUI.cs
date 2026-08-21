@@ -38,9 +38,6 @@ namespace QuadSim.RuntimeUI.ImGuiHud
 
         private readonly Dictionary<QuadPawn, DronePanelState> _states = new();
         private bool _open;
-        private float _panelX = -1f;
-        private float _panelY = 80f;
-
         public bool IsOpen => _open;
         public void ToggleOpen() => _open = !_open;
 

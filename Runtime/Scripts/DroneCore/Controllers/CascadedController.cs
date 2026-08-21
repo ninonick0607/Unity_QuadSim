@@ -52,7 +52,6 @@ namespace DroneCore.Controllers
             public QuadPIDController PID; // non-owning reference
         }
 
-        [Serializable]
         public class CascadeAxis
         {
             public PositionController Position;
@@ -98,10 +97,12 @@ namespace DroneCore.Controllers
 
         private long _lastControllerUpdateTime;
         private SensorData _lastSensorData;
-        private bool _hasValidSensorData;
 
         // Derived Controls
         private float _desiredBodyUpCos = 1f;
+        private Vector3 _desiredSpecificForceHeading = new Vector3(0f, 0f, 9.81f);
+        private float _requestedCollective01;
+        private bool _verticalVelocityLoopActive;
         private readonly CascadeAxis[] _axes = new CascadeAxis[4];
         private ControlAllocator _controlAllocator = new ControlAllocator();
 
@@ -124,7 +125,6 @@ namespace DroneCore.Controllers
         private Vector3 _lastAchievedForceBody;
         private Vector3 _lastAchievedTorqueBody;
         private int _waDebugTick;
-        private bool _initialized;
 
         // ── Plant / actuation (external-wrench allocated path) ──
         [Header("Plant / Actuation")]
@@ -195,7 +195,6 @@ namespace DroneCore.Controllers
 
             ResetControllerState();
 
-            _initialized = true;
             Debug.Log($"[CascadedController] {name}: Initialized");
         }
 
@@ -327,6 +326,9 @@ namespace DroneCore.Controllers
             }
 
             _desiredBodyUpCos = 1f;
+            _desiredSpecificForceHeading = new Vector3(0f, 0f, 9.81f);
+            _requestedCollective01 = 0f;
+            _verticalVelocityLoopActive = false;
             _lastAchievedForceBody = Vector3.zero;
             _lastAchievedTorqueBody = Vector3.zero;
             _controlAllocator.ResetDiagnostics();
@@ -381,7 +383,6 @@ namespace DroneCore.Controllers
                 }
             }
 
-            _hasValidSensorData = true;
             FlightController(actualDeltaTime);
         }
         
@@ -473,6 +474,9 @@ namespace DroneCore.Controllers
 
             Axis4 output = new Axis4();
             _desiredBodyUpCos = 1f;
+            _desiredSpecificForceHeading = new Vector3(0f, 0f, 9.81f);
+            _requestedCollective01 = 0f;
+            _verticalVelocityLoopActive = false;
 
             // 1. Clear external goals
             for (int axis = 0; axis < 4; axis++)
@@ -583,10 +587,20 @@ namespace DroneCore.Controllers
                 {
                     float velocityOutputX = _axes[0].Velocity.GetOutput();
                     float velocityOutputY = _axes[1].Velocity.GetOutput();
-                    Vector2 attCmd = AccelerationToAttitude(velocityOutputX, velocityOutputY, out _desiredBodyUpCos);
+                    float velocityOutputZ = _axes[3].Velocity.GetOutput();
+                    Vector2 attCmd = AccelerationToAttitude(
+                        velocityOutputX, velocityOutputY, velocityOutputZ,
+                        out _desiredBodyUpCos, out _desiredSpecificForceHeading);
 
                     _axes[1].Angle.SetExternalGoal(attCmd.x);
                     _axes[0].Angle.SetExternalGoal(attCmd.y);
+
+                    // Feed force-cone saturation back to the horizontal
+                    // velocity integrators on the next control update.
+                    _axes[0].Velocity.Pid.SetSaturationFromTracking(
+                        velocityOutputX, _desiredSpecificForceHeading.x);
+                    _axes[1].Velocity.Pid.SetSaturationFromTracking(
+                        velocityOutputY, _desiredSpecificForceHeading.y);
 
                     _telemetry.DesiredAnglesDeg.x = attCmd.x;
                     _telemetry.DesiredAnglesDeg.y = attCmd.y;
@@ -594,12 +608,15 @@ namespace DroneCore.Controllers
                     _telemetry.DesiredAccel = new Vector3(
                         velocityOutputX,
                         velocityOutputY,
-                        _axes[3].Velocity.GetOutput());
+                        velocityOutputZ);
                     _telemetry.HasAccelSetpoint = true;
+                    _verticalVelocityLoopActive = true;
                 }
                 else if (mode == GoalMode.Acceleration)
                 {
-                    Vector2 attCmd = AccelerationToAttitude(accelCmd.x, accelCmd.y, out _desiredBodyUpCos);
+                    Vector2 attCmd = AccelerationToAttitude(
+                        accelCmd.x, accelCmd.y, accelCmd.z,
+                        out _desiredBodyUpCos, out _desiredSpecificForceHeading);
 
                     _axes[1].Angle.SetExternalGoal(attCmd.x);
                     _axes[0].Angle.SetExternalGoal(attCmd.y);
@@ -611,9 +628,9 @@ namespace DroneCore.Controllers
 
                 for (int axis = 0; axis < 3; axis++)
                 {
-                    // Acceleration mode commands yaw-rate directly, so do not let
-                    // the yaw-angle PID integrate against a meaningless yaw angle.
-                    if (mode == GoalMode.Acceleration && axis == 2)
+                    // Only Position mode owns a yaw-angle setpoint. Velocity,
+                    // Acceleration, and Angle modes command yaw rate directly.
+                    if (axis == 2 && mode != GoalMode.Position)
                         continue;
 
                     if (_axes[axis].Angle != null)
@@ -625,8 +642,9 @@ namespace DroneCore.Controllers
                 {
                     float angleOutput = _axes[axis].Angle != null ? _axes[axis].Angle.GetOutput() : 0f;
 
-                    // In gamepad Angle mode: yaw should be a RATE setpoint from Cmd.Z (deg/s)
-                    if ((bGamepadAngle || mode == GoalMode.Acceleration) && axis == 2)
+                    // Yaw is rate-controlled in every stabilized mode except
+                    // Position, where the wrapped yaw-angle PID feeds this rate loop.
+                    if (axis == 2 && mode != GoalMode.Position)
                     {
                         angleOutput = cmd.Z;
                     }
@@ -679,11 +697,25 @@ namespace DroneCore.Controllers
                 float zAccel = (mode == GoalMode.Acceleration)
                     ? accelCmd.z
                     : _axes[3].Velocity.GetOutput();
-                // Project the requested world-vertical thrust onto the planned
-                // body-up direction. This matches PX4's essential operation:
-                // collective_thrust = thrust_z / cos(body_z, world_z).
-                output[3] = _hoverThrottle01 * (1.0f + zAccel / 9.81f)
-                            / Mathf.Max(0.1f, _desiredBodyUpCos);
+
+                if (mode == GoalMode.Position || mode == GoalMode.Velocity ||
+                    mode == GoalMode.Acceleration)
+                {
+                    // Geometric force projection: command only the component
+                    // of the desired force that the current body-up axis can
+                    // actually produce. As attitude converges this naturally
+                    // reaches |F_des| without a planned-cosine transient boost.
+                    output[3] = DesiredForceToCollective(_desiredSpecificForceHeading);
+                }
+                else
+                {
+                    // Non-gamepad Angle mode retains altitude-velocity control.
+                    output[3] = _hoverThrottle01 * (1.0f + zAccel / 9.81f)
+                                / Mathf.Max(0.1f, _desiredBodyUpCos);
+                    _verticalVelocityLoopActive = true;
+                }
+
+                _requestedCollective01 = output[3];
             }
 
             if (mode == GoalMode.Passthrough)
@@ -755,6 +787,16 @@ namespace DroneCore.Controllers
 
             _controlAllocator.AllocateYawLimited(rollTorque,pitchTorque,yawTorque,throttle01,MinIdleThrottle,motor01);
 
+            AllocationDiagnostics allocation = _controlAllocator.LastAllocation;
+            _axes[0].Rate.Pid.SetSaturationFromTracking(rollTorque, allocation.Achieved.x);
+            _axes[1].Rate.Pid.SetSaturationFromTracking(pitchTorque, allocation.Achieved.y);
+            _axes[2].Rate.Pid.SetSaturationFromTracking(yawTorque, allocation.Achieved.z);
+            if (_verticalVelocityLoopActive)
+            {
+                _axes[3].Velocity.Pid.SetSaturationFromTracking(
+                    _requestedCollective01, allocation.Achieved.w);
+            }
+
             // Fallback if allocator fails
             if (motor01 == null || motor01.Length != 4)
             {
@@ -786,24 +828,71 @@ namespace DroneCore.Controllers
         // Utilities
         // ============================================================================
 
-        private Vector2 AccelerationToAttitude(float accelX, float accelY, out float bodyUpCos)
+        private Vector2 AccelerationToAttitude(
+            float accelX, float accelY, float accelZ,
+            out float bodyUpCos, out Vector3 desiredSpecificForceHeading)
         {
             const float g = 9.81f;
 
-            // Limit horizontal acceleration as a vector. Per-axis limiting alone
-            // permits sqrt(2) times the configured tilt on diagonal commands.
-            float maxHorizontalAccel = Mathf.Tan(_cachedConfig.FlightParams.MaxAngle * Mathf.Deg2Rad) * g;
-            Vector2 horizontalAccel = Vector2.ClampMagnitude(
-                new Vector2(accelX, accelY), maxHorizontalAccel);
+            float maxSpecificThrust = _hoverThrottle01 > 1e-5f
+                ? g / _hoverThrottle01
+                : float.PositiveInfinity;
+            desiredSpecificForceHeading = ConstrainDesiredSpecificForce(
+                accelX, accelY, accelZ,
+                _cachedConfig.FlightParams.MaxAngle, maxSpecificThrust);
 
-            Vector3 bodyZ = new Vector3(horizontalAccel.x, horizontalAccel.y, g);
-            bodyZ.Normalize();
+            if (desiredSpecificForceHeading.sqrMagnitude <= 1e-8f)
+            {
+                bodyUpCos = 1f;
+                return Vector2.zero;
+            }
+
+            Vector3 bodyZ = desiredSpecificForceHeading.normalized;
             bodyUpCos = bodyZ.z;
 
             float pitchRad = Mathf.Atan2(bodyZ.x, bodyZ.z);
             float rollRad  = Mathf.Atan2(bodyZ.y, bodyZ.z);
             
             return new Vector2(Mathf.Rad2Deg * pitchRad, Mathf.Rad2Deg * -rollRad);
+        }
+
+        /// <summary>
+        /// Construct and constrain F_des / mass in the yaw-heading FLU frame.
+        /// Horizontal authority shrinks with available vertical force, so a
+        /// request near free-fall cannot simultaneously demand an impossible tilt.
+        /// </summary>
+        public static Vector3 ConstrainDesiredSpecificForce(
+            float accelX, float accelY, float accelZ,
+            float maxTiltDeg, float maxSpecificThrust)
+        {
+            const float g = 9.81f;
+            float vertical = Mathf.Max(0f, g + accelZ);
+            float maxHorizontal = vertical * Mathf.Tan(
+                Mathf.Clamp(maxTiltDeg, 0f, 89f) * Mathf.Deg2Rad);
+            Vector2 horizontal = Vector2.ClampMagnitude(
+                new Vector2(accelX, accelY), maxHorizontal);
+
+            Vector3 force = new Vector3(horizontal.x, horizontal.y, vertical);
+            if (maxSpecificThrust > 0f && !float.IsInfinity(maxSpecificThrust))
+                force = Vector3.ClampMagnitude(force, maxSpecificThrust);
+            return force;
+        }
+
+        private float DesiredForceToCollective(Vector3 desiredSpecificForceHeading)
+        {
+            const float g = 9.81f;
+            Vector3 bodyUpWorld = _body.transform.up;
+            float yawRad = _body.transform.eulerAngles.y * Mathf.Deg2Rad;
+            float cosYaw = Mathf.Cos(yawRad);
+            float sinYaw = Mathf.Sin(yawRad);
+            Vector3 bodyUpHeading = new Vector3(
+                cosYaw * bodyUpWorld.x + sinYaw * bodyUpWorld.z,
+                -sinYaw * bodyUpWorld.x + cosYaw * bodyUpWorld.z,
+                bodyUpWorld.y);
+
+            float producibleSpecificForce = Mathf.Max(
+                0f, Vector3.Dot(desiredSpecificForceHeading, bodyUpHeading));
+            return _hoverThrottle01 * producibleSpecificForce / g;
         }
 
         private static float AttitudeVerticalProjection(float rollDeg, float pitchDeg)
