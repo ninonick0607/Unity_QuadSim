@@ -35,6 +35,9 @@ namespace QuadSim.RuntimeUI.ImGuiHud
 
         private void OnEnable()
         {
+            _appliedStartupPrefs = false;
+            _layoutSeen = false;
+            _noLayoutWarnTimer = 0f;
             _taskbar = new TaskbarUI();
             _controlPanel = new ControlPanelUI();
             _stateHud = new StateHudUI();
@@ -64,6 +67,8 @@ namespace QuadSim.RuntimeUI.ImGuiHud
                 _subscribed = false;
             }
             UnsubscribeSim();
+            // ResolveRefs must re-subscribe after switching back from the native workspace.
+            _sim = null;
         }
 
         private void ResolveRefs()

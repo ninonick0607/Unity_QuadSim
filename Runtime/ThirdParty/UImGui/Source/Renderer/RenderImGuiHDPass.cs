@@ -21,7 +21,9 @@ namespace UImGui.Renderer
 
 			// Cache once per session; Cleanup() resets so the next Play re-discovers.
 			if (_uimguis == null)
-				_uimguis = Object.FindObjectsByType<UImGui>(FindObjectsInactive.Exclude);
+				_uimguis = Object.FindObjectsByType<UImGui>(
+					FindObjectsInactive.Exclude,
+					FindObjectsSortMode.None);
 
 			if (_uimguis == null || _uimguis.Length == 0) return;
 

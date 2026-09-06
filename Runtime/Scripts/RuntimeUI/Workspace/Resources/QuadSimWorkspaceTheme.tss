@@ -1,0 +1,43 @@
+@import url("unity-theme://default");
+
+/* Popups live above UIDocument.rootVisualElement. Keep their rules in this
+   workspace-owned panel theme so catalog and enum menus inherit them too. */
+.unity-base-dropdown__container-outer {
+    background-color: rgba(247, 249, 252, 0.94);
+    border-width: 1px;
+    border-color: #b7c5d7;
+    border-radius: 1px;
+    padding: 3px;
+    color: #243348;
+    font-size: 12px;
+}
+.unity-base-dropdown__container-inner {
+    padding: 0;
+    margin: 0;
+    background-color: rgba(247, 249, 252, 0.94);
+}
+.unity-base-dropdown__item {
+    height: 24px;
+    min-height: 24px;
+    padding: 2px 6px;
+    margin: 0;
+    border-width: 0;
+    border-radius: 0;
+    color: #243348;
+    background-color: transparent;
+}
+.unity-base-dropdown__item:hover,
+.unity-base-dropdown__item:focus { background-color: #d6e6fa; }
+.unity-base-dropdown__label {
+    margin: 0;
+    padding: 0;
+    color: #243348;
+    font-size: 12px;
+}
+.unity-base-dropdown__checkmark {
+    width: 14px;
+    height: 14px;
+    margin: 0 5px 0 0;
+    flex-shrink: 0;
+    -unity-background-image-tint-color: #245f9e;
+}

@@ -40,6 +40,39 @@ namespace QuadSim.RL
         private readonly Dictionary<string, Stack<RLSceneObject>> _pool = new();
         private readonly List<RLSceneObject> _active = new();
         private readonly Dictionary<string, ScenarioObjectSpec> _specs = new();
+        public IReadOnlyList<RLSceneObject> ActiveObjects => _active;
+
+        /// <summary>Add one runtime object without replacing the current RL scenario.</summary>
+        public bool AddObject(ScenarioObjectSpec spec)
+        {
+            if (string.IsNullOrWhiteSpace(spec.ObjectId) || _specs.ContainsKey(spec.ObjectId) ||
+                (spec.Shape != "cube" && spec.Shape != "sphere" && spec.Shape != "cylinder" && spec.Shape != "goal") ||
+                !Finite(spec.PositionEnu) || !Finite(spec.SizeEnu) || float.IsNaN(spec.YawDeg) || float.IsInfinity(spec.YawDeg) ||
+                spec.SizeEnu.x <= 0 || spec.SizeEnu.y <= 0 || spec.SizeEnu.z <= 0) return false;
+            var item = Acquire(spec.Shape);
+            item.transform.SetPositionAndRotation(Frames.InverseTransformWorldPosition(spec.PositionEnu, SimFrame.FLU),
+                Frames.InverseTransformQuaternion(Quaternion.AngleAxis(spec.YawDeg, Vector3.forward), SimFrame.FLU));
+            item.transform.localScale = ScaleForShape(spec.Shape, spec.SizeEnu);
+            item.Configure(spec.ObjectId, spec.Shape, spec.CollisionEnabled, spec.Color);
+            item.gameObject.SetActive(true); _active.Add(item); _specs.Add(spec.ObjectId, spec);
+            return true;
+        }
+        private static bool Finite(Vector3 value) =>
+            !float.IsNaN(value.x) && !float.IsNaN(value.y) && !float.IsNaN(value.z) &&
+            !float.IsInfinity(value.x) && !float.IsInfinity(value.y) && !float.IsInfinity(value.z);
+
+        public bool RemoveObject(string id)
+        {
+            for (int i = 0; i < _active.Count; i++)
+            {
+                var item = _active[i];
+                if (item == null || item.ObjectId != id) continue;
+                item.gameObject.SetActive(false);
+                if (!_pool.TryGetValue(item.Shape, out var pool)) { pool = new Stack<RLSceneObject>(); _pool.Add(item.Shape, pool); }
+                pool.Push(item); _active.RemoveAt(i); _specs.Remove(id); return true;
+            }
+            return false;
+        }
 
         public static ScenarioObjectManager GetOrCreate(GameObject host)
         {

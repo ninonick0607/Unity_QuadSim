@@ -553,6 +553,14 @@ namespace DroneCore.Core
             selectedConfigName = configName;
             Debug.Log($"[DroneManager] Selected config: {configName}");
         }
+        /// <summary>Runtime sensor defaults for subsequent spawns; existing drones are updated by the caller.</summary>
+        public void SetSensorEnvironment(int seed, bool noise, double latitude, double longitude, double altitude)
+        {
+            masterSeed = seed; enableSensorNoise = noise;
+            originLat = latitude; originLon = longitude; originAlt = altitude;
+        }
+        public int SensorEnvironmentSeed => masterSeed;
+        public bool SensorEnvironmentNoise => enableSensorNoise;
 
         public void SetSceneEnv(int seed, bool noise, double lat, double lon, double alt,
             StartupSpawnPolicy _spawnPolicy, QuadPawn _quadSimPrefab,

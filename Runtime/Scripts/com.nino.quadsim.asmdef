@@ -2,7 +2,10 @@
   "name": "Nino.QuadSim",
   "rootNamespace": "Nino.QuadSim",
   "references": [
-    "UImGui"
+    "UImGui",
+    "Unity.InputSystem",
+    "Unity.RenderPipelines.Core.Runtime",
+    "Unity.RenderPipelines.HighDefinition.Runtime"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

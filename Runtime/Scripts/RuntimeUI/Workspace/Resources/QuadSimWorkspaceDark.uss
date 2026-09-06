@@ -1,0 +1,169 @@
+.quadsim-workspace { --qs-background: #181a1e; --qs-panel: rgba(32, 34, 38, 0.98); --qs-border: #35383e; --qs-accent: #86b7ef; --qs-text: #e3e8ef; --qs-muted: #aeb6c1; }
+.quadsim-workspace { flex-grow: 1; color: #e3e8ef; font-size: 12px; }
+.workspace-toolbar { height: 28px; flex-shrink: 0; flex-direction: row; align-items: center; background-color: var(--qs-background); padding: 0 5px; border-bottom-width: 1px; border-bottom-color: #35383e; }
+.workspace-toolbar .unity-base-field__label { min-width: 48px; }
+.speed-field { width: 100px; margin-left: 5px; }
+.config-field { width: auto; margin: 3px 0; }
+.quadsim-workspace Button { background-color: #292d33; color: #e3e8ef; border-width: 1px; border-color: #454b55; border-radius: 2px; padding: 1px 5px; margin: 1px; min-height: 22px; align-self: flex-start; }
+.quadsim-workspace Button:hover { background-color: #353d48; }
+.quadsim-workspace Button:focus { border-color: var(--qs-accent); }
+.quadsim-workspace Button:disabled { opacity: 0.45; }
+.workspace-shell { flex-grow: 1; flex-direction: row; min-height: 0; }
+.workspace-area { flex-grow: 1; flex-direction: row; min-height: 0; min-width: 0; }
+.workspace-center { flex-grow: 1; flex-basis: 0; min-width: 120px; }
+.workspace-viewport { flex-grow: 1; min-height: 100px; justify-content: flex-end; }
+.viewport-hint { background-color: rgba(24, 24, 24, 0.85); color: #c3c3c3; padding: 2px 6px; font-size: 10px; white-space: normal; }
+.dock-left { width: 224px; max-width: 28%; flex-shrink: 0; min-height: 0; background-color: var(--qs-panel); border-right-width: 1px; border-right-color: var(--qs-border); }
+.dock-right { width: 320px; max-width: 34%; flex-shrink: 0; min-height: 0; background-color: var(--qs-panel); border-left-width: 1px; border-left-color: var(--qs-border); }
+.dock-bottom { height: 168px; max-height: 35%; flex-shrink: 0; border-top-width: 1px; border-top-color: var(--qs-border); background-color: #1e2228; }
+.dock-tabs { flex-direction: row; flex-wrap: wrap; flex-shrink: 0; background-color: var(--qs-background); border-bottom-width: 1px; border-bottom-color: #35383e; }
+.dock-tabs Button { border-width: 0; border-bottom-width: 2px; border-bottom-color: transparent; border-radius: 0; margin: 0; padding: 2px 6px; background-color: transparent; color: #aeb6c1; }
+.dock-tabs Button.is-active { border-bottom-color: var(--qs-accent); color: #e3e8ef; background-color: #252a32; }
+.floating-layer { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
+.workspace-window { background-color: var(--qs-panel); margin: 0; min-height: 32px; overflow: hidden; }
+.workspace-window.is-floating { border-width: 1px; border-color: #606b7a; }
+.window-header { flex-direction: row; align-items: center; background-color: rgba(38, 43, 51, 1); height: 28px; flex-shrink: 0; border-bottom-width: 1px; border-bottom-color: #35383e; }
+.window-title { flex-grow: 1; align-self: stretch; -unity-text-align: middle-left; -unity-font-style: bold; padding-left: 6px; }
+.window-header Button { border-width: 0; padding: 0; width: 26px; min-height: 24px; margin: 2px; background-color: transparent; font-size: 15px; }
+.window-body { flex-grow: 1; padding: 4px 6px; min-height: 0; }
+.resize-handle { position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; border-right-width: 2px; border-bottom-width: 2px; border-color: #8a8a8a; }
+.dock-preview { position: absolute; background-color: rgba(72, 139, 205, 0.18); border-width: 2px; border-color: var(--qs-accent); }
+.section-heading { color: #e3e8ef; -unity-font-style: bold; padding: 4px 0; margin-top: 3px; margin-bottom: 3px; border-bottom-width: 1px; border-bottom-color: var(--qs-border); }
+.action-row { flex-direction: row; margin-bottom: 4px; }
+.data-text { white-space: normal; margin-bottom: 6px; color: #aeb6c1; }
+.status-bar { background-color: var(--qs-background); color: #aeb6c1; padding: 3px 6px; border-top-width: 1px; border-top-color: var(--qs-border); font-size: 11px; }
+.quadsim-workspace .unity-base-field { margin-top: 2px; margin-bottom: 2px; }
+.quadsim-workspace .unity-base-field__label { min-width: 72px; color: #c1cbd8; }
+.quadsim-workspace .unity-base-field__input { background-color: var(--qs-background); color: #e3e8ef; border-color: #535e6e; border-radius: 2px; }
+.quadsim-workspace .unity-collection-view__item--selected { background-color: #294967; }
+.quadsim-workspace .unity-list-view__item Label { padding: 1px 4px; }
+.approval-overlay { position: absolute; left: 0; right: 0; top: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.65); align-items: center; justify-content: center; }
+.approval-card { width: 390px; padding: 12px; border-width: 1px; border-color: #606b7a; background-color: #252a32; }
+.transport-controls { flex-direction: row; align-items: center; border-left-width: 1px; border-left-color: var(--qs-border); margin-left: 5px; padding-left: 5px; }
+.quadsim-workspace Button.taskbar-menu { background-color: transparent; border-width: 0; margin: 0; padding: 2px 6px; }
+.quadsim-workspace Button.taskbar-menu:hover { background-color: #353d48; }
+
+/* Explicitly override the spacious runtime-theme defaults, including nested axis fields. */
+.quadsim-workspace .unity-base-field { flex-direction: row; align-items: center; padding: 0; }
+.quadsim-workspace .unity-base-field__label { padding: 0; margin: 0 4px 0 0; }
+.quadsim-workspace .unity-base-field__input { min-height: 22px; padding: 1px 3px; margin: 0; }
+.quadsim-workspace .unity-vector3-field { flex-direction: column; align-items: stretch; }
+.quadsim-workspace .unity-vector3-field > .unity-base-field__label { margin-bottom: 2px; }
+.quadsim-workspace .unity-vector3-field > .unity-base-field__input { flex-direction: row; padding: 0; background-color: transparent; }
+.quadsim-workspace .unity-vector3-field .unity-float-field { flex-direction: row; flex-grow: 1; flex-basis: 0; min-width: 0; margin: 0 3px 0 0; }
+.quadsim-workspace .unity-vector3-field .unity-float-field > .unity-base-field__label { min-width: 12px; width: 12px; margin: 0 2px 0 0; }
+.quadsim-workspace .unity-vector3-field .unity-float-field > .unity-base-field__input { min-width: 0; flex-grow: 1; }
+.compact-menu { padding: 2px; background-color: #252a32; color: #e3e8ef; }
+.compact-menu .compact-menu-item { min-height: 22px; height: 22px; padding: 1px 6px; margin: 0; }
+.compact-menu .compact-menu-item Label { padding: 0; margin: 0; color: #e3e8ef; }
+.compact-menu .compact-menu-item:hover { background-color: #353d48; }
+.compact-menu .unity-base-dropdown__checkmark { display: none; }
+.quadsim-workspace .workspace-toolbar Button, .quadsim-workspace .window-header Button { align-self: center; }
+.command-row, .pid-row { flex-direction: row; align-items: center; }
+.command-row > .unity-slider { flex-grow: 1; min-width: 0; }
+.pid-row > .unity-float-field { flex-grow: 1; flex-basis: 0; min-width: 0; }
+.quadsim-workspace .pid-row .unity-base-field__label { min-width: 12px; }
+.quadsim-workspace .pid-row .unity-base-field__input { min-width: 0; }
+.action-row { flex-wrap: wrap; }
+.stick-box { border-width: 1px; border-color: #707070; background-color: var(--qs-background); }
+.stick-dot { position: absolute; width: 6px; height: 6px; border-radius: 3px; background-color: var(--qs-accent); }
+
+/* Dense desktop controls; the scene remains the visual focus. */
+.workspace-icon { width: 16px; height: 16px; flex-shrink: 0; color: #aeb6c1; margin-right: 5px; }
+.window-header > .workspace-icon { margin-left: 7px; margin-right: 0; }
+.quadsim-workspace Button.icon-button { padding-left: 24px; }
+.icon-button > .workspace-icon { position: absolute; left: 4px; top: 3px; }
+.quadsim-workspace Button.is-running { background-color: #254032; border-color: #456853; }
+.workspace-toolbar { height: 34px; flex-shrink: 0; }
+.viewport-tools { position: absolute; top: 0; left: 0; right: 0; height: 28px; flex-direction: row; align-items: center; background-color: rgba(28, 33, 40, 0.98); border-bottom-width: 1px; border-bottom-color: var(--qs-border); padding: 0 6px; }
+.viewport-tools > Label { color: #c1cbd8; font-size: 10px; }
+.quadsim-workspace .viewport-tools Button { background-color: transparent; border-width: 0; margin: 0; }
+.quadsim-workspace .viewport-tools Button:hover { background-color: #353d48; }
+.entity-row { flex-direction: row; align-items: center; border-bottom-width: 1px; border-bottom-color: #282e38; padding: 0 4px; }
+.entity-row #entity-name { flex-grow: 1; }
+.entity-id { color: #aeb6c1; font-size: 10px; }
+.entity-list { margin: 2px -6px; }
+.panel-hint { font-size: 10px; color: #aeb6c1; margin-top: 8px; }
+.readout-group { margin: 0 0 7px 0; }
+.readout-group > .unity-foldout__toggle { background-color: #282e38; border-bottom-width: 1px; border-bottom-color: #35383e; padding: 3px 2px; margin: 0 0 3px 0; -unity-font-style: bold; }
+.readout-group > .unity-foldout__content { margin-left: 0; }
+.property-row { flex-direction: row; align-items: flex-start; min-height: 23px; padding: 3px 2px; border-bottom-width: 1px; border-bottom-color: #343c48; }
+.property-key { width: 106px; flex-shrink: 0; color: var(--qs-muted); font-size: 11px; }
+.property-value { flex-grow: 1; flex-shrink: 1; min-width: 0; white-space: normal; -unity-text-align: upper-right; color: var(--qs-text); font-size: 11px; }
+.quadsim-workspace .unity-foldout__toggle > .unity-toggle__input { background-color: transparent; border-width: 0; }
+.quadsim-workspace .unity-scroller--vertical { width: 10px; }
+.quadsim-workspace .unity-scroller--vertical .unity-slider { margin: 0; }
+.quadsim-workspace .unity-scroller .unity-slider__dragger { background-color: #535a64; border-width: 0; border-radius: 1px; }
+.quadsim-workspace .unity-scroller .unity-repeat-button { display: none; }
+.quadsim-workspace .unity-base-field__label { font-size: 11px; }
+.quadsim-workspace .unity-base-field__input:focus { border-color: var(--qs-accent); }
+.quadsim-workspace .unity-progress-bar { height: 22px; margin: 2px 0; }
+.quadsim-workspace .unity-progress-bar__background { background-color: var(--qs-background); border-radius: 1px; }
+.quadsim-workspace .unity-progress-bar__progress { background-color: #355b80; border-radius: 1px; }
+.quadsim-workspace .unity-progress-bar__title { color: var(--qs-text); font-size: 11px; }
+.status-bar { white-space: nowrap; overflow: hidden; font-size: 10px; }
+
+.quadsim-workspace .property-row Label { margin: 0; padding: 0; }
+.property-row { min-height: 20px; padding: 2px; }
+.quadsim-workspace .readout-group > .unity-foldout__toggle { height: 24px; min-height: 24px; padding: 1px 2px; }
+.quadsim-workspace .readout-group > .unity-foldout__toggle Label { margin: 0; padding: 0; font-size: 11px; }
+.entity-row #entity-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.entity-row .entity-id { flex-shrink: 0; }
+.quadsim-workspace .unity-scroller .unity-slider__drag-container { background-color: var(--qs-panel); }
+.quadsim-workspace .unity-scroller .unity-slider__dragger-border { border-width: 0; background-color: transparent; }
+
+.quadsim-workspace Button.external-control { color: #e6c68e; border-color: #5f513b; }
+
+.menu-overlay { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
+.task-menu { position: absolute; width: 218px; background-color: var(--qs-panel); border-width: 1px; border-color: #4a5566; padding: 3px; }
+.quadsim-workspace .task-menu Button { align-self: stretch; height: 24px; min-height: 24px; margin: 0; padding: 2px 6px; border-width: 0; border-radius: 0; background-color: transparent; -unity-text-align: middle-left; }
+.quadsim-workspace .task-menu Button:hover, .quadsim-workspace .task-menu Button:focus { background-color: #304459; }
+
+.quadsim-workspace .unity-toggle > .unity-toggle__input { background-color: transparent; border-width: 0; min-height: 18px; padding: 0; }
+.quadsim-workspace .unity-toggle__checkmark { width: 14px; height: 14px; min-width: 14px; min-height: 14px; margin: 0 3px; border-width: 1px; border-color: #899bb3; background-color: #181a1e; }
+.quadsim-workspace .unity-foldout__toggle .unity-toggle__checkmark { border-width: 0; background-color: transparent; -unity-background-image-tint-color: #aeb6c1; }
+.quadsim-workspace .unity-toggle__checkmark { -unity-background-image-tint-color: #c8e1ff; }
+.quadsim-workspace .unity-foldout__toggle:hover Label { color: #e3e8ef; }
+.quadsim-workspace .unity-popup-field__arrow { -unity-background-image-tint-color: #aeb6c1; }
+.quadsim-workspace .section-heading { white-space: normal; }
+.quadsim-workspace .unity-base-slider__tracker { height: 3px; background-color: #4a5566; border-width: 0; }
+.quadsim-workspace .unity-base-slider__dragger { width: 9px; height: 14px; background-color: #497cbb; border-width: 0; border-radius: 1px; }
+.quadsim-workspace .unity-base-slider__dragger-border { border-width: 0; background-color: transparent; }
+.quadsim-workspace .unity-scroller--vertical .unity-base-slider__dragger { width: 6px; min-height: 18px; background-color: #899bb3; }
+.quadsim-workspace .unity-scroller--vertical .unity-base-slider__tracker { width: 6px; height: auto; background-color: rgba(32, 34, 38, 0.98); }
+.quadsim-workspace .action-row Button.is-active { color: #c8e1ff; background-color: #304459; border-color: #6389b0; }
+
+/* Light engineering workspace: three balanced toolbar regions. */
+.toolbar-side { flex-direction: row; align-items: center; flex-grow: 1; flex-basis: 0; min-width: 0; }
+.toolbar-actions { justify-content: flex-end; }
+.transport-controls { flex-shrink: 0; border-left-width: 0; margin: 0; padding: 0; }
+.workspace-toolbar { height: 36px; background-color: rgba(24, 28, 34, 1); }
+.quadsim-workspace Button { border-radius: 4px; }
+.workspace-window.is-floating { border-radius: 7px; }
+.task-menu { border-radius: 6px; }
+.quadsim-workspace .checked-menu-item { padding-left: 25px; }
+.menu-check { position: absolute; left: 5px; top: 3px; width: 16px; color: #86b7ef; }
+.quadsim-workspace Button.restore-ui { position: absolute; right: 10px; bottom: 10px; opacity: 0.3; background-color: #283546; color: #e3e8ef; padding: 4px 9px; }
+.quadsim-workspace Button.restore-ui:hover, .quadsim-workspace Button.restore-ui:focus { opacity: 1; }
+.motor-meters { flex-direction: row; height: 155px; flex-shrink: 0; margin-bottom: 8px; }
+.motor-column { flex-grow: 1; flex-basis: 0; align-items: center; }
+.motor-column Label { font-size: 10px; color: #c1cbd8; -unity-text-align: middle-center; white-space: normal; }
+.motor-track { height: 98px; width: 28px; background-color: #303b4b; border-radius: 4px; overflow: hidden; }
+.motor-fill { position: absolute; bottom: 0; left: 0; right: 0; background-color: #4b89cb; border-radius: 3px; }
+
+.quadsim-workspace .readout-group { margin-top: 3px; margin-bottom: 5px; }
+.dock-left, .dock-right { max-width: 42%; }
+.dock-bottom { max-height: 65%; }
+.dock-resizer { position: absolute; background-color: transparent; }
+.dock-resizer:hover { background-color: #6389b0; }
+.dock-resizer.right-edge { top: 0; bottom: 0; right: 0; width: 6px; }
+.dock-resizer.left-edge { top: 0; bottom: 0; left: 0; width: 6px; }
+.dock-resizer.horizontal { left: 0; right: 0; top: 0; height: 6px; }
+.window-title { overflow: hidden; text-overflow: ellipsis; }
+
+/* Compact viewport tool shelf, shared by both palettes. */
+.viewport-tools { top: 8px; left: 8px; right: auto; width: 36px; height: auto; padding: 3px; flex-direction: column; border-width: 1px; border-color: var(--qs-border); border-radius: 4px; background-color: var(--qs-panel); }
+.quadsim-workspace .viewport-tools Button.camera-tool { width: 28px; height: 28px; min-height: 28px; padding: 5px; margin: 1px 0; align-items: center; justify-content: center; border-radius: 2px; }
+.quadsim-workspace .viewport-tools Button.camera-tool.is-active { background-color: var(--qs-accent); }
+.quadsim-workspace .viewport-tools Button.camera-tool.is-active .workspace-icon { color: white; }
+.workspace-window.is-floating { background-color: var(--qs-panel); }
