@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e000f1ef4e53525489ed7435959aa0e0, type: 3}
+  m_Name: DronePrefabCatalog
+  m_EditorClassIdentifier: Nino.QuadSim::DroneCore.Core.DronePrefabCatalog
+  Entries:
+  - Key: standard_quad
+    Prefab: {fileID: 7369674030872104845, guid: 2e5ce94195e2bbeb4bd792d784027dba, type: 3}
+    Notice: 
+  - Key: flightmare_quad
+    Prefab: {fileID: 5909055088624131799, guid: 31fe9db5889aeef9aaa26bc935a505d7, type: 3}
+    Notice: 
+  - Key: crazyflie2_quad
+    Prefab: {fileID: 680589187432453512, guid: b039efeaa9db92f9198ba90644464a67, type: 3}
+    Notice: 
+  - Key: sentinel_quad
+    Prefab: {fileID: 7369674030872104845, guid: 2e5ce94195e2bbeb4bd792d784027dba, type: 3}
+    Notice: Sentinel mesh is not bundled; using the Standard quad visual with Sentinel
+      physics.
+  - Key: /QuadSimPlugin/Assets/Drone_Models/QuadRotor1/Quadrotor1.Quadrotor1
+    Prefab: {fileID: 7369674030872104845, guid: 2e5ce94195e2bbeb4bd792d784027dba, type: 3}
+    Notice: 
+  - Key: /QuadSimPlugin/Assets/Drone_Models/CrazyFlie/cf2_assembly.cf2_assembly
+    Prefab: {fileID: 680589187432453512, guid: b039efeaa9db92f9198ba90644464a67, type: 3}
+    Notice: 

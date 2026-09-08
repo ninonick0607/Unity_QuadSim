@@ -93,6 +93,22 @@ namespace QuadSim.RuntimeUI.Workspace
                 RefreshObjects();
             });
             objectChoice = new DropdownField(); parent.Add(objectChoice);
+            void TargetObject(bool follow)
+            {
+                if (backend.Level == null || cameraDirector == null) return;
+                foreach (var item in backend.Level.Objects.ActiveObjects)
+                    if (item != null && item.ObjectId == objectChoice.value)
+                    {
+                        cameraDirector.BindEntity(item.transform, snap: false);
+                        cameraSelection = item.transform;
+                        if (follow) cameraDirector.SetMode(DroneCore.CameraSystem.CameraViewMode.Follow);
+                        else cameraDirector.FrameTarget(item.transform);
+                        break;
+                    }
+            }
+            var cameraActions = new VisualElement(); cameraActions.AddToClassList("action-row"); parent.Add(cameraActions);
+            AddButton(cameraActions, "Frame", () => TargetObject(false));
+            AddButton(cameraActions, "Follow", () => TargetObject(true));
             AddButton(parent, "Refresh objects", RefreshObjects);
             removeObjectButton = AddButton(parent, "Remove selected object", () =>
             {
@@ -152,6 +168,17 @@ namespace QuadSim.RuntimeUI.Workspace
         }
         private void BuildCameraDetails(VisualElement body)
         {
+            Section(body, "Navigation");
+            var navigation = new VisualElement(); navigation.AddToClassList("action-row"); body.Add(navigation);
+            AddButton(navigation, "Frame target", () => cameraDirector?.FrameTarget());
+            AddButton(navigation, "Perspective / Ortho", () => cameraDirector?.ToggleProjection());
+            var axes = new VisualElement(); axes.AddToClassList("action-row"); body.Add(axes);
+            AddButton(axes, "Front", () => cameraDirector?.AxisView(Vector3.forward));
+            AddButton(axes, "Right", () => cameraDirector?.AxisView(Vector3.left));
+            AddButton(axes, "Top", () => cameraDirector?.AxisView(Vector3.down));
+            var speed = new FloatField("Fly speed (m/s)"); body.Add(speed);
+            speed.RegisterValueChangedCallback(e => { if (cameraDirector != null && WorkspaceBackend.IsFinite(e.newValue)) cameraDirector.FreeMoveSpeed = e.newValue; });
+            Text(body).text = "MMB orbit · Shift+MMB pan · Ctrl+MMB zoom\nRMB fly look · WASD / Q E move · Shift boost\nF / Num . frame · Num 1/3/7 axis · Num 5 projection";
             var yaw = new Slider("Orbit yaw (deg)", -180, 180) { showInputField = true };
             var pitch = new Slider("Orbit pitch (deg)", -80, 80) { showInputField = true };
             yaw.RegisterValueChangedCallback(e => { if (cameraDirector != null && WorkspaceBackend.IsFinite(e.newValue)) cameraDirector.OrbitYawDeg = e.newValue; });
@@ -162,9 +189,10 @@ namespace QuadSim.RuntimeUI.Workspace
             body.schedule.Execute(() =>
             {
                 if (cameraDirector == null || !windows["Camera"].ShouldRefresh) return;
+                if (!Editing(speed)) speed.SetValueWithoutNotify(cameraDirector.FreeMoveSpeed);
                 if (!Editing(yaw)) yaw.SetValueWithoutNotify(cameraDirector.OrbitYawDeg);
                 if (!Editing(pitch)) pitch.SetValueWithoutNotify(cameraDirector.OrbitPitchDeg);
-                details.text = $"View: {cameraDirector.Mode}\nTarget: {cameraDirector.TargetDrone?.DroneID ?? "None"}\nCamera source: {cameraDirector.CameraSourceDrone?.DroneID ?? "Scene camera"}\nFree follow: {cameraDirector.FreeFollowTarget?.DroneID ?? "Off"}";
+                details.text = $"View: {cameraDirector.Mode} · {(cameraDirector.Orthographic ? "Orthographic" : "Perspective")}\nTarget: {cameraDirector.Target?.name ?? "None"}\nCamera: Global display rig\nFree follow: {cameraDirector.FreeFollowTarget?.DroneID ?? "Off"}";
             }).Every(200);
         }
     }

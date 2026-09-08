@@ -11,6 +11,8 @@ namespace Yaml.Drone
     {
         public int SchemaVersion;
         public string Name;
+        public string BodyMesh;
+        public string PrefabKey;
         //public AssetReference BodyMesh;
         
     }

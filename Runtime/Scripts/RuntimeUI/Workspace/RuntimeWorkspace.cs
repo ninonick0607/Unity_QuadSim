@@ -155,16 +155,16 @@ namespace QuadSim.RuntimeUI.Workspace
             viewLabel = new Label("SCENE VIEW"); viewLabel.style.display = DisplayStyle.None;
             void CameraTool(string icon, string hint, Action action, CameraViewMode? mode = null)
             {
-                var button = new Button(action) { tooltip = hint, userData = mode };
+                var button = new Button(() => { action(); if (mode.HasValue) viewport.Focus(); }) { tooltip = hint, userData = mode };
                 button.AddToClassList("camera-tool"); button.Add(new WorkspaceIcon(icon)); viewTools.Add(button);
             }
             CameraTool("Camera", "Camera settings", () => OpenPanel("Camera"));
             CameraTool("Follow", "Follow selected drone", () => backend.FollowSelected(), CameraViewMode.Follow);
-            CameraTool("Orbit", "Orbit selected drone", () => { if (cameraDirector == null) return; if (Flight?.Pawn != null) cameraDirector.Bind(Flight.Pawn, false); cameraDirector.SetMode(CameraViewMode.Orbit); }, CameraViewMode.Orbit);
+            CameraTool("Orbit", "Orbit selected entity", () => { if (cameraDirector == null) return; if (cameraSelection != null) cameraDirector.BindEntity(cameraSelection, snap: false); cameraDirector.SetMode(CameraViewMode.Orbit); }, CameraViewMode.Orbit);
             CameraTool("Free", "Free camera · WASD / Q E", () => cameraDirector?.SetMode(CameraViewMode.Free), CameraViewMode.Free);
             viewTools.RegisterCallback<PointerDownEvent>(e => e.StopPropagation());
             viewTools.RegisterCallback<WheelEvent>(e => e.StopPropagation());
-            viewport.tooltip = "Select: click · Follow: double-click · Look: right-drag · Move: WASD / Q E · Boost: Shift";
+            viewport.tooltip = "MMB orbit · Shift+MMB pan · Wheel zoom · RMB fly look · F frame · WASD / Q E move";
             bottom = new VisualElement(); bottom.AddToClassList("dock-bottom"); center.Add(bottom);
             right = new VisualElement(); right.AddToClassList("dock-right"); work.Add(right);
             floating = new VisualElement { pickingMode = PickingMode.Ignore }; floating.AddToClassList("floating-layer"); work.Add(floating);
@@ -437,12 +437,18 @@ namespace QuadSim.RuntimeUI.Workspace
             if (!uiHidden && windows["Telemetry"].ShouldRefresh) RefreshMotors();
             if (uiHidden) { backend.Connect(); return; }
             if (Time.unscaledDeltaTime > 0) framesPerSecond = Mathf.Lerp(framesPerSecond, 1f / Time.unscaledDeltaTime, 0.05f);
-            if (cameraDirector != null && keys.Count > 0 && cameraDirector.Mode == CameraViewMode.Free)
+            if (cameraDirector != null && cameraDirector.Mode == CameraViewMode.Free && Application.isFocused &&
+                viewport?.focusController?.focusedElement == viewport)
             {
-                var move = new Vector3((keys.Contains(KeyCode.D) ? 1 : 0) - (keys.Contains(KeyCode.A) ? 1 : 0),
-                    (keys.Contains(KeyCode.E) ? 1 : 0) - (keys.Contains(KeyCode.Q) ? 1 : 0),
-                    (keys.Contains(KeyCode.W) ? 1 : 0) - (keys.Contains(KeyCode.S) ? 1 : 0));
-                cameraDirector.AddFreeMovementInput(move.normalized, keys.Contains(KeyCode.LeftShift) || keys.Contains(KeyCode.RightShift));
+                var keyboard = UnityEngine.InputSystem.Keyboard.current;
+                if (keyboard != null)
+                {
+                    bool Down(UnityEngine.InputSystem.Controls.KeyControl key) => key.isPressed || key.wasPressedThisFrame;
+                    var move = new Vector3((Down(keyboard.dKey) ? 1 : 0) - (Down(keyboard.aKey) ? 1 : 0),
+                        (Down(keyboard.eKey) ? 1 : 0) - (Down(keyboard.qKey) ? 1 : 0),
+                        (Down(keyboard.wKey) ? 1 : 0) - (Down(keyboard.sKey) ? 1 : 0));
+                    cameraDirector.AddFreeMovementInput(move.normalized, keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed);
+                }
             }
             if (Time.realtimeSinceStartupAsDouble < nextRefresh) return;
             nextRefresh = Time.realtimeSinceStartupAsDouble + 1.0 / Mathf.Max(1, refreshHz);
@@ -556,8 +562,9 @@ namespace QuadSim.RuntimeUI.Workspace
                 AddButton(cameraModes, mode.ToString(), () =>
                 {
                     if (cameraDirector == null) return;
-                    if (Flight?.Pawn != null && value != CameraViewMode.Free) cameraDirector.Bind(Flight.Pawn, false);
+                    if (cameraSelection != null && value != CameraViewMode.Free) cameraDirector.BindEntity(cameraSelection, snap: false);
                     cameraDirector.SetMode(value);
+                    viewport.Focus();
                 });
             }
             AddButton(body, "Follow selected", () =>
@@ -565,7 +572,7 @@ namespace QuadSim.RuntimeUI.Workspace
                 var drone = DroneManager.Get()?.SelectedDrone;
                 if (drone != null) { cameraDirector.Bind(drone); cameraDirector.SetMode(CameraViewMode.Follow); }
             });
-            var distance = new Slider("Distance (m)", 0.25f, 10f) { showInputField = true };
+            var distance = new Slider("Distance (m)", 0.05f, 100f) { showInputField = true };
             distance.RegisterValueChangedCallback(e => { if (cameraDirector != null) cameraDirector.FollowDistance = e.newValue; }); body.Add(distance);
             var fov = new Slider("FOV (deg)", 30, 120) { showInputField = true };
             fov.RegisterValueChangedCallback(e => { if (cameraDirector != null) cameraDirector.FieldOfView = e.newValue; }); body.Add(fov);
@@ -579,10 +586,11 @@ namespace QuadSim.RuntimeUI.Workspace
         }
         private void BuildViewportInput()
         {
+            int navigationButton = -1;
             viewport.RegisterCallback<PointerDownEvent>(e =>
             {
                 viewport.Focus();
-                if (e.button == 1) { lookPointer = e.pointerId; viewport.CapturePointer(e.pointerId); }
+                if (e.button == 1 || e.button == 2) { navigationButton = e.button; lookPointer = e.pointerId; viewport.CapturePointer(e.pointerId); }
                 if (e.button == 0 && cameraDirector != null && cameraDirector.ViewCamera != null)
                 {
                     HighlightEntity(null);
@@ -592,6 +600,7 @@ namespace QuadSim.RuntimeUI.Workspace
                     if (Physics.Raycast(cameraDirector.ViewCamera.ScreenPointToRay(screen), out var hit))
                     {
                         var pawn = hit.collider.GetComponentInParent<QuadPawn>();
+                        cameraSelection = pawn != null ? pawn.transform : hit.collider.attachedRigidbody != null ? hit.collider.attachedRigidbody.transform : hit.collider.transform;
                         if (pawn != null)
                         {
                             backend.Select(pawn.AgentId);
@@ -599,24 +608,39 @@ namespace QuadSim.RuntimeUI.Workspace
                             if (e.clickCount == 2) backend.FollowSelected();
                             nextRefresh = 0;
                         }
+                        else if (e.clickCount == 2) cameraDirector.FrameTarget(cameraSelection);
                     }
                 }
                 e.StopPropagation();
             });
             viewport.RegisterCallback<PointerMoveEvent>(e =>
             {
-                if (lookPointer == e.pointerId) cameraDirector?.AddMouseCameraInput(e.deltaPosition, 0);
+                if (lookPointer != e.pointerId || cameraDirector == null) return;
+                if (navigationButton == 2) cameraDirector.Navigate(e.deltaPosition, e.shiftKey, e.ctrlKey, viewport.layout.height);
+                else
+                {
+                    cameraDirector.SetMode(CameraViewMode.Free, false);
+                    cameraDirector.AddMouseCameraInput(e.deltaPosition, 0);
+                }
             });
             viewport.RegisterCallback<PointerUpEvent>(e =>
             {
-                if (e.button == 1 && lookPointer == e.pointerId) { viewport.ReleasePointer(e.pointerId); lookPointer = -1; }
+                if (e.button == navigationButton && lookPointer == e.pointerId) { viewport.ReleasePointer(e.pointerId); lookPointer = -1; navigationButton = -1; }
             });
             viewport.RegisterCallback<PointerCaptureOutEvent>(_ => lookPointer = -1);
             viewport.RegisterCallback<WheelEvent>(e => { cameraDirector?.AddMouseCameraInput(Vector2.zero, -e.delta.y / 3f); e.StopPropagation(); });
             viewport.RegisterCallback<KeyDownEvent>(e =>
             {
                 bool first = keys.Add(e.keyCode);
-                if (first && e.keyCode == KeyCode.F) cameraDirector?.ToggleFreeFollow(DroneManager.Get()?.SelectedDrone);
+                if (first && cameraDirector != null)
+                {
+                    if (e.keyCode == KeyCode.F || e.keyCode == KeyCode.KeypadPeriod) cameraDirector.FrameTarget(cameraSelection != null ? cameraSelection : cameraDirector.Target);
+                    if (e.keyCode == KeyCode.Keypad5) cameraDirector.ToggleProjection();
+                    if (e.keyCode == KeyCode.Keypad1) cameraDirector.AxisView(e.ctrlKey ? Vector3.back : Vector3.forward);
+                    if (e.keyCode == KeyCode.Keypad3) cameraDirector.AxisView(e.ctrlKey ? Vector3.right : Vector3.left);
+                    if (e.keyCode == KeyCode.Keypad7) cameraDirector.AxisView(e.ctrlKey ? Vector3.up : Vector3.down);
+                    if (e.keyCode == KeyCode.BackQuote && e.shiftKey) cameraDirector.SetMode(CameraViewMode.Free);
+                }
                 e.StopPropagation();
             });
             viewport.RegisterCallback<KeyUpEvent>(e => { keys.Remove(e.keyCode); e.StopPropagation(); });

@@ -274,9 +274,9 @@ namespace Yaml.Drone
 
                 if (TryGetString(rootNode, "body_mesh", out string meshPath))
                 {
-                    // Mesh path is kept in YAML for future model catalog support.
-                    // Runtime prefab/model loading is handled elsewhere for now.
+                    outModel.BodyMesh = meshPath;
                 }
+                if (TryGetString(rootNode, "prefab_key", out string prefabKey)) outModel.PrefabKey = prefabKey;
 
                 // 2. Physical Properties
                 if (TryGetNode(rootNode, "physical_properties", out YamlNode physNode) && physNode is YamlMappingNode phys)

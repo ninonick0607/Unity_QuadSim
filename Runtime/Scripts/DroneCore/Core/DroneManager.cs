@@ -38,6 +38,7 @@ namespace DroneCore.Core
 
         [Tooltip("Prefab to instantiate when spawning drones.")]
         [SerializeField] private QuadPawn quadPawnPrefab;
+        [SerializeField] private DronePrefabCatalog prefabCatalog;
 
         [Tooltip("Default spawn location. Set in inspector or override via SpawnOrigin property.")]
         [SerializeField] private Vector3 defaultSpawnOrigin = new Vector3(0f, 1f, 0f);
@@ -287,18 +288,29 @@ namespace DroneCore.Core
         /// </summary>
         public QuadPawn SpawnDroneWithConfig(string configName, Vector3 position, Quaternion rotation)
         {
-            if (quadPawnPrefab == null)
-            {
-                Debug.LogError("[DroneManager] Cannot spawn: QuadPawnPrefab not set!");
-                return null;
-            }
-
             // Load config
             if (!DroneConfigLoader.LoadConfig(configName, out DroneConfig config))
             {
                 Debug.LogError($"[DroneManager] Failed to load config: {configName}");
                 return null;
             }
+
+            if (prefabCatalog == null) prefabCatalog = Resources.Load<DronePrefabCatalog>("QuadSim/DronePrefabCatalog");
+            QuadPawn spawnPrefab = null;
+            string notice = null;
+            bool resolved = prefabCatalog != null && prefabCatalog.TryResolve(config, out spawnPrefab, out notice);
+            if (!resolved)
+            {
+                if (!string.IsNullOrWhiteSpace(config.ModelParams.PrefabKey))
+                {
+                    Debug.LogError($"[DroneManager] Unknown prefab_key '{config.ModelParams.PrefabKey}' in {configName}; add it to the drone prefab catalog.");
+                    return null;
+                }
+                spawnPrefab = quadPawnPrefab;
+                Debug.LogWarning($"[DroneManager] No model mapping for {configName}; using the configured legacy prefab.");
+            }
+            if (spawnPrefab == null) { Debug.LogError("[DroneManager] No drone prefab is available."); return null; }
+            if (!string.IsNullOrEmpty(notice)) Debug.LogWarning($"[DroneManager] {notice}");
 
             // Determine spawn position
             Vector3 spawnPos = DetermineSpawnPosition(position);
@@ -307,7 +319,7 @@ namespace DroneCore.Core
             int droneNumber = _registeredDrones.Count;
 
             // Instantiate
-            QuadPawn newDrone = Instantiate(quadPawnPrefab, spawnPos, spawnRot);
+            QuadPawn newDrone = Instantiate(spawnPrefab, spawnPos, spawnRot);
             if (newDrone == null)
             {
                 Debug.LogError("[DroneManager] Failed to instantiate QuadPawn prefab");

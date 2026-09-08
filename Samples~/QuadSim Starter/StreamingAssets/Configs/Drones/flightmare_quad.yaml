@@ -1,6 +1,7 @@
-﻿# Drone Configuration File
+# Drone Configuration File
 # Version: 1.0
 schema_version: 1
+prefab_key: flightmare_quad
 name: "Standard_Quad_V1"
 body_mesh: "/QuadSimPlugin/Assets/Drone_Models/QuadRotor1/Quadrotor1.Quadrotor1"
 physical_properties:

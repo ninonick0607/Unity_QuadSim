@@ -1,4 +1,5 @@
 schema_version: 1
+prefab_key: sentinel_quad
 name: "ModalAI_Sentinel_RB5_S500"
 
 body_mesh: "/QuadSimPlugin/Assets/Drone_Models/Sentinel/Sentinel.Sentinel"

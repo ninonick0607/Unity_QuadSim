@@ -13,6 +13,7 @@ namespace DroneCore.CameraSystem
     }
 
     [DisallowMultipleComponent]
+    [DefaultExecutionOrder(-50)]
     public sealed class CameraDirector : MonoBehaviour
     {
         [Header("View")]
@@ -43,6 +44,15 @@ namespace DroneCore.CameraSystem
         private static CameraDirector _instance;
         private static RuntimeViewState _savedState;
         private DroneCameraRig _targetRig;
+        private Transform _entityTarget;
+        private Transform _mount;
+        private bool _hasBoundTarget;
+        private Vector3 _orbitPivot;
+        private Vector3 _panOffset;
+        public Transform Target => _entityTarget;
+        public Vector3 FocusPoint => _entityTarget != null ? _entityTarget.position + _panOffset : _orbitPivot;
+        public float FreeMoveSpeed { get => freeMoveSpeed; set => freeMoveSpeed = Mathf.Clamp(value, .01f, 1000f); }
+        public bool Orthographic => viewCamera != null && viewCamera.orthographic;
         private QuadPawn _cameraSourceDrone;
         private CameraViewMode _mode;
         private Vector3 _socketOffset;
@@ -82,7 +92,7 @@ namespace DroneCore.CameraSystem
             get => followDistance;
             set
             {
-                followDistance = Mathf.Clamp(value, 0.25f, 100f);
+                followDistance = Mathf.Clamp(value, 0.05f, 10000f);
                 SaveRuntimeState();
             }
         }
@@ -100,7 +110,7 @@ namespace DroneCore.CameraSystem
             get => orbitPitchDeg;
             set
             {
-                orbitPitchDeg = Mathf.Clamp(value, -80f, 80f);
+                orbitPitchDeg = Mathf.Clamp(value, -90f, 90f);
                 SaveRuntimeState();
             }
         }
@@ -124,6 +134,7 @@ namespace DroneCore.CameraSystem
 
         private void Awake()
         {
+            if (_instance != null && _instance != this) { enabled = false; return; }
             _instance = this;
             if (_savedState.Valid)
             {
@@ -145,9 +156,11 @@ namespace DroneCore.CameraSystem
 
         private void OnDestroy()
         {
-            SaveRuntimeState();
             if (_instance == this)
+            {
+                SaveRuntimeState();
                 _instance = null;
+            }
         }
 
         public static CameraDirector Get()
@@ -166,6 +179,7 @@ namespace DroneCore.CameraSystem
 
         public void EnsureBoundToFirstDrone(DroneManager manager)
         {
+            if (viewCamera == null) AdoptCamera(Camera.main);
             if (manager == null || manager.DroneCount == 0)
             {
                 if (viewCamera == null)
@@ -182,7 +196,7 @@ namespace DroneCore.CameraSystem
                 AdoptCamera(first.DroneCamera != null ? first.DroneCamera : Camera.main);
             }
 
-            if (_targetRig == null || TargetDrone == null)
+            if (!_hasBoundTarget)
                 Bind(first, snap: true);
 
             DisableOtherDroneCameras(manager);
@@ -199,6 +213,10 @@ namespace DroneCore.CameraSystem
             }
 
             _targetRig = drone.CameraRig;
+            _entityTarget = _targetRig.FollowTarget;
+            _mount = _targetRig.FpvMount;
+            _hasBoundTarget = true;
+            _panOffset = Vector3.zero;
             if (drone.HasConfigApplied)
                 ApplyCameraSettings(drone.Config.CamParams);
 
@@ -208,6 +226,16 @@ namespace DroneCore.CameraSystem
 
         public void SetMode(CameraViewMode mode, bool snap = true)
         {
+            if (viewCamera == null) AdoptCamera(Camera.main);
+            if (mode == CameraViewMode.FPV && _entityTarget == null) return;
+            if (mode == CameraViewMode.Free || mode == CameraViewMode.FPV) viewCamera.orthographic = false;
+            if (mode == CameraViewMode.Orbit && _mode != mode && viewCamera != null)
+            {
+                var angles = viewCamera.transform.eulerAngles;
+                orbitYawDeg = angles.y;
+                orbitPitchDeg = Mathf.DeltaAngle(0, angles.x);
+                if (_entityTarget == null) _orbitPivot = viewCamera.transform.position + viewCamera.transform.forward * followDistance;
+            }
             if (_mode == CameraViewMode.Free && mode != CameraViewMode.Free)
                 _freeFollowTarget = null;
 
@@ -247,7 +275,7 @@ namespace DroneCore.CameraSystem
             if (!Mathf.Approximately(wheelDelta, 0f))
             {
                 if (_mode == CameraViewMode.Follow || _mode == CameraViewMode.Orbit)
-                    AddZoomInput(wheelDelta * zoomWheelSensitivity);
+                    Zoom(wheelDelta);
                 else if (_mode == CameraViewMode.Free)
                     _pendingFreeDolly += wheelDelta * freeWheelDollyDistance;
                 else if (_mode == CameraViewMode.FPV)
@@ -360,15 +388,19 @@ namespace DroneCore.CameraSystem
                 return;
             }
 
-            if (_targetRig == null) return;
+            if (_entityTarget == null && _mode != CameraViewMode.Orbit)
+            {
+                SetMode(CameraViewMode.Free, false);
+                return;
+            }
 
-            Transform target = _targetRig.FollowTarget;
+            Transform target = _entityTarget;
             Vector3 desiredPosition;
             Quaternion desiredRotation;
 
             if (_mode == CameraViewMode.FPV)
             {
-                Transform mount = _targetRig.FpvMount;
+                Transform mount = _mount != null ? _mount : target;
                 desiredPosition = mount.position;
                 desiredRotation = mount.rotation;
             }
@@ -378,7 +410,7 @@ namespace DroneCore.CameraSystem
                 // In this project the drone's nose is its local +X (target.right).
                 // Flattening it keeps pitch and roll out of the camera position,
                 // while FPV above still inherits the real mount rotation.
-                Vector3 nose = Vector3.ProjectOnPlane(target.right, Vector3.up);
+                Vector3 nose = target == null ? Vector3.forward : Vector3.ProjectOnPlane(_targetRig != null ? target.right : target.forward, Vector3.up);
                 if (nose.sqrMagnitude < 0.0001f)
                     nose = Vector3.right;
                 else
@@ -388,13 +420,15 @@ namespace DroneCore.CameraSystem
                     ? Mathf.Atan2(nose.x, nose.z) * Mathf.Rad2Deg
                     : 0f;
                 Quaternion heading = Quaternion.Euler(0f, targetYaw - 90f, 0f);
-                Vector3 focus = target.position + heading * _socketOffset + Vector3.up * lookHeight;
+                Vector3 focus = FocusPoint;
+                if (_mode == CameraViewMode.Follow && _targetRig != null) focus += heading * _socketOffset + Vector3.up * lookHeight;
 
                 if (_mode == CameraViewMode.Orbit)
                 {
-                    Quaternion orbit = Quaternion.Euler(orbitPitchDeg, targetYaw + orbitYawDeg, 0f);
+                    Quaternion orbit = Quaternion.Euler(orbitPitchDeg, orbitYawDeg, 0f);
                     desiredPosition = focus + orbit * (Vector3.back * followDistance);
-                    desiredRotation = Quaternion.LookRotation(focus - desiredPosition, Vector3.up);
+                    desiredRotation = orbit;
+                    _orbitPivot = focus;
                 }
                 else
                 {
@@ -444,10 +478,22 @@ namespace DroneCore.CameraSystem
 
         private void AdoptCamera(Camera candidate)
         {
-            if (candidate == null) return;
-
             Camera previousMain = Camera.main;
-            viewCamera = candidate;
+            // Own a display camera, never move a prefab or sensor camera out of its entity.
+            var cameraObject = new GameObject("QuadSim View Camera", typeof(Camera), typeof(AudioListener));
+            viewCamera = cameraObject.GetComponent<Camera>();
+            if (candidate != null)
+            {
+                viewCamera.CopyFrom(candidate);
+                cameraObject.transform.SetPositionAndRotation(candidate.transform.position, candidate.transform.rotation);
+            }
+            else cameraObject.transform.SetPositionAndRotation(new Vector3(0, 3, -6), Quaternion.Euler(20, 0, 0));
+            cameraObject.tag = "MainCamera";
+            viewCamera.targetTexture = null;
+            viewCamera.rect = new Rect(0, 0, 1, 1);
+            viewCamera.nearClipPlane = Mathf.Min(viewCamera.nearClipPlane, .02f);
+            var hd = cameraObject.AddComponent<UnityEngine.Rendering.HighDefinition.HDAdditionalCameraData>();
+            if (candidate != null && candidate.TryGetComponent<UnityEngine.Rendering.HighDefinition.HDAdditionalCameraData>(out var sourceHd)) sourceHd.CopyTo(hd);
             viewCamera.transform.SetParent(transform, true);
             viewCamera.transform.localScale = Vector3.one;
             if (_restoreFreePose)
@@ -471,6 +517,80 @@ namespace DroneCore.CameraSystem
                 AudioListener previousListener = previousMain.GetComponent<AudioListener>();
                 if (previousListener != null) previousListener.enabled = false;
             }
+        }
+
+        /// <summary>Attach the display rig to any scene entity. Optional mount supplies an attached/FPV pose.</summary>
+        public void BindEntity(Transform entity, Transform mount = null, bool snap = true)
+        {
+            if (entity == null) return;
+            var drone = entity.GetComponentInParent<QuadPawn>();
+            if (drone != null) { Bind(drone, snap); return; }
+            if (viewCamera == null) AdoptCamera(Camera.main);
+            _targetRig = null; _entityTarget = entity; _mount = mount;
+            _hasBoundTarget = true; _panOffset = Vector3.zero;
+            if (snap) UpdateCameraPose(1f);
+        }
+
+        public void Navigate(Vector2 pixels, bool pan, bool zoom, float viewportHeight)
+        {
+            if (viewCamera == null) AdoptCamera(Camera.main);
+            SetMode(CameraViewMode.Orbit, false);
+            if (zoom) { Zoom(-pixels.y * .03f); return; }
+            if (pan)
+            {
+                float span = Orthographic ? viewCamera.orthographicSize * 2 : 2 * followDistance * Mathf.Tan(FieldOfView * Mathf.Deg2Rad * .5f);
+                Vector3 displacement = (-viewCamera.transform.right * pixels.x + viewCamera.transform.up * pixels.y) * span / Mathf.Max(1, viewportHeight);
+                if (_entityTarget != null) _panOffset += displacement; else _orbitPivot += displacement;
+            }
+            else
+            {
+                if (Orthographic) viewCamera.orthographic = false;
+                AddLookInput(pixels * orbitMouseSensitivity);
+            }
+        }
+
+        public void Zoom(float steps)
+        {
+            float scale = Mathf.Exp(-steps * .15f);
+            FollowDistance *= scale;
+            if (Orthographic) viewCamera.orthographicSize = Mathf.Clamp(viewCamera.orthographicSize * scale, .025f, 5000f);
+        }
+
+        public void ToggleProjection()
+        {
+            if (viewCamera == null) AdoptCamera(Camera.main);
+            SetMode(CameraViewMode.Orbit, false);
+            viewCamera.orthographic = !viewCamera.orthographic;
+            viewCamera.orthographicSize = followDistance * Mathf.Tan(FieldOfView * Mathf.Deg2Rad * .5f);
+        }
+
+        public void AxisView(Vector3 direction)
+        {
+            SetMode(CameraViewMode.Orbit, false);
+            var rotation = Quaternion.LookRotation(direction, Mathf.Abs(direction.y) > .99f ? Vector3.forward : Vector3.up);
+            orbitYawDeg = rotation.eulerAngles.y; orbitPitchDeg = Mathf.DeltaAngle(0, rotation.eulerAngles.x);
+            viewCamera.orthographic = true;
+            viewCamera.orthographicSize = followDistance * Mathf.Tan(FieldOfView * Mathf.Deg2Rad * .5f);
+            UpdateCameraPose(1f);
+        }
+
+        public void FrameTarget(Transform entity = null)
+        {
+            if (entity != null) BindEntity(entity, snap: false);
+            if (_entityTarget == null) return;
+            var bounds = new Bounds(_entityTarget.position, Vector3.one * .2f);
+            bool found = false;
+            foreach (var renderer in _entityTarget.GetComponentsInChildren<Renderer>())
+            {
+                if (!renderer.enabled || !renderer.gameObject.activeInHierarchy) continue;
+                if (!found) { bounds = renderer.bounds; found = true; } else bounds.Encapsulate(renderer.bounds);
+            }
+            SetMode(CameraViewMode.Orbit, false);
+            _panOffset = bounds.center - _entityTarget.position;
+            float halfFov = Mathf.Atan(Mathf.Tan(FieldOfView * Mathf.Deg2Rad * .5f) * Mathf.Min(1, viewCamera.aspect));
+            FollowDistance = Mathf.Max(.2f, bounds.extents.magnitude * 1.2f / Mathf.Sin(halfFov));
+            viewCamera.orthographicSize = Mathf.Max(.1f, bounds.extents.magnitude * 1.2f / Mathf.Min(1, viewCamera.aspect));
+            UpdateCameraPose(1f);
         }
 
         private void DisableOtherDroneCameras(DroneManager manager)

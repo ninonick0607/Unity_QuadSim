@@ -34,8 +34,14 @@ namespace Nino.QuadSim.PlayModeTests
                 drones.SetSceneEnv(12345, false, 47, 8, 400, StartupSpawnPolicy.SceneDronesOnly, prefab, null, false, "", MathUtil.SimFrame.FLU, GoalMode.Velocity);
                 var director = CameraDirector.GetOrCreate(root);
                 first = drones.SpawnDroneWithConfig("flightmare_quad", new Vector3(0, 30, 0), Quaternion.identity);
-                second = drones.SpawnDroneWithConfig("flightmare_quad", new Vector3(10, 30, 0), Quaternion.identity);
+                second = drones.SpawnDroneWithConfig("crazyflie2_quad", new Vector3(10, 30, 0), Quaternion.identity);
                 Assert.That(first, Is.Not.Null); Assert.That(second, Is.Not.Null);
+                Assert.That(first.Config.ModelParams.PrefabKey,Is.EqualTo("flightmare_quad"));
+                Assert.That(second.Config.ModelParams.PrefabKey,Is.EqualTo("crazyflie2_quad"));
+                Assert.That(second.CameraRig.FpvMount.localPosition.x,Is.LessThan(first.CameraRig.FpvMount.localPosition.x));
+                director.Bind(second); director.SetMode(CameraViewMode.FPV);
+                Assert.That(Vector3.Distance(director.ViewCamera.transform.position,second.CameraRig.FpvMount.position),Is.LessThan(.0001f));
+                Assert.That(Vector3.Dot(director.ViewCamera.transform.forward,second.transform.right),Is.GreaterThan(.999f));
                 backend = new WorkspaceBackend(); backend.Connect();
                 yield return null;
                 backend.SwitchToUI();

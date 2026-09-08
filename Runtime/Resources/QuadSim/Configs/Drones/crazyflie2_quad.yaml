@@ -1,5 +1,6 @@
 # Drone Configuration File - Crazyflie 2.1
 schema_version: 1
+prefab_key: crazyflie2_quad
 name: "Crazyflie_Quad_V1"
 body_mesh: "/QuadSimPlugin/Assets/Drone_Models/CrazyFlie/cf2_assembly.cf2_assembly"
 

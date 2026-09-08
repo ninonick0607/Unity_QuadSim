@@ -10,6 +10,7 @@ namespace QuadSim.RuntimeUI.Workspace
         private WorkspaceSelectionPass selectionPass;
         private UnityEngine.Rendering.HighDefinition.CustomPassVolume selectionVolume;
         private QuadPawn highlightedPawn;
+        private Transform cameraSelection;
         private Camera framedCamera;
         private void BuildSelectionHighlight()
         {
@@ -24,6 +25,7 @@ namespace QuadSim.RuntimeUI.Workspace
         private void HighlightEntity(string id)
         {
             highlightedPawn = string.IsNullOrEmpty(id) ? null : DroneCore.Core.DroneManager.Get()?.GetDroneByAgentId(id);
+            cameraSelection = highlightedPawn != null ? highlightedPawn.transform : null;
             selectionPass?.Select(highlightedPawn != null ? highlightedPawn.transform : null);
         }
         private void ReleaseSelectionHighlight()
@@ -50,9 +52,9 @@ namespace QuadSim.RuntimeUI.Workspace
             camera.ResetProjectionMatrix();
             // Clear the entire frame, then shift only the display-camera projection to
             // keep the followed drone inside the unobscured canvas. Sensor views are untouched.
-            var pawn = Flight?.Pawn;
-            if (uiHidden || pawn == null || cameraDirector.Mode != DroneCore.CameraSystem.CameraViewMode.Follow || root.layout.width <= 0) return;
-            var current = camera.WorldToViewportPoint(pawn.transform.position);
+            var target = cameraDirector.Target;
+            if (uiHidden || target == null || cameraDirector.Mode != DroneCore.CameraSystem.CameraViewMode.Follow || root.layout.width <= 0) return;
+            var current = camera.WorldToViewportPoint(target.position);
             if (current.z <= camera.nearClipPlane) return;
             var center = root.WorldToLocal(viewport.worldBound.center);
             float x = center.x / root.layout.width, y = 1 - (center.y + 14) / root.layout.height;
