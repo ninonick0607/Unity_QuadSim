@@ -24,6 +24,7 @@ namespace QuadSim.RuntimeUI.Workspace
         string SelectedId { get; }
         WorkspaceFlightSession Flight { get; }
         WorkspaceLevelService Level { get; }
+        WorkspaceSceneService Scene { get; }
         string SelectedConfig { get; }
         bool ApprovalPending { get; }
         void SetConfig(string name);
@@ -54,6 +55,7 @@ namespace QuadSim.RuntimeUI.Workspace
         private DroneManager drones;
         public WorkspaceFlightSession Flight { get; private set; }
         public WorkspaceLevelService Level { get; private set; }
+        public WorkspaceSceneService Scene { get; private set; }
         public string SelectedConfig => drones != null ? drones.SelectedConfigName : "";
         public bool ApprovalPending => sim != null && sim.AuthorityManager != null && sim.AuthorityManager.IsExternalPendingApproval;
         public bool Ready => sim != null && sim.IsInitialized && drones != null;
@@ -72,7 +74,7 @@ namespace QuadSim.RuntimeUI.Workspace
                 if (sim != null) sim.OnExternalConnectionRequest += RequestApproval;
             }
             if (drones == null) drones = DroneManager.Get();
-            if (Ready && Flight == null) { Flight = new WorkspaceFlightSession(sim, drones); Level = new WorkspaceLevelService(sim, drones); }
+            if (Ready && Flight == null) { Flight = new WorkspaceFlightSession(sim, drones); Level = new WorkspaceLevelService(sim, drones); Scene = new WorkspaceSceneService(Level, Flight); }
         }
         private void RequestApproval() => ExternalApprovalRequested?.Invoke();
         public void Dispose()
@@ -94,7 +96,7 @@ namespace QuadSim.RuntimeUI.Workspace
         {
             if (!Ready) return;
             var pawn = drones.GetDroneByAgentId(id);
-            if (pawn != null) drones.SelectDroneByIndex(drones.GetDroneIndex(pawn), false);
+            if (pawn != null) { drones.SelectDroneByIndex(drones.GetDroneIndex(pawn), false); Scene?.Select(pawn.transform); }
         }
         public void TogglePause() { if (Ready) sim.TogglePause(); }
         public void Step() { if (Ready && (sim.IsPaused || sim.RunMode == SimulationManager.RunMode.Manual)) sim.StepOnce(); }

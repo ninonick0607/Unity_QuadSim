@@ -2,7 +2,8 @@
   "name": "Nino.QuadSim.PlayModeTests",
   "rootNamespace": "Nino.QuadSim.PlayModeTests",
   "references": [
-    "Nino.QuadSim"
+    "Nino.QuadSim",
+    "Unity.InputSystem"
   ],
   "optionalUnityReferences": [
     "TestAssemblies"

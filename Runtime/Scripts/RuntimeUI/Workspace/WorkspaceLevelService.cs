@@ -18,11 +18,16 @@ namespace QuadSim.RuntimeUI.Workspace
         }
         public bool CanEdit => Sim != null && Sim.IsInitialized && Sim.IsPaused && Sim.CurrentAuthority == InputSource.UI;
         public QuadSim.RL.ScenarioObjectManager Objects => QuadSim.RL.ScenarioObjectManager.GetOrCreate(Sim.gameObject);
-        public bool AddObject(string shape, Vector3 positionEnu, Vector3 sizeEnu, bool collision)
+        public bool AddObject(string shape, Vector3 positionEnu, Vector3 sizeEnu, bool collision) =>
+            AddObject(shape, positionEnu, sizeEnu, collision, out _);
+        public bool AddObject(string shape, Vector3 positionEnu, Vector3 sizeEnu, bool collision, out QuadSim.RL.RLSceneObject created)
         {
+            created = null;
             if (!CanEdit) return false;
-            return Objects.AddObject(new QuadSim.RL.ScenarioObjectSpec("hud_" + System.Guid.NewGuid().ToString("N").Substring(0, 8),
+            bool added = Objects.AddObject(new QuadSim.RL.ScenarioObjectSpec("hud_" + System.Guid.NewGuid().ToString("N").Substring(0, 8),
                 shape, positionEnu, 0, sizeEnu, collision, new Color(0.35f, 0.6f, 0.85f)));
+            if (added) created = Objects.ActiveObjects[Objects.ActiveObjects.Count - 1];
+            return added;
         }
         public bool RemoveObject(string id) => CanEdit && Objects.RemoveObject(id);
         public bool Apply(int seed, bool noise, double lat, double lon, double alt, Vector3 spawnOrigin)

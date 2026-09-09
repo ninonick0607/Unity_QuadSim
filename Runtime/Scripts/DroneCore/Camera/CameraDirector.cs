@@ -531,6 +531,16 @@ namespace DroneCore.CameraSystem
             if (snap) UpdateCameraPose(1f);
         }
 
+        /// <summary>Leave a tracked entity while keeping the display pose and orbit pivot stationary.</summary>
+        public void ReleaseTarget()
+        {
+            _orbitPivot = FocusPoint;
+            _panOffset = Vector3.zero;
+            _entityTarget = null; _targetRig = null; _mount = null; _freeFollowTarget = null;
+            _hasBoundTarget = true;
+            if (_mode == CameraViewMode.Follow || _mode == CameraViewMode.FPV) SetMode(CameraViewMode.Free, false);
+        }
+
         public void Navigate(Vector2 pixels, bool pan, bool zoom, float viewportHeight)
         {
             if (viewCamera == null) AdoptCamera(Camera.main);

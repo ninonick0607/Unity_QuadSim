@@ -20,7 +20,14 @@ namespace QuadSim.RL
             if (collider != null) collider.enabled = collisionEnabled;
 
             Renderer renderer = GetComponent<Renderer>();
-            if (renderer != null) renderer.material.color = color;
+            if (renderer != null)
+            {
+                var material = Resources.Load<Material>("QuadSim/ScenarioObject");
+                if (material != null) renderer.sharedMaterial = material;
+                var properties = new MaterialPropertyBlock();
+                properties.SetColor("_BaseColor", color); properties.SetColor("_Color", color);
+                renderer.SetPropertyBlock(properties);
+            }
         }
     }
 }

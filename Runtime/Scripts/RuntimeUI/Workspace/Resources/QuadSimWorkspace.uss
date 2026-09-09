@@ -167,3 +167,12 @@
 .quadsim-workspace .viewport-tools Button.camera-tool.is-active { background-color: var(--qs-accent); }
 .quadsim-workspace .viewport-tools Button.camera-tool.is-active .workspace-icon { color: white; }
 .workspace-window.is-floating { background-color: var(--qs-panel); }
+
+/* Runtime scene editing overlays, drawn inside the viewport. */
+.transform-gizmo { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.axis-label { position: absolute; left: 0; top: 0; font-size: 11px; -unity-font-style: bold; padding: 1px 3px; }
+.axis-compass { position: absolute; right: 10px; top: 42px; width: 132px; height: 112px;  }
+.scene-tools { position: absolute; top: 7px; left: 46px; right: 6px; flex-direction: row; flex-wrap: wrap; }
+.scene-tools .unity-dropdown-field { width: 110px; margin-left: 4px; }
+.scene-tools .unity-dropdown-field__input { min-width: 60px; }
+.scene-edit-hint { position: absolute; bottom: 8px; left: 8px; right: 8px; color: #dce5f2; background-color: rgba(18, 26, 38, .84); padding: 5px 7px; border-radius: 3px; font-size: 10px; white-space: normal; }

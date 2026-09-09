@@ -6,13 +6,15 @@ Shader "Hidden/QuadSim/SelectionOverlay"
         Pass
         {
             Name "Selection"
-            Blend SrcAlpha OneMinusSrcAlpha
+            Blend One OneMinusSrcAlpha
             ZWrite Off
             ZTest Always
             Cull Back
             HLSLPROGRAM
             #pragma target 4.5
             #pragma multi_compile_instancing
+            #define _SURFACE_TYPE_TRANSPARENT
+            #define _BlendMode 0
             #define ATTRIBUTES_NEED_NORMAL
             #define ATTRIBUTES_NEED_TANGENT
             #define VARYINGS_NEED_TANGENT_TO_WORLD
@@ -23,7 +25,7 @@ Shader "Hidden/QuadSim/SelectionOverlay"
             {
                 ZERO_BUILTIN_INITIALIZE(builtinData);
                 ZERO_INITIALIZE(SurfaceData, surfaceData);
-                builtinData.opacity = 0.65;
+                builtinData.opacity = 0.18;
                 surfaceData.color = float3(0.04, 0.8, 1.0);
             }
             #include "Packages/com.unity.render-pipelines.high-definition/Runtime/RenderPipeline/ShaderPass/ShaderPassForwardUnlit.hlsl"

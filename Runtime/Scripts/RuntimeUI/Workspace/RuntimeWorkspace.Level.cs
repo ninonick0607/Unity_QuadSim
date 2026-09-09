@@ -69,11 +69,11 @@ namespace QuadSim.RuntimeUI.Workspace
         }
         private void BuildObjectControls(VisualElement parent)
         {
-            var group = new Foldout { text = "Objects & markers", value = false }; group.AddToClassList("readout-group"); parent.Add(group);
+            var group = new Foldout { text = "Scene objects & assets", value = true }; group.AddToClassList("readout-group"); parent.Add(group);
             parent = group;
             var objectStatus = Text(parent);
             objectEditStatus = Text(parent);
-            AddButton(parent, "Enable scene editing", () => { backend.SwitchToUI(); if (!backend.Status.IsPaused) backend.TogglePause(); RefreshObjectControls(); });
+            AddButton(parent, "Enable scene editing", EnableSceneEditing);
             var shape = new DropdownField("Shape", new List<string> { "cube", "sphere", "cylinder", "goal" }, 0); parent.Add(shape);
             var objectPosition = new Vector3Field("Position (ENU m)") { value = new Vector3(2, 0, 1) }; parent.Add(objectPosition);
             var objectSize = new Vector3Field("Size (ENU m)") { value = Vector3.one }; parent.Add(objectSize);
@@ -86,33 +86,47 @@ namespace QuadSim.RuntimeUI.Workspace
                 objectPosition.value = MathUtil.Frames.TransformWorldPosition(point, MathUtil.SimFrame.FLU);
             });
             var collision = new Toggle("Collision") { value = true }; parent.Add(collision);
+            var placeInView = new Toggle("Spawn in view") { value = true }; parent.Add(placeInView);
             spawnObjectButton = AddButton(parent, "Spawn object", () =>
             {
-                bool ok = backend.Level != null && backend.Level.AddObject(shape.value, objectPosition.value, objectSize.value, collision.value);
-                objectStatus.text = ok ? "Object added to the current scenario." : "Pause, use UI authority and enter a positive object size.";
-                RefreshObjects();
+                if (placeInView.value && cameraDirector?.ViewCamera != null)
+                {
+                    var camera = cameraDirector.ViewCamera;
+                    float distance = Mathf.Max(3, objectSize.value.magnitude * 2);
+                    var ray = new Ray(camera.transform.position, camera.transform.forward);
+                    var point = Physics.Raycast(ray, out var hit, distance) ? hit.point + hit.normal * objectSize.value.magnitude * .5f : ray.GetPoint(distance);
+                    objectPosition.SetValueWithoutNotify(MathUtil.Frames.TransformWorldPosition(point, MathUtil.SimFrame.FLU));
+                }
+                bool ok = backend.Level.AddObject(shape.value, objectPosition.value, objectSize.value, collision.value, out var created);
+                if (ok) { SelectSceneObject(created.transform); cameraDirector?.FrameTarget(created.transform); }
+                objectStatus.text = ok ? $"Added {created.Shape} · selected in Inspector." : "Pause, use UI authority and enter a positive object size.";
+                RefreshObjects(); nextRefresh = 0;
             });
-            objectChoice = new DropdownField(); parent.Add(objectChoice);
+            objectChoice = new DropdownField("Scene selection"); parent.Add(objectChoice);
+            objectChoice.RegisterValueChangedCallback(_ =>
+            {
+                int index = objectChoice.index;
+                if (index >= 0 && index < sceneObjects.Count) SelectSceneObject(sceneObjects[index]);
+            });
             void TargetObject(bool follow)
             {
                 if (backend.Level == null || cameraDirector == null) return;
-                foreach (var item in backend.Level.Objects.ActiveObjects)
-                    if (item != null && item.ObjectId == objectChoice.value)
-                    {
-                        cameraDirector.BindEntity(item.transform, snap: false);
-                        cameraSelection = item.transform;
-                        if (follow) cameraDirector.SetMode(DroneCore.CameraSystem.CameraViewMode.Follow);
-                        else cameraDirector.FrameTarget(item.transform);
-                        break;
-                    }
+                int index = objectChoice.index;
+                if (index < 0 || index >= sceneObjects.Count || sceneObjects[index] == null) return;
+                var target = sceneObjects[index]; SelectSceneObject(target);
+                cameraDirector.BindEntity(target, snap: false);
+                if (follow) cameraDirector.SetMode(DroneCore.CameraSystem.CameraViewMode.Follow);
+                else cameraDirector.FrameTarget(target);
             }
             var cameraActions = new VisualElement(); cameraActions.AddToClassList("action-row"); parent.Add(cameraActions);
             AddButton(cameraActions, "Frame", () => TargetObject(false));
             AddButton(cameraActions, "Follow", () => TargetObject(true));
-            AddButton(parent, "Refresh objects", RefreshObjects);
+            AddButton(parent, "Refresh objects", () => { backend.Scene?.RefreshAuthoredObjects(); RefreshObjects(); });
             removeObjectButton = AddButton(parent, "Remove selected object", () =>
             {
-                bool ok = backend.Level != null && !string.IsNullOrEmpty(objectChoice.value) && backend.Level.RemoveObject(objectChoice.value);
+                var item = backend.Scene?.Selected != null ? backend.Scene.Selected.GetComponent<QuadSim.RL.RLSceneObject>() : null;
+                bool ok = item != null && backend.Level.RemoveObject(item.ObjectId);
+                if (ok) SelectSceneObject(null);
                 objectStatus.text = ok ? "Object removed." : "Pause, use UI authority and select an existing object.";
                 RefreshObjects();
             });
@@ -121,15 +135,24 @@ namespace QuadSim.RuntimeUI.Workspace
         {
             bool ready = backend.Level != null && backend.Level.CanEdit;
             spawnObjectButton.SetEnabled(ready);
-            removeObjectButton.SetEnabled(ready && !string.IsNullOrEmpty(objectChoice.value));
+            removeObjectButton.SetEnabled(ready && backend.Scene?.Selected != null && backend.Scene.Selected.GetComponent<QuadSim.RL.RLSceneObject>() != null);
             objectEditStatus.text = ready ? "Scene editing enabled · world ENU coordinates." : "Enable scene editing before spawning: simulation must be paused with UI control.";
         }
         private void RefreshObjects()
         {
             if (backend.Level == null) return;
-            string previous = objectChoice.value; var choices = new List<string>();
-            foreach (var item in backend.Level.Objects.ActiveObjects) if (item != null) choices.Add(item.ObjectId);
-            objectChoice.choices = choices; objectChoice.SetValueWithoutNotify(choices.Contains(previous) ? previous : choices.Count > 0 ? choices[0] : "");
+            var previous = backend.Scene.Selected;
+            backend.Scene.ReadObjects(sceneObjects);
+            var choices = new List<string>();
+            int selected = -1;
+            for (int i = 0; i < sceneObjects.Count; i++)
+            {
+                choices.Add($"{i + 1} · {sceneObjects[i].name}");
+                if (sceneObjects[i] == previous) selected = i;
+            }
+            objectChoice.choices = choices;
+            objectChoice.SetValueWithoutNotify(selected >= 0 ? choices[selected] : "");
+            RefreshObjectControls();
         }
         private static void StartupToggle(VisualElement parent, string label, string key)
         {

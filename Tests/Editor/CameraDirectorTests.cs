@@ -20,6 +20,21 @@ namespace Nino.QuadSim.Tests
             Object.DestroyImmediate(host);
             if (entity != null) Object.DestroyImmediate(entity);
         }
+        [Test]
+        public void ReleasingTargetKeepsOrbitStationaryDuringObjectEdits()
+        {
+            director.FrameTarget(entity.transform);
+            var position = director.ViewCamera.transform.position;
+            var rotation = director.ViewCamera.transform.rotation;
+            director.ReleaseTarget();
+            entity.transform.position += new Vector3(4, 6, 8);
+            typeof(CameraDirector).GetMethod("UpdateCameraPose", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                .Invoke(director, new object[] { 1f });
+            Assert.That(director.Target, Is.Null);
+            Assert.That(director.Mode, Is.EqualTo(CameraViewMode.Orbit));
+            Assert.That(Vector3.Distance(position, director.ViewCamera.transform.position), Is.LessThan(.001f));
+            Assert.That(Quaternion.Angle(rotation, director.ViewCamera.transform.rotation), Is.LessThan(.001f));
+        }
         [Test] public void GenericTargetDoesNotOwnDisplayCamera()
         {
             var sensor = new GameObject("Sensor", typeof(Camera));

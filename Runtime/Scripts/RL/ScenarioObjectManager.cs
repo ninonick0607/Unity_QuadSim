@@ -55,6 +55,7 @@ namespace QuadSim.RL
             item.transform.localScale = ScaleForShape(spec.Shape, spec.SizeEnu);
             item.Configure(spec.ObjectId, spec.Shape, spec.CollisionEnabled, spec.Color);
             item.gameObject.SetActive(true); _active.Add(item); _specs.Add(spec.ObjectId, spec);
+            Physics.SyncTransforms();
             return true;
         }
         private static bool Finite(Vector3 value) =>
@@ -120,18 +121,24 @@ namespace QuadSim.RL
             {
                 RLSceneObject sceneObject = _active[i];
                 ScenarioObjectSpec spec = _specs[sceneObject.ObjectId];
+                var position = Frames.TransformWorldPosition(sceneObject.transform.position, SimFrame.FLU);
+                var scale = sceneObject.transform.localScale;
+                if (sceneObject.Shape == "cylinder" || sceneObject.Shape == "goal") scale.y *= 2;
+                var size = new Vector3(scale.x, scale.z, scale.y);
+                var attitude = Frames.TransformQuaternion(sceneObject.transform.rotation, SimFrame.FLU);
                 result[i] = new Dictionary<string, object>
                 {
                     ["object_id"] = spec.ObjectId,
                     ["shape"] = spec.Shape,
                     ["position_enu"] = new object[]
                     {
-                        spec.PositionEnu.x, spec.PositionEnu.y, spec.PositionEnu.z,
+                        position.x, position.y, position.z,
                     },
-                    ["yaw_deg"] = spec.YawDeg,
+                    ["yaw_deg"] = attitude.eulerAngles.z,
+                    ["rotation_enu_xyzw"] = new object[] { attitude.x, attitude.y, attitude.z, attitude.w },
                     ["size_enu"] = new object[]
                     {
-                        spec.SizeEnu.x, spec.SizeEnu.y, spec.SizeEnu.z,
+                        size.x, size.y, size.z,
                     },
                     ["collision_enabled"] = spec.CollisionEnabled,
                     ["color_rgba"] = new object[]

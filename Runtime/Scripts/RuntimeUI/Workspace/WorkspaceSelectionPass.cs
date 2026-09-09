@@ -6,6 +6,7 @@ namespace QuadSim.RuntimeUI.Workspace
 {
     // Draw only the explicitly selected entity, only into the display camera.
     // DrawRenderer retains animated mesh/rotor transforms and bypasses wall occlusion.
+    [System.Serializable]
     public sealed class WorkspaceSelectionPass : CustomPass
     {
         public Camera DisplayCamera;

@@ -15,6 +15,8 @@ namespace QuadSim.RuntimeUI.Workspace
     {
         [SerializeField, Range(1, 20)] private int refreshHz = 5;
         private IWorkspaceBackend backend;
+        private WorkspaceNavigationBindings navigationBindings;
+        private bool cameraInputActive;
         private UIDocument document;
         private PanelSettings settings;
         private VisualElement root, left, right, bottom, floating, viewport, approval, toolbar;
@@ -24,7 +26,9 @@ namespace QuadSim.RuntimeUI.Workspace
         private WorkspaceIcon transportIcon;
         private Button play, step, spawn, applyPose;
         private FloatField speed;
-        private Vector3Field position, rotation;
+        private Vector3Field position, rotation, scale;
+        private Transform poseTarget;
+        private bool poseDirty;
         private DropdownField configs;
         private ListView entityList;
         private readonly List<WorkspaceEntity> entities = new List<WorkspaceEntity>();
@@ -60,6 +64,7 @@ namespace QuadSim.RuntimeUI.Workspace
             {
                 Debug.LogError("Only one RuntimeWorkspace may be active."); enabled = false; return;
             }
+            navigationBindings = new WorkspaceNavigationBindings();
             backend = new WorkspaceBackend();
             backend.ExternalApprovalRequested += ShowApproval;
             backend.Connect();
@@ -94,6 +99,9 @@ namespace QuadSim.RuntimeUI.Workspace
         private void OnDisable()
         {
             SaveWorkspace();
+            if (backend?.Scene != null) backend.Scene.TransformChanging -= PrepareTransformEdit;
+            navigationBindings?.Dispose(); navigationBindings = null;
+            transformGizmo?.End(); transformGizmo = null; compass = null; poseTarget = null;
             ReleaseSelectionHighlight();
             RestoreViewportCamera();
             Application.logMessageReceived -= OnLog;
@@ -155,7 +163,7 @@ namespace QuadSim.RuntimeUI.Workspace
             viewLabel = new Label("SCENE VIEW"); viewLabel.style.display = DisplayStyle.None;
             void CameraTool(string icon, string hint, Action action, CameraViewMode? mode = null)
             {
-                var button = new Button(() => { action(); if (mode.HasValue) viewport.Focus(); }) { tooltip = hint, userData = mode };
+                var button = new Button(() => { action(); if (mode.HasValue) FocusViewport(); }) { tooltip = hint, userData = mode };
                 button.AddToClassList("camera-tool"); button.Add(new WorkspaceIcon(icon)); viewTools.Add(button);
             }
             CameraTool("Camera", "Camera settings", () => OpenPanel("Camera"));
@@ -177,7 +185,13 @@ namespace QuadSim.RuntimeUI.Workspace
             configs = new DropdownField { tooltip = "Drone configuration" }; configs.AddToClassList("config-field"); catalog.Add(configs);
             configs.RegisterValueChangedCallback(e => backend.SetConfig(e.newValue));
             var spawnRow = new VisualElement(); spawnRow.AddToClassList("action-row"); catalog.Add(spawnRow);
-            spawn = AddButton(spawnRow, "Spawn", () => backend.Spawn(configs.value));
+            spawn = AddButton(spawnRow, "Spawn", () =>
+            {
+                string previous = backend.SelectedId;
+                backend.Spawn(configs.value);
+                if (backend.SelectedId != previous) { HighlightEntity(backend.SelectedId); cameraDirector?.FrameTarget(cameraSelection); }
+                nextRefresh = 0;
+            });
             AddButton(spawnRow, "Refresh", RefreshConfigs).tooltip = "Refresh drone catalog";
             AddButton(catalog, "Reload selected from YAML", () =>
             {
@@ -207,18 +221,24 @@ namespace QuadSim.RuntimeUI.Workspace
 
             var inspectWindow = AddWindow("Inspector");
             inspector = new WorkspaceReadout(); inspectWindow.Body.Add(inspector);
-            Section(inspectWindow.Body, "Transform · World / Y up");
-            position = new Vector3Field("Position (m)"); rotation = new Vector3Field("Euler (deg)");
-            inspectWindow.Body.Add(position); inspectWindow.Body.Add(rotation);
-            position.Query<FloatField>().ForEach(field => field.formatString = "0.###");
-            rotation.Query<FloatField>().ForEach(field => field.formatString = "0.###");
+            Section(inspectWindow.Body, "Transform");
+            position = new Vector3Field("Position (ENU m)"); rotation = new Vector3Field("Rotation (Unity deg)");
+            scale = new Vector3Field("Scale (local XYZ)");
+
+            foreach (var vector in new[] { position, rotation, scale })
+            {
+                vector.RegisterValueChangedCallback(_ => poseDirty = true);
+                vector.Query<FloatField>().ForEach(field => { field.isDelayed = true; field.formatString = "0.###"; });
+            }
+            inspectWindow.Body.Add(position); inspectWindow.Body.Add(rotation); inspectWindow.Body.Add(scale);
             AddButton(inspectWindow.Body, "Read current pose", ReadPose);
             applyPose = AddButton(inspectWindow.Body, "Apply pose", () =>
             {
-                feedback.text = backend.ApplyPose(poseEntity, position.value, rotation.value)
-                    ? "Pose applied; physics state reset." : "Pose not applied. Pause, use UI authority, and read the selected pose.";
+                feedback.text = ApplySelectedTransform()
+                    ? "Transform applied." : "Not applied. Pause, take UI control, and select an object.";
             });
-            feedback = Text(inspectWindow.Body, "Pause and use UI authority to edit a pose.");
+            feedback = Text(inspectWindow.Body, "Pause and use UI authority to edit. Position: East, North, Up. Rotation: Unity X/Y/Z degrees.");
+            AddButton(inspectWindow.Body, "Enable scene editing", EnableSceneEditing);
             var telemetryWindow = AddWindow("Telemetry"); BuildMotorBars(telemetryWindow.Body);
             telemetry = new WorkspaceReadout(); telemetryWindow.Body.Add(telemetry);
             var connectionWindow = AddWindow("Control Authority"); connections = new WorkspaceReadout(); connectionWindow.Body.Add(connections);
@@ -266,6 +286,8 @@ namespace QuadSim.RuntimeUI.Workspace
         private void SetUiHidden(bool hidden)
         {
             uiHidden = hidden;
+            cameraInputActive = false;
+            transformGizmo?.End();
             taskMenu?.RemoveFromHierarchy(); taskMenu = null;
             foreach (var window in windows.Values) window.Cancel();
             keys.Clear();
@@ -426,8 +448,11 @@ namespace QuadSim.RuntimeUI.Workspace
         private void ReadPose()
         {
             poseEntity = backend.SelectedId;
-            backend.TryReadPose(out var p, out var r);
-            position.SetValueWithoutNotify(p); rotation.SetValueWithoutNotify(r);
+            poseTarget = backend.Scene?.HasSelection == true ? backend.Scene.Selected : null;
+            position.SetValueWithoutNotify(poseTarget != null ? MathUtil.Frames.TransformWorldPosition(poseTarget.position, MathUtil.SimFrame.FLU) : Vector3.zero);
+            rotation.SetValueWithoutNotify(poseTarget != null ? poseTarget.eulerAngles : Vector3.zero);
+            scale.SetValueWithoutNotify(poseTarget != null ? poseTarget.localScale : Vector3.one);
+            poseDirty = false;
         }
 
         private void Update()
@@ -437,19 +462,7 @@ namespace QuadSim.RuntimeUI.Workspace
             if (!uiHidden && windows["Telemetry"].ShouldRefresh) RefreshMotors();
             if (uiHidden) { backend.Connect(); return; }
             if (Time.unscaledDeltaTime > 0) framesPerSecond = Mathf.Lerp(framesPerSecond, 1f / Time.unscaledDeltaTime, 0.05f);
-            if (cameraDirector != null && cameraDirector.Mode == CameraViewMode.Free && Application.isFocused &&
-                viewport?.focusController?.focusedElement == viewport)
-            {
-                var keyboard = UnityEngine.InputSystem.Keyboard.current;
-                if (keyboard != null)
-                {
-                    bool Down(UnityEngine.InputSystem.Controls.KeyControl key) => key.isPressed || key.wasPressedThisFrame;
-                    var move = new Vector3((Down(keyboard.dKey) ? 1 : 0) - (Down(keyboard.aKey) ? 1 : 0),
-                        (Down(keyboard.eKey) ? 1 : 0) - (Down(keyboard.qKey) ? 1 : 0),
-                        (Down(keyboard.wKey) ? 1 : 0) - (Down(keyboard.sKey) ? 1 : 0));
-                    cameraDirector.AddFreeMovementInput(move.normalized, keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed);
-                }
-            }
+            WorkspaceInputRouting.SampleCamera(cameraDirector, viewport, cameraInputActive && Application.isFocused && transformGizmo?.IsDragging != true);
             if (Time.realtimeSinceStartupAsDouble < nextRefresh) return;
             nextRefresh = Time.realtimeSinceStartupAsDouble + 1.0 / Mathf.Max(1, refreshHz);
             backend.Connect();
@@ -476,10 +489,9 @@ namespace QuadSim.RuntimeUI.Workspace
             double factor = wall > lastStatusWall && s.SimTimeSec >= lastStatusSim ? (s.SimTimeSec - lastStatusSim) / (wall - lastStatusWall) : 0;
             lastStatusWall = wall; lastStatusSim = s.SimTimeSec;
             status.text += $"   |   {framesPerSecond:F0} FPS   |   Measured ×{factor:F2}";
-            if (windows["Scene"].ShouldRefresh) { RefreshEntities(); RefreshObjectControls(); }
-            if (poseEntity != backend.SelectedId) ReadPose();
-            if (windows["Inspector"].ShouldRefresh) inspector.SetReport(backend.ReadInspector());
-            applyPose.SetEnabled(backend.CanEditPose && backend.SelectedId != null);
+            if (windows["Scene"].ShouldRefresh) { RefreshEntities(); RefreshObjects(); }
+            if (poseEntity != backend.SelectedId && backend.Scene?.Selected?.GetComponent<QuadPawn>() != null) HighlightEntity(backend.SelectedId);
+            RefreshSceneInspector();
             if (windows["Telemetry"].ShouldRefresh) { telemetry.SetReport(backend.ReadTelemetry()); RefreshMotorLabels(); }
             if (windows["Flight controls"].ShouldRefresh) RefreshFlight();
             if (windows["PID tuning"].ShouldRefresh) RefreshPid();
@@ -549,7 +561,7 @@ namespace QuadSim.RuntimeUI.Workspace
             foreach (var child in root.Children()) if (child != approval) child.SetEnabled(true);
             toolbar.SetEnabled(true);
             transport.SetEnabled(backend.Ready);
-            viewport.Focus();
+            cameraInputActive = false; viewport.Blur();
         }
 
         private void BuildCamera(VisualElement body)
@@ -564,7 +576,7 @@ namespace QuadSim.RuntimeUI.Workspace
                     if (cameraDirector == null) return;
                     if (cameraSelection != null && value != CameraViewMode.Free) cameraDirector.BindEntity(cameraSelection, snap: false);
                     cameraDirector.SetMode(value);
-                    viewport.Focus();
+                    FocusViewport();
                 });
             }
             AddButton(body, "Follow selected", () =>
@@ -584,31 +596,25 @@ namespace QuadSim.RuntimeUI.Workspace
             AddButton(body, "Reset orbit", () => cameraDirector?.ResetOrbit());
             BuildCameraDetails(body);
         }
+        private void FocusViewport() { cameraInputActive = true; viewport.Focus(); }
         private void BuildViewportInput()
         {
             int navigationButton = -1;
+            WorkspaceInputRouting.Install(root, viewport, active => cameraInputActive = active);
             viewport.RegisterCallback<PointerDownEvent>(e =>
             {
-                viewport.Focus();
-                if (e.button == 1 || e.button == 2) { navigationButton = e.button; lookPointer = e.pointerId; viewport.CapturePointer(e.pointerId); }
+                if (transformGizmo?.IsDragging == true) return;
+                FocusViewport();
+                if (e.button == 1 || e.button == 2) { navigationButton = e.button; lookPointer = e.pointerId; viewport.CapturePointer(e.pointerId); if (e.button == 1) cameraDirector?.SetMode(CameraViewMode.Free, false); }
                 if (e.button == 0 && cameraDirector != null && cameraDirector.ViewCamera != null)
                 {
-                    HighlightEntity(null);
-                    // Panel coordinates include DPI scaling; convert to full-screen camera coordinates.
-                    Vector2 p = e.position;
+                    Vector2 p = root.WorldToLocal(e.position);
                     var screen = new Vector3(p.x / root.layout.width * Screen.width, (1 - p.y / root.layout.height) * Screen.height, 0);
-                    if (Physics.Raycast(cameraDirector.ViewCamera.ScreenPointToRay(screen), out var hit))
+                    SelectSceneObject(backend.Scene?.Pick(cameraDirector.ViewCamera.ScreenPointToRay(screen)));
+                    if (e.clickCount == 2 && cameraSelection != null)
                     {
-                        var pawn = hit.collider.GetComponentInParent<QuadPawn>();
-                        cameraSelection = pawn != null ? pawn.transform : hit.collider.attachedRigidbody != null ? hit.collider.attachedRigidbody.transform : hit.collider.transform;
-                        if (pawn != null)
-                        {
-                            backend.Select(pawn.AgentId);
-                            HighlightEntity(pawn.AgentId);
-                            if (e.clickCount == 2) backend.FollowSelected();
-                            nextRefresh = 0;
-                        }
-                        else if (e.clickCount == 2) cameraDirector.FrameTarget(cameraSelection);
+                        if (highlightedPawn != null) backend.FollowSelected();
+                        else cameraDirector.FrameTarget(cameraSelection);
                     }
                 }
                 e.StopPropagation();
@@ -631,6 +637,7 @@ namespace QuadSim.RuntimeUI.Workspace
             viewport.RegisterCallback<WheelEvent>(e => { cameraDirector?.AddMouseCameraInput(Vector2.zero, -e.delta.y / 3f); e.StopPropagation(); });
             viewport.RegisterCallback<KeyDownEvent>(e =>
             {
+                if (e.target != viewport || !cameraInputActive) return;
                 bool first = keys.Add(e.keyCode);
                 if (first && cameraDirector != null)
                 {
@@ -640,6 +647,7 @@ namespace QuadSim.RuntimeUI.Workspace
                     if (e.keyCode == KeyCode.Keypad3) cameraDirector.AxisView(e.ctrlKey ? Vector3.right : Vector3.left);
                     if (e.keyCode == KeyCode.Keypad7) cameraDirector.AxisView(e.ctrlKey ? Vector3.up : Vector3.down);
                     if (e.keyCode == KeyCode.BackQuote && e.shiftKey) cameraDirector.SetMode(CameraViewMode.Free);
+                    if (e.keyCode == KeyCode.Escape) { HighlightEntity(null); viewport.Blur(); }
                 }
                 e.StopPropagation();
             });
@@ -648,8 +656,9 @@ namespace QuadSim.RuntimeUI.Workspace
         }
         private void OnApplicationFocus(bool focused)
         {
-            if (!focused) SaveWorkspace();
+            if (!focused) { SaveWorkspace(); transformGizmo?.End(); }
             if (focused) return;
+            cameraInputActive = false;
             foreach (var window in windows.Values) window.Cancel();
             keys.Clear();
             if (viewport != null && lookPointer >= 0) viewport.ReleasePointer(lookPointer);
