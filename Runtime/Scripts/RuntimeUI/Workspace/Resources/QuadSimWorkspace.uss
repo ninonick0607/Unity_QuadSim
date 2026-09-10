@@ -176,3 +176,8 @@
 .scene-tools .unity-dropdown-field { width: 110px; margin-left: 4px; }
 .scene-tools .unity-dropdown-field__input { min-width: 60px; }
 .scene-edit-hint { position: absolute; bottom: 8px; left: 8px; right: 8px; color: #dce5f2; background-color: rgba(18, 26, 38, .84); padding: 5px 7px; border-radius: 3px; font-size: 10px; white-space: normal; }
+
+.scene-hierarchy { flex-grow: 1; min-height: 180px; }
+.scene-hierarchy .entity-list { flex-grow: 1; min-height: 180px; }
+.hierarchy-row { flex-grow: 1; overflow: hidden; text-overflow: ellipsis; -unity-text-align: middle-left; }
+.hierarchy-group { -unity-font-style: bold; }

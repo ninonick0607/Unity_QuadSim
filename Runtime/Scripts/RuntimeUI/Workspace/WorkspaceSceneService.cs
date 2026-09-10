@@ -32,7 +32,22 @@ namespace QuadSim.RuntimeUI.Workspace
             {
                 if (collider.GetComponentInParent<QuadPawn>() != null || collider.GetComponentInParent<RLSceneObject>() != null) continue;
                 var target = collider.attachedRigidbody != null ? collider.attachedRigidbody.transform : collider.transform;
-                if (seen.Add(target)) authored.Add(target);
+                Add(target);
+            }
+            foreach (var renderer in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            {
+                if (renderer.GetComponentInParent<QuadPawn>() == null && renderer.GetComponentInParent<RLSceneObject>() == null)
+                    Add(renderer.transform);
+            }
+            void Add(Transform target)
+            {
+                while (target != null && target.GetComponent<global::SimCore.SimulationManager>() == null &&
+                    target.GetComponent<DroneManager>() == null)
+                {
+                    if (!seen.Add(target)) break;
+                    authored.Add(target);
+                    target = target.parent;
+                }
             }
         }
         public void ReadObjects(List<Transform> destination)

@@ -68,6 +68,8 @@ namespace DroneCore
 
         [Header("Visuals")]
         [SerializeField] private Transform[] propellerMeshes = new Transform[4];
+        [Tooltip("Propeller shaft axis in mesh-local coordinates. Flightmare uses Z; Standard and Crazyflie use Y.")]
+        [SerializeField] private Vector3 propellerSpinAxis = Vector3.forward;
 
         // ============================================================================
         // Runtime State
@@ -723,7 +725,8 @@ namespace DroneCore
                 float direction = spinDir[i];
                 float frameRotation = (rpm / 60f) * 360f * deltaTime * direction;
 
-                propellerMeshes[i].Rotate(0f, 0f, frameRotation, Space.Self);            }
+                propellerMeshes[i].Rotate(propellerSpinAxis, frameRotation, Space.Self);
+            }
         }
 
         // ============================================================================

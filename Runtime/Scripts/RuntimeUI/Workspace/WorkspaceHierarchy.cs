@@ -19,9 +19,16 @@ namespace QuadSim.RuntimeUI.Workspace
         public TreeView Tree { get; }
         public event Action<Transform> Selected;
         public event Action<Transform> FrameRequested;
-        private readonly List<(int id, int parent, string name)> previous = new();
+        private readonly List<(Transform target, Transform parent, string name)> previous = new();
         private Transform selection;
         private bool initialized;
+        private readonly Dictionary<Transform, int> ids = new();
+        private int nextId;
+        public int GetItemId(Transform target)
+        {
+            if (!ids.TryGetValue(target, out int id)) ids[target] = id = ++nextId;
+            return id;
+        }
 
         public WorkspaceHierarchy()
         {
@@ -57,11 +64,12 @@ namespace QuadSim.RuntimeUI.Workspace
 
         public void Refresh(IReadOnlyList<Transform> objects, IReadOnlyList<Transform> drones, Transform selected)
         {
-            var snapshot = new List<(int, int, string)>();
+            var snapshot = new List<(Transform, Transform, string)>();
             foreach (var target in objects.Concat(drones))
-                if (target != null) snapshot.Add((target.GetInstanceID(), target.parent != null ? target.parent.GetInstanceID() : 0, target.name));
+                if (target != null) snapshot.Add((target, target.parent, target.name));
             if (!initialized || !previous.SequenceEqual(snapshot))
             {
+                foreach (var target in ids.Keys.Where(t => !objects.Contains(t) && !drones.Contains(t)).ToArray()) ids.Remove(target);
                 previous.Clear(); previous.AddRange(snapshot);
                 var scene = BuildObjects(objects);
                 var aircraft = new List<TreeViewItemData<Entry>>();
@@ -69,7 +77,7 @@ namespace QuadSim.RuntimeUI.Workspace
                 {
                     if (target == null) continue;
                     var pawn = target.GetComponent<DroneCore.QuadPawn>();
-                    aircraft.Add(new TreeViewItemData<Entry>(target.GetInstanceID(),
+                    aircraft.Add(new TreeViewItemData<Entry>(GetItemId(target),
                         new Entry(target, pawn != null ? pawn.DroneID : target.name)));
                 }
                 Tree.SetRootItems(new List<TreeViewItemData<Entry>>
@@ -83,10 +91,10 @@ namespace QuadSim.RuntimeUI.Workspace
             }
             if (selection == selected && (selected != null || Tree.selectedIndex < 0)) return;
             selection = selected;
-            Tree.SetSelectionByIdWithoutNotify(selected != null ? new[] { selected.GetInstanceID() } : Array.Empty<int>());
+            Tree.SetSelectionByIdWithoutNotify(selected != null ? new[] { GetItemId(selected) } : Array.Empty<int>());
         }
 
-        public static List<TreeViewItemData<Entry>> BuildObjects(IReadOnlyList<Transform> objects)
+        public List<TreeViewItemData<Entry>> BuildObjects(IReadOnlyList<Transform> objects)
         {
             var included = new HashSet<Transform>(objects);
             var children = new Dictionary<Transform, List<Transform>>();
@@ -103,9 +111,9 @@ namespace QuadSim.RuntimeUI.Workspace
                     list.Add(target);
                 }
             }
-            TreeViewItemData<Entry> Build(Transform target) => new(target.GetInstanceID(), new Entry(target, target.name),
-                children.TryGetValue(target, out var list) ? list.Select(Build).ToList() : null);
-            return roots.Select(Build).ToList();
+            TreeViewItemData<Entry> Build(Transform target) => new(GetItemId(target), new Entry(target, target.name),
+                children.TryGetValue(target, out var list) ? list.OrderBy(t => t.GetSiblingIndex()).Select(Build).ToList() : null);
+            return roots.OrderBy(t => t.GetSiblingIndex()).Select(Build).ToList();
         }
     }
 }

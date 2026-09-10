@@ -4,7 +4,7 @@ This folder contains package-level documentation for the Unity QuadSim plugin.
 
 ## Documents
 
-[Runtime workspace](runtime-workspace.md): UI Toolkit preview setup, architecture, complete ImGui migration inventory, and incremental implementation plan.
+[Runtime workspace](runtime-workspace.md): Default HUD, controls, code map, developer tools and build guidance.
 
 ```text
 px4-sitl.md          PX4 SITL bridge workflow and architecture

@@ -9,7 +9,7 @@ using UnityEngine.UIElements;
 
 namespace QuadSim.RuntimeUI.Workspace
 {
-    /// <summary>Opt-in runtime workspace. UI work runs on wall time, never on physics steps.</summary>
+    /// <summary>Default runtime workspace. UI work runs on wall time, never on physics steps.</summary>
     [DisallowMultipleComponent, DefaultExecutionOrder(1100)]
     public sealed partial class RuntimeWorkspace : MonoBehaviour
     {
@@ -20,24 +20,24 @@ namespace QuadSim.RuntimeUI.Workspace
         private UIDocument document;
         private PanelSettings settings;
         private VisualElement root, left, right, bottom, floating, viewport, approval, toolbar;
-        private Label status, logText, feedback, sceneCount, sceneEmpty, viewLabel;
+        private Label status, logText, feedback;
         private WorkspaceReadout connections;
         private WorkspaceReadout inspector, telemetry;
         private WorkspaceIcon transportIcon;
-        private Button play, step, spawn, applyPose;
+        private Button play, step, spawn;
         private FloatField speed;
         private Vector3Field position, rotation, scale;
         private Transform poseTarget;
         private bool poseDirty;
         private DropdownField configs;
-        private ListView entityList;
-        private readonly List<WorkspaceEntity> entities = new List<WorkspaceEntity>();
+        private WorkspaceHierarchy hierarchy;
+        private readonly List<Transform> hierarchyDrones = new List<Transform>();
         private readonly List<WorkspaceEntity> scratch = new List<WorkspaceEntity>();
         private readonly Dictionary<string, WorkspaceWindow> windows = new Dictionary<string, WorkspaceWindow>();
         private readonly Dictionary<WorkspaceDock, WorkspaceWindow> activeTabs = new Dictionary<WorkspaceDock, WorkspaceWindow>();
         private VisualElement transport, menuRegion, toolbarActions;
         private Button restoreUi;
-        private bool uiHidden, restoringLayout, quitting;
+        private bool uiHidden, restoringLayout;
         private VisualElement viewTools;
         private StyleSheet darkStyle;
         private Button authorityShortcut;
@@ -45,7 +45,6 @@ namespace QuadSim.RuntimeUI.Workspace
         private VisualElement taskMenu;
         private readonly Queue<string> logs = new Queue<string>();
         private readonly HashSet<KeyCode> keys = new HashSet<KeyCode>();
-        private readonly List<Behaviour> suspendedLegacy = new List<Behaviour>();
         private CameraDirector cameraDirector;
         private string poseEntity;
         private double nextRefresh;
@@ -57,7 +56,6 @@ namespace QuadSim.RuntimeUI.Workspace
 
         private void OnEnable()
         {
-            quitting = false;
             // Avoid any retained tree, camera creation, or subscriptions in headless jobs.
             if (Application.isBatchMode || SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) return;
             if (FindObjectsByType<RuntimeWorkspace>(FindObjectsSortMode.None).Length > 1)
@@ -71,7 +69,7 @@ namespace QuadSim.RuntimeUI.Workspace
             settings = ScriptableObject.CreateInstance<PanelSettings>();
             settings.themeStyleSheet = Resources.Load<ThemeStyleSheet>("QuadSimWorkspaceTheme");
             settings.scaleMode = PanelScaleMode.ConstantPixelSize;
-            settings.scale = Mathf.Clamp(PlayerPrefs.GetFloat("QuadSim.UI.Scale", 1.25f), 0.8f, 2f);
+            settings.scale = Mathf.Clamp(PlayerPrefs.GetFloat("QuadSim.UI.Scale", 1f), 0.8f, 2f);
             settings.referenceResolution = new Vector2Int(1440, 900);
             settings.match = 0.5f;
             // Own only the document created here; no mutation of a pre-existing document.
@@ -82,15 +80,14 @@ namespace QuadSim.RuntimeUI.Workspace
             root.AddToClassList("quadsim-workspace");
             root.AddToClassList("light-theme");
             darkStyle = Resources.Load<StyleSheet>("QuadSimWorkspaceDark");
-            SetDarkTheme(PlayerPrefs.GetInt("QuadSim.UI.DarkTheme", 0) == 1);
+            SetDarkTheme(PlayerPrefs.GetInt("QuadSim.UI.DarkTheme", 1) == 1);
             Build();
             cameraDirector = CameraDirector.GetOrCreate(gameObject);
             foreach (var legacy in FindObjectsByType<ImGuiRuntimeBootstrap>(FindObjectsSortMode.None))
             {
-                if (!legacy.enabled) continue;
-                suspendedLegacy.Add(legacy); legacy.enabled = false;
+                legacy.enabled = false;
                 var renderer = legacy.GetComponent<UImGui.UImGui>();
-                if (renderer != null && renderer.enabled) { suspendedLegacy.Add(renderer); renderer.enabled = false; }
+                if (renderer != null) renderer.enabled = false;
             }
             Application.logMessageReceived += OnLog;
             nextRefresh = 0;
@@ -112,9 +109,7 @@ namespace QuadSim.RuntimeUI.Workspace
             lookPointer = -1;
             if (document != null) { document.enabled = false; Destroy(document.gameObject); }
             if (settings != null) Destroy(settings);
-            for (int i = suspendedLegacy.Count - 1; !quitting && i >= 0; i--)
-                if (suspendedLegacy[i] != null) suspendedLegacy[i].enabled = true;
-            suspendedLegacy.Clear(); windows.Clear(); activeTabs.Clear(); entities.Clear(); scratch.Clear(); logs.Clear();
+             windows.Clear(); activeTabs.Clear(); hierarchyDrones.Clear(); scratch.Clear(); logs.Clear();
             configLoaded = false; poseEntity = null; root = null;
             levelInitialized = false; windZones.Clear(); historyRows.Clear(); lastStatusWall = lastStatusSim = 0;
         }
@@ -160,7 +155,6 @@ namespace QuadSim.RuntimeUI.Workspace
             var center = new VisualElement(); center.AddToClassList("workspace-center"); work.Add(center);
             viewport = new VisualElement { focusable = true }; viewport.AddToClassList("workspace-viewport"); center.Add(viewport);
             viewTools = new VisualElement(); viewTools.AddToClassList("viewport-tools"); viewport.Add(viewTools);
-            viewLabel = new Label("SCENE VIEW"); viewLabel.style.display = DisplayStyle.None;
             void CameraTool(string icon, string hint, Action action, CameraViewMode? mode = null)
             {
                 var button = new Button(() => { action(); if (mode.HasValue) FocusViewport(); }) { tooltip = hint, userData = mode };
@@ -200,45 +194,22 @@ namespace QuadSim.RuntimeUI.Workspace
             });
             AddButton(catalog, "Use this config by default", () => backend.SaveDefaultConfig());
             BuildObjectControls(scene.Body);
-            sceneCount = Text(scene.Body, "DRONES  ·  0"); sceneCount.AddToClassList("section-heading");
-            entityList = new ListView(entities, 30, MakeEntityRow, (row, index) =>
-            {
-                row.Q<Label>("entity-name").text = entities[index].Name;
-                row.Q<Label>("entity-id").text = entities[index].Id;
-                row.tooltip = entities[index].Id;
-                row.userData = entities[index].Id;
-            }) { selectionType = SelectionType.Single, virtualizationMethod = CollectionVirtualizationMethod.FixedHeight };
-            entityList.AddToClassList("entity-list");
-            entityList.style.flexGrow = 1; entityList.style.minHeight = 100;
-            scene.Body.contentContainer.style.flexGrow = 1;
-            entityList.selectionChanged += selection =>
-            {
-                foreach (WorkspaceEntity entity in selection) { backend.Select(entity.Id); HighlightEntity(entity.Id); nextRefresh = 0; }
-            };
-            scene.Body.Add(entityList);
-            sceneEmpty = Text(scene.Body, "No drones in the scene. Open Drone catalog to spawn one.");
-            var sceneHelp = Text(scene.Body, "Click to inspect · Double-click to follow"); sceneHelp.AddToClassList("panel-hint");
-
+            BuildHierarchy(scene.Body);
             var inspectWindow = AddWindow("Inspector");
-            inspector = new WorkspaceReadout(); inspectWindow.Body.Add(inspector);
+            inspector = new WorkspaceReadout();
             Section(inspectWindow.Body, "Transform");
             position = new Vector3Field("Position (ENU m)"); rotation = new Vector3Field("Rotation (Unity deg)");
             scale = new Vector3Field("Scale (local XYZ)");
 
             foreach (var vector in new[] { position, rotation, scale })
             {
-                vector.RegisterValueChangedCallback(_ => poseDirty = true);
+                vector.RegisterValueChangedCallback(_ => QueueInspectorTransform());
                 vector.Query<FloatField>().ForEach(field => { field.isDelayed = true; field.formatString = "0.###"; });
             }
             inspectWindow.Body.Add(position); inspectWindow.Body.Add(rotation); inspectWindow.Body.Add(scale);
-            AddButton(inspectWindow.Body, "Read current pose", ReadPose);
-            applyPose = AddButton(inspectWindow.Body, "Apply pose", () =>
-            {
-                feedback.text = ApplySelectedTransform()
-                    ? "Transform applied." : "Not applied. Pause, take UI control, and select an object.";
-            });
-            feedback = Text(inspectWindow.Body, "Pause and use UI authority to edit. Position: East, North, Up. Rotation: Unity X/Y/Z degrees.");
+            feedback = Text(inspectWindow.Body, "Enter or leave a field to apply. Position uses world coordinates; rotation and scale use Unity XYZ.");
             AddButton(inspectWindow.Body, "Enable scene editing", EnableSceneEditing);
+            inspectWindow.Body.Add(inspector);
             var telemetryWindow = AddWindow("Telemetry"); BuildMotorBars(telemetryWindow.Body);
             telemetry = new WorkspaceReadout(); telemetryWindow.Body.Add(telemetry);
             var connectionWindow = AddWindow("Control Authority"); connections = new WorkspaceReadout(); connectionWindow.Body.Add(connections);
@@ -300,21 +271,6 @@ namespace QuadSim.RuntimeUI.Workspace
             if (hidden && approval != null) approval.style.display = DisplayStyle.None;
             nextRefresh = 0;
         }
-        private VisualElement MakeEntityRow()
-        {
-            var row = new VisualElement(); row.AddToClassList("entity-row");
-            row.Add(new WorkspaceIcon("Drone"));
-            row.Add(new Label { name = "entity-name" });
-            var idLabel = new Label { name = "entity-id" }; idLabel.AddToClassList("entity-id"); row.Add(idLabel);
-            row.RegisterCallback<PointerDownEvent>(e =>
-            {
-                if (e.button != 0 || !(row.userData is string id)) return;
-                HighlightEntity(id);
-                if (e.clickCount != 2) return;
-                backend.Select(id); backend.FollowSelected(); nextRefresh = 0; e.StopPropagation();
-            });
-            return row;
-        }
         private void AddMenu(string title, params (string Label, Action Action)[] entries)
         {
             var button = new Button { text = title };
@@ -367,7 +323,7 @@ namespace QuadSim.RuntimeUI.Workspace
             if (viewTools != null) viewTools.style.display = DisplayStyle.Flex;
             if (status != null) status.style.display = anyOpen && !uiHidden ? DisplayStyle.Flex : DisplayStyle.None;
         }
-        private void OnApplicationQuit() { quitting = true; SaveWorkspace(); }
+        private void OnApplicationQuit() { SaveWorkspace(); }
         private void RefreshDock(VisualElement region, WorkspaceDock dock)
         {
             activeTabs.TryGetValue(dock, out var active);
@@ -447,9 +403,11 @@ namespace QuadSim.RuntimeUI.Workspace
         }
         private void ReadPose()
         {
-            poseEntity = backend.SelectedId;
+            poseEntity = backend.Scene?.Selected?.GetComponent<QuadPawn>()?.AgentId;
             poseTarget = backend.Scene?.HasSelection == true ? backend.Scene.Selected : null;
-            position.SetValueWithoutNotify(poseTarget != null ? MathUtil.Frames.TransformWorldPosition(poseTarget.position, MathUtil.SimFrame.FLU) : Vector3.zero);
+            poseFrame = DisplayFrame;
+            position.label = poseFrame == MathUtil.SimFrame.UnityBody ? "Position (Unity m)" : poseFrame == MathUtil.SimFrame.FRD ? "Position (NED m)" : "Position (ENU m)";
+            position.SetValueWithoutNotify(poseTarget != null ? MathUtil.Frames.TransformWorldPosition(poseTarget.position, poseFrame) : Vector3.zero);
             rotation.SetValueWithoutNotify(poseTarget != null ? poseTarget.eulerAngles : Vector3.zero);
             scale.SetValueWithoutNotify(poseTarget != null ? poseTarget.localScale : Vector3.one);
             poseDirty = false;
@@ -478,7 +436,7 @@ namespace QuadSim.RuntimeUI.Workspace
             authorityShortcut.text = $"Control: {s.CurrentAuthority}";
             authorityShortcut.EnableInClassList("external-control", s.CurrentAuthority == global::SimCore.Common.InputSource.External);
             play.text = s.IsPaused ? "Play" : "Pause"; transportIcon.Symbol = play.text; play.EnableInClassList("is-running", !s.IsPaused);
-            viewLabel.text = $"{cameraDirector?.Mode.ToString().ToUpperInvariant() ?? "SCENE"} VIEW  /  {Flight?.Pawn?.DroneID ?? "No selection"}"; step.SetEnabled(s.IsPaused || s.RunMode == global::SimCore.SimulationManager.RunMode.Manual);
+            step.SetEnabled(s.IsPaused || s.RunMode == global::SimCore.SimulationManager.RunMode.Manual);
             foreach (var tool in viewTools.Children()) tool.EnableInClassList("is-active", tool.userData is CameraViewMode mode && cameraDirector != null && mode == cameraDirector.Mode);
             var focused = root.focusController.focusedElement as VisualElement;
             if (focused == null || (focused != speed && !speed.Contains(focused)))
@@ -489,8 +447,7 @@ namespace QuadSim.RuntimeUI.Workspace
             double factor = wall > lastStatusWall && s.SimTimeSec >= lastStatusSim ? (s.SimTimeSec - lastStatusSim) / (wall - lastStatusWall) : 0;
             lastStatusWall = wall; lastStatusSim = s.SimTimeSec;
             status.text += $"   |   {framesPerSecond:F0} FPS   |   Measured ×{factor:F2}";
-            if (windows["Scene"].ShouldRefresh) { RefreshEntities(); RefreshObjects(); }
-            if (poseEntity != backend.SelectedId && backend.Scene?.Selected?.GetComponent<QuadPawn>() != null) HighlightEntity(backend.SelectedId);
+            if (windows["Scene"].ShouldRefresh) { RefreshObjects(); }
             RefreshSceneInspector();
             if (windows["Telemetry"].ShouldRefresh) { telemetry.SetReport(backend.ReadTelemetry()); RefreshMotorLabels(); }
             if (windows["Flight controls"].ShouldRefresh) RefreshFlight();
@@ -507,21 +464,6 @@ namespace QuadSim.RuntimeUI.Workspace
             {
                 logText.text = logs.Count > 0 ? string.Join("\n", logs) : "No workspace-session logs."; logsDirty = false;
             }
-        }
-
-        private void RefreshEntities()
-        {
-            backend.ReadEntities(scratch);
-            bool changed = scratch.Count != entities.Count;
-            for (int i = 0; !changed && i < scratch.Count; i++)
-                changed = scratch[i].Id != entities[i].Id || scratch[i].Name != entities[i].Name;
-            if (changed) { entities.Clear(); entities.AddRange(scratch); entityList.RefreshItems(); }
-            sceneCount.text = $"DRONES  ·  {entities.Count}";
-            sceneEmpty.style.display = entities.Count == 0 ? DisplayStyle.Flex : DisplayStyle.None;
-            int selected = -1;
-            for (int i = 0; i < entities.Count; i++) if (entities[i].Id == backend.SelectedId) { selected = i; break; }
-            if (entityList.selectedIndex != selected)
-                entityList.SetSelectionWithoutNotify(selected < 0 ? Array.Empty<int>() : new[] { selected });
         }
 
         private void OnLog(string message, string stack, LogType type)
@@ -647,7 +589,7 @@ namespace QuadSim.RuntimeUI.Workspace
                     if (e.keyCode == KeyCode.Keypad3) cameraDirector.AxisView(e.ctrlKey ? Vector3.right : Vector3.left);
                     if (e.keyCode == KeyCode.Keypad7) cameraDirector.AxisView(e.ctrlKey ? Vector3.up : Vector3.down);
                     if (e.keyCode == KeyCode.BackQuote && e.shiftKey) cameraDirector.SetMode(CameraViewMode.Free);
-                    if (e.keyCode == KeyCode.Escape) { HighlightEntity(null); viewport.Blur(); }
+                    if (e.keyCode == KeyCode.Escape) { ClearSceneSelection(); viewport.Blur(); }
                 }
                 e.StopPropagation();
             });

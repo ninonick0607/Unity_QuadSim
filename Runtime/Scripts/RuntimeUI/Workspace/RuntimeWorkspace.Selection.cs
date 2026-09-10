@@ -11,6 +11,7 @@ namespace QuadSim.RuntimeUI.Workspace
         private UnityEngine.Rendering.HighDefinition.CustomPassVolume selectionVolume;
         private QuadPawn highlightedPawn;
         private Transform cameraSelection;
+        private bool hierarchyHighlight;
         private Camera framedCamera;
         private void BuildSelectionHighlight()
         {
@@ -69,7 +70,7 @@ namespace QuadSim.RuntimeUI.Workspace
         {
             if (selectionPass == null) return;
             selectionPass.DisplayCamera = cameraDirector != null ? cameraDirector.ViewCamera : null;
-            selectionPass.Visible = !uiHidden && backend.Scene?.HasSelection == true &&
+            selectionPass.Visible = hierarchyHighlight && !uiHidden && backend.Scene?.HasSelection == true && backend.Scene.Selected == cameraSelection &&
                 !(cameraDirector != null && cameraDirector.Mode == DroneCore.CameraSystem.CameraViewMode.FPV && cameraDirector.TargetDrone == highlightedPawn);
         }
     }

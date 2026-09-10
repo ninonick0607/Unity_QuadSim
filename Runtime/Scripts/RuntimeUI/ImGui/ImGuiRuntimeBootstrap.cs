@@ -1,4 +1,4 @@
-﻿using ImGuiNET;
+using ImGuiNET;
 using SimCore;
 using SimCore.Common;
 using DroneCore;
@@ -35,6 +35,13 @@ namespace QuadSim.RuntimeUI.ImGuiHud
 
         private void OnEnable()
         {
+            if (!Workspace.RuntimeWorkspaceStartup.GraphicsAvailable || !Workspace.RuntimeWorkspaceStartup.DeveloperHud)
+            {
+                var renderer = GetComponent<UImGui.UImGui>();
+                if (renderer != null) renderer.enabled = false;
+                enabled = false;
+                return;
+            }
             _appliedStartupPrefs = false;
             _layoutSeen = false;
             _noLayoutWarnTimer = 0f;

@@ -79,6 +79,8 @@ Use this README to install and run the Unity simulator. Use the Python SDK docs 
 https://github.com/ninonick0607/Unity_QuadSim.git#v0.3.0
 ```
 
+The UI Toolkit workspace is the default graphical HUD. See [Runtime workspace](Documentation~/runtime-workspace.md) for controls, architecture and build setup. ImGui is an explicit developer tool; release scene builds remove its HUD components.
+
 QuadSim includes its pinned UImGui 7.1.0 runtime, matching ImGui.NET managed binding, and Windows, Linux, and universal macOS native libraries. Do not install UImGui or ImGui.NET separately; a second copy can cause duplicate or mismatched assembly errors.
 
 Installing the HDRP package does not by itself assign an HDRP pipeline asset to an existing Built-in project. If the scene is pink, open **Window → Rendering → HDRP Wizard**, select the HDRP tab, and run **Fix All** before importing or reopening the sample scene.

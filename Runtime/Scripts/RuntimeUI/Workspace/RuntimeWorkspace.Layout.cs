@@ -49,7 +49,7 @@ namespace QuadSim.RuntimeUI.Workspace
                     w.Close();
                 }
                 var json = PlayerPrefs.GetString("QuadSim.UI.Workspace.v1", "");
-                if (string.IsNullOrEmpty(json)) return; // First launch: toolbar only.
+                if (string.IsNullOrEmpty(json)) { windows["Scene"].Open(); windows["Inspector"].Open(); return; }
                 var saved = JsonUtility.FromJson<SavedWorkspace>(json);
                 if (saved == null || saved.version != 1 || saved.windows == null) return;
                 if (saved.leftWidth > 0) left.style.width = Mathf.Clamp(saved.leftWidth, 160, 650);

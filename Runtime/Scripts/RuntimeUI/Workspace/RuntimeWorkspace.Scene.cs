@@ -14,6 +14,7 @@ namespace QuadSim.RuntimeUI.Workspace
         private Label editHint;
         private string lastAxes;
         private bool lastEditState;
+        private SimFrame poseFrame;
         private readonly List<Transform> sceneObjects = new List<Transform>();
         private SimFrame DisplayFrame
         {
@@ -23,6 +24,44 @@ namespace QuadSim.RuntimeUI.Workspace
                 return gizmoFrame.index == 1 ? SimFrame.FLU : gizmoFrame.index == 2 ? SimFrame.FRD : SimFrame.UnityBody;
             }
         }
+        private void BuildHierarchy(VisualElement parent)
+        {
+            Section(parent, "Hierarchy");
+            hierarchy = new WorkspaceHierarchy();
+            hierarchy.Selected += target => SelectSceneObject(target, highlight: true);
+            hierarchy.FrameRequested += target => cameraDirector?.FrameTarget(target);
+            parent.Add(hierarchy);
+            parent.contentContainer.style.flexGrow = 1;
+            AddButton(parent, "Clear selection", ClearSceneSelection).tooltip = "Remove selection, highlight and handles (Escape)";
+            Text(parent, "Select a row to highlight · Double-click to frame").AddToClassList("panel-hint");
+            root.RegisterCallback<KeyDownEvent>(e =>
+            {
+                if (e.keyCode != KeyCode.Escape || transformGizmo?.IsDragging == true ||
+                    Editing(position) || Editing(rotation) || Editing(scale) || taskMenu != null ||
+                    (approval != null && approval.style.display != DisplayStyle.None)) return;
+                ClearSceneSelection(); e.StopPropagation();
+            }, TrickleDown.TrickleDown);
+        }
+        private void ClearSceneSelection()
+        {
+            SelectSceneObject(null);
+            cameraInputActive = false;
+            keys.Clear();
+        }
+        private void QueueInspectorTransform()
+        {
+            poseDirty = true;
+            var expected = poseTarget;
+            // The composite vector updates during field dispatch. Commit after that dispatch finishes.
+            root.schedule.Execute(() =>
+            {
+                if (!poseDirty || poseTarget != expected) return;
+                bool applied = ApplySelectedTransform();
+                feedback.text = applied ? "Transform applied." : "Not applied. Enable scene editing and use finite values with positive scale.";
+                if (!applied) ReadPose();
+            });
+        }
+
         private void BuildSceneTools()
         {
             lastAxes = null;
@@ -46,15 +85,17 @@ namespace QuadSim.RuntimeUI.Workspace
             if (!backend.Status.IsPaused) backend.TogglePause();
             nextRefresh = 0; RefreshObjectControls();
         }
-        private void SelectSceneObject(Transform target)
+        private void SelectSceneObject(Transform target, bool highlight = false)
         {
             transformGizmo?.End();
             backend.Scene?.Select(target);
             cameraSelection = target;
             highlightedPawn = target != null ? target.GetComponent<QuadPawn>() : null;
             if (highlightedPawn != null) backend.Select(highlightedPawn.AgentId);
-            selectionPass?.Select(target);
-            if (position != null) ReadPose();
+            hierarchyHighlight = highlight && target != null;
+            selectionPass?.Select(hierarchyHighlight ? target : null);
+            if (position != null) { ReadPose(); RefreshSceneInspector(); }
+            if (hierarchy != null && backend.Scene != null) RefreshObjects();
             nextRefresh = 0;
         }
         private void PrepareTransformEdit(Transform target)
@@ -65,8 +106,8 @@ namespace QuadSim.RuntimeUI.Workspace
         private bool ApplySelectedTransform()
         {
             bool applied = backend.Scene != null && backend.Scene.ApplyTransform(poseTarget,
-                Frames.InverseTransformWorldPosition(position.value, SimFrame.FLU), Quaternion.Euler(rotation.value), scale.value);
-            if (applied) ReadPose();
+                Frames.InverseTransformWorldPosition(position.value, poseFrame), Quaternion.Euler(rotation.value), scale.value);
+            if (applied) poseDirty = false;
             return applied;
         }
         private void RefreshSceneInspector()
@@ -79,12 +120,11 @@ namespace QuadSim.RuntimeUI.Workspace
                 if (!poseDirty && !Editing(position) && !Editing(rotation) && !Editing(scale)) ReadPose();
                 if (!selected) inspector.SetReport("Select a drone or scene object to inspect its transform.");
                 else if (scene.Selected.GetComponent<QuadPawn>() != null) inspector.SetReport(backend.ReadInspector());
-                else inspector.SetReport($"SCENE OBJECT\nName   {scene.Selected.name}\nFrame   Position ENU · rotation Unity\nPhysics   {(scene.Selected.GetComponent<Rigidbody>() != null ? "Rigidbody" : "Static / marker")}");
+                else inspector.SetReport($"SCENE OBJECT\nName   {scene.Selected.name}\nFrame   World position · Unity rotation\nPhysics   {(scene.Selected.GetComponent<Rigidbody>() != null ? "Rigidbody" : "Static / marker")}");
             }
             bool canEdit = scene?.CanEdit == true;
             position.SetEnabled(canEdit); rotation.SetEnabled(canEdit);
             scale.SetEnabled(scene?.CanScale == true);
-            applyPose.SetEnabled(canEdit);
         }
         private void RefreshViewportTools()
         {

@@ -41,8 +41,6 @@ namespace QuadSim.RuntimeUI.Workspace
         void Reset();
         void SetSpeed(float speed);
         void Spawn(string config);
-        bool TryReadPose(out Vector3 position, out Vector3 rotation);
-        bool ApplyPose(string expectedId, Vector3 position, Vector3 rotation);
         string ReadInspector();
         string ReadTelemetry();
         void ApproveExternal(bool accept);
@@ -137,24 +135,7 @@ namespace QuadSim.RuntimeUI.Workspace
             UnityEngine.Object.Destroy(old.gameObject);
             return true;
         }
-        public bool TryReadPose(out Vector3 position, out Vector3 rotation)
-        {
-            var pawn = Selected;
-            position = pawn != null ? pawn.transform.position : Vector3.zero;
-            rotation = pawn != null ? pawn.transform.eulerAngles : Vector3.zero;
-            return pawn != null;
-        }
         public static bool IsFinite(float v) => !float.IsNaN(v) && !float.IsInfinity(v);
-        private static bool IsFinite(Vector3 v) => IsFinite(v.x) && IsFinite(v.y) && IsFinite(v.z);
-        public bool ApplyPose(string expectedId, Vector3 position, Vector3 rotation)
-        {
-            if (!CanEditPose || expectedId != SelectedId || !IsFinite(position) || !IsFinite(rotation)) return false;
-            var api = Selected != null ? Selected.GetComponent<QuadSimApi>() : null;
-            if (api == null || !api.IsInitialized) return false;
-            api.ResetPose(position, Quaternion.Euler(rotation));
-            Flight?.Forget(Selected);
-            return true;
-        }
         public string ReadInspector()
         {
             var pawn = Selected;

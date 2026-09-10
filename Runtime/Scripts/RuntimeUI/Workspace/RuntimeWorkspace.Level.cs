@@ -20,7 +20,6 @@ namespace QuadSim.RuntimeUI.Workspace
         private FloatField windSpeed, windYaw;
         private readonly List<WindModule> windZones = new List<WindModule>();
         private bool levelInitialized;
-        private DropdownField objectChoice;
         private Button spawnObjectButton, removeObjectButton;
         private Label objectEditStatus;
         private void BuildLevelControls(VisualElement parent)
@@ -59,7 +58,7 @@ namespace QuadSim.RuntimeUI.Workspace
             Section(parent, "Workspace display & startup");
             var uiScale = new Slider("UI scale", 0.8f, 2f) { showInputField = true, value = settings.scale };
             uiScale.RegisterValueChangedCallback(e => { if (!WorkspaceBackend.IsFinite(e.newValue)) return; settings.scale = Mathf.Clamp(e.newValue, 0.8f, 2f); PlayerPrefs.SetFloat("QuadSim.UI.Scale", settings.scale); }); parent.Add(uiScale);
-            var dark = new Toggle("Dark theme") { value = PlayerPrefs.GetInt("QuadSim.UI.DarkTheme", 0) == 1 };
+            var dark = new Toggle("Dark theme") { value = PlayerPrefs.GetInt("QuadSim.UI.DarkTheme", 1) == 1 };
             dark.RegisterValueChangedCallback(e => SetDarkTheme(e.newValue)); parent.Add(dark);
             StartupToggle(parent, "Hide all UI on startup", "QuadSim.UI.StartHidden");
             AddButton(parent, "Hide all UI now", () => SetUiHidden(true));
@@ -69,7 +68,7 @@ namespace QuadSim.RuntimeUI.Workspace
         }
         private void BuildObjectControls(VisualElement parent)
         {
-            var group = new Foldout { text = "Scene objects & assets", value = true }; group.AddToClassList("readout-group"); parent.Add(group);
+            var group = new Foldout { text = "Spawn scene asset", value = false }; group.AddToClassList("readout-group"); parent.Add(group);
             parent = group;
             var objectStatus = Text(parent);
             objectEditStatus = Text(parent);
@@ -102,18 +101,12 @@ namespace QuadSim.RuntimeUI.Workspace
                 objectStatus.text = ok ? $"Added {created.Shape} · selected in Inspector." : "Pause, use UI authority and enter a positive object size.";
                 RefreshObjects(); nextRefresh = 0;
             });
-            objectChoice = new DropdownField("Scene selection"); parent.Add(objectChoice);
-            objectChoice.RegisterValueChangedCallback(_ =>
-            {
-                int index = objectChoice.index;
-                if (index >= 0 && index < sceneObjects.Count) SelectSceneObject(sceneObjects[index]);
-            });
+            parent = group.parent;
             void TargetObject(bool follow)
             {
                 if (backend.Level == null || cameraDirector == null) return;
-                int index = objectChoice.index;
-                if (index < 0 || index >= sceneObjects.Count || sceneObjects[index] == null) return;
-                var target = sceneObjects[index]; SelectSceneObject(target);
+                var target = backend.Scene?.Selected;
+                if (target == null) return;
                 cameraDirector.BindEntity(target, snap: false);
                 if (follow) cameraDirector.SetMode(DroneCore.CameraSystem.CameraViewMode.Follow);
                 else cameraDirector.FrameTarget(target);
@@ -141,17 +134,15 @@ namespace QuadSim.RuntimeUI.Workspace
         private void RefreshObjects()
         {
             if (backend.Level == null) return;
-            var previous = backend.Scene.Selected;
             backend.Scene.ReadObjects(sceneObjects);
-            var choices = new List<string>();
-            int selected = -1;
-            for (int i = 0; i < sceneObjects.Count; i++)
+            backend.ReadEntities(scratch);
+            hierarchyDrones.Clear();
+            foreach (var entity in scratch)
             {
-                choices.Add($"{i + 1} · {sceneObjects[i].name}");
-                if (sceneObjects[i] == previous) selected = i;
+                var pawn = DroneCore.Core.DroneManager.Get()?.GetDroneByAgentId(entity.Id);
+                if (pawn != null) hierarchyDrones.Add(pawn.transform);
             }
-            objectChoice.choices = choices;
-            objectChoice.SetValueWithoutNotify(selected >= 0 ? choices[selected] : "");
+            hierarchy.Refresh(sceneObjects, hierarchyDrones, backend.Scene.HasSelection ? backend.Scene.Selected : null);
             RefreshObjectControls();
         }
         private static void StartupToggle(VisualElement parent, string label, string key)

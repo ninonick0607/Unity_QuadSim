@@ -45,3 +45,7 @@ sysinfo.txt
 
 # Gradle
 .gradle/
+
+# Generated local reports
+/output/
+/output.meta

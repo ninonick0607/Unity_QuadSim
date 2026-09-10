@@ -64,12 +64,13 @@ namespace Nino.QuadSim.Tests
             Assert.That(window.Q<DropdownField>(), Is.Null, "Panel positioning has no configuration menu");
         }
         [Test]
-        public void DetachedBackendRejectsPoseMutations()
+        public void DetachedSceneRejectsPoseMutations()
         {
             using var backend = new WorkspaceBackend();
             Assert.That(backend.Ready, Is.False);
-            Assert.That(backend.ApplyPose("missing", Vector3.zero, Vector3.zero), Is.False);
-            Assert.That(backend.ApplyPose(null, new Vector3(float.NaN, 0, 0), Vector3.zero), Is.False);
+            var scene = new WorkspaceSceneService(new WorkspaceLevelService(null, null), null);
+            Assert.That(scene.ApplyTransform(null, Vector3.zero, Quaternion.identity, Vector3.one), Is.False);
+            Assert.That(scene.ApplyTransform(null, new Vector3(float.NaN, 0, 0), Quaternion.identity, Vector3.one), Is.False);
         }
 
         [Test]

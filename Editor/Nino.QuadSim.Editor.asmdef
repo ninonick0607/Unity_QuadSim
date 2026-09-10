@@ -2,7 +2,8 @@
   "name": "Nino.QuadSim.Editor",
   "rootNamespace": "",
   "references": [
-    "Nino.QuadSim"
+    "Nino.QuadSim",
+    "UImGui"
   ],
   "includePlatforms": [
     "Editor"

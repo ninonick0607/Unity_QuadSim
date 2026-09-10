@@ -6,7 +6,15 @@ namespace QuadSim.Editor
 {
     public static class RuntimeWorkspaceMenu
     {
-        [MenuItem("GameObject/QuadSim/Runtime Workspace (Preview)", false, 10)]
+        [MenuItem("QuadSim/Developer/Use ImGui HUD")]
+        private static void DeveloperHud() => RuntimeWorkspaceStartup.SetDeveloperHud(true);
+        [MenuItem("QuadSim/Developer/Use Workspace HUD")]
+        private static void WorkspaceHud() => RuntimeWorkspaceStartup.SetDeveloperHud(false);
+        [MenuItem("QuadSim/Developer/Use ImGui HUD", true)]
+        [MenuItem("QuadSim/Developer/Use Workspace HUD", true)]
+        private static bool CanSwitch() => EditorApplication.isPlaying;
+
+        [MenuItem("GameObject/QuadSim/Runtime Workspace", false, 10)]
         private static void Create()
         {
             var existing = Object.FindAnyObjectByType<RuntimeWorkspace>();
