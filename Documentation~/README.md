@@ -6,6 +6,10 @@ This folder contains package-level documentation for the Unity QuadSim plugin.
 
 [Runtime workspace](runtime-workspace.md): Default HUD, controls, code map, developer tools and build guidance.
 
+[Platform and extension ideas](platform-extension-ideas.md): Future direction for reusable extensions, standalone/embedded use, and swarm choreography.
+
+[Swarm choreography and night-show lighting](swarm-show-idea.md): Fleet choreography, scriptable drone lights, and a proposed first demonstration.
+
 ```text
 px4-sitl.md          PX4 SITL bridge workflow and architecture
 networking.md        Ports, topology, WSL/firewall notes, multi-instance setup
