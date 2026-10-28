@@ -10,6 +10,12 @@ This folder contains package-level documentation for the Unity QuadSim plugin.
 
 [Swarm choreography and night-show lighting](swarm-show-idea.md): Fleet choreography, scriptable drone lights, and a proposed first demonstration.
 
+[Engineering backlog](engineering-backlog.md): Verified bugs, architecture work, fidelity gaps, paper evidence, and pending decisions.
+
+[RPC and ZeroMQ study track](learning-rpc.md): Staged exercises for learning QuadSim's Python-to-Unity link.
+
+AI working rules for all three repositories live in the repository-root `CLAUDE.md`.
+
 ```text
 px4-sitl.md          PX4 SITL bridge workflow and architecture
 networking.md        Ports, topology, WSL/firewall notes, multi-instance setup
