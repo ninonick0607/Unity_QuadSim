@@ -108,6 +108,7 @@ namespace DroneCore.Controllers
 
         // Limits & Constants (Cached for speed)
         private Vector3 _inertiaRpy;   // principal inertia about roll, pitch, yaw (kg m^2)
+        private Vector3 _rateTorqueScale;  // N m per rad of rate-PID output, per axis
         private float _hoverThrottle01;
 
         // Telemetry Data
@@ -272,6 +273,16 @@ namespace DroneCore.Controllers
                 _axesBuilt = true;
             }
             _controlAllocator.RebuildEffectiveness(_cachedConfig.RotorParams.Rotors, _rotorPhysics, GetCurrentFrame());
+
+            // Angular-acceleration gains: torque = J * alpha. Normalized gains:
+            // torque = u * axis authority, where u is per rad/s of rate error.
+            _rateTorqueScale = (config.Acro.Units == RateGainUnits.NormalizedTorque)
+                ? new Vector3(
+                    _controlAllocator.AxisAuthority(0, _rotorPhysics.MaxThrust),
+                    _controlAllocator.AxisAuthority(1, _rotorPhysics.MaxThrust),
+                    _controlAllocator.AxisAuthority(2, _rotorPhysics.MaxThrust))
+                : _inertiaRpy;
+            Debug.Log($"[CascadedController] {name}: rate gains in {config.Acro.Units}, torque scale {_rateTorqueScale:G4}");
 
             Debug.Log($"[CascadedController] {name}: RotorConfig applied");
         }
@@ -769,10 +780,11 @@ namespace DroneCore.Controllers
             float yawOut = output[2];
             float thrustOut = output[3];
 
-            // Rate PID outputs are angular accelerations (deg/s^2): torque = J * alpha.
-            float rollTorqueNm = _inertiaRpy.x * rollOut * Mathf.Deg2Rad;
-            float pitchTorqueNm = _inertiaRpy.y * pitchOut * Mathf.Deg2Rad;
-            float yawTorqueNm = _inertiaRpy.z * yawOut * Mathf.Deg2Rad;
+            // Rate PID output * Deg2Rad is angular acceleration (rad/s^2) or a
+            // normalized torque, depending on RateGainUnits; the scale turns it into N m.
+            float rollTorqueNm = _rateTorqueScale.x * rollOut * Mathf.Deg2Rad;
+            float pitchTorqueNm = _rateTorqueScale.y * pitchOut * Mathf.Deg2Rad;
+            float yawTorqueNm = _rateTorqueScale.z * yawOut * Mathf.Deg2Rad;
             // Calculate throttle
             float throttle01 = Mathf.Clamp(thrustOut, 0f, 1f);
             

@@ -379,6 +379,19 @@ namespace Yaml.Drone
                         if (TryGetNode(rateMap, "pitch", out YamlNode rp) && ParsePID(rp, out PID tmpP)) outAcro.AcroPitch = tmpP;
                         if (TryGetNode(rateMap, "yaw", out YamlNode ry) && ParsePID(ry, out PID tmpY)) outAcro.AcroYaw = tmpY;
                     }
+
+                    if (TryGetString(ctrl, "rate_gain_units", out string rateUnits))
+                    {
+                        if (rateUnits == "angular_acceleration")
+                            outAcro.Units = RateGainUnits.AngularAcceleration;
+                        else if (rateUnits == "normalized_torque")
+                            outAcro.Units = RateGainUnits.NormalizedTorque;
+                        else
+                        {
+                            Debug.LogError($"[Drone.YamlParser] Unknown rate_gain_units '{rateUnits}': {sourceLabel}");
+                            return false;
+                        }
+                    }
                 }
 
                 // 5. Camera

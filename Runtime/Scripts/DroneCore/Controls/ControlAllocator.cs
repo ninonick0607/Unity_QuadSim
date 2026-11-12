@@ -138,7 +138,20 @@ namespace DroneCore.Controls
                 s += _effectiveness.Data[axis, m] * _effectiveness.PseudoInverse[m, axis];
             return maxThrust * s;
         }
-        
+
+        /// <summary>
+        /// Torque (N m) on roll/pitch/yaw (axis 0-2) when the motors swing
+        /// +-0.5 about mid output, the largest pure-axis swing that fits at 50%
+        /// throttle. A normalized torque command of 1 maps to this.
+        /// </summary>
+        public float AxisAuthority(int axis, float maxThrust)
+        {
+            float maxEntry = 0f;
+            for (int m = 0; m < _effectiveness.NumMotors; m++)
+                maxEntry = Mathf.Max(maxEntry, Mathf.Abs(_effectiveness.PseudoInverse[m, axis]));
+            return (maxEntry > 1e-9f) ? AxisGain(axis, maxThrust) * 0.5f / maxEntry : 0f;
+        }
+
         public void RebuildEffectiveness(RotorInstance[] rotors,RotorPhysicsDerived  rotorPhysics, SimFrame frame)
         {
             if (rotors == null)

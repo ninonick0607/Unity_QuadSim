@@ -74,8 +74,19 @@ namespace Yaml.Drone
         public float I;
         public float D;
     }
+
+    /// <summary>What the rate-loop gains map rate error (deg/s) to.</summary>
+    public enum RateGainUnits
+    {
+        /// <summary>Angular acceleration (deg/s^2); torque = J * alpha. P in 1/s.</summary>
+        AngularAcceleration = 0,
+        /// <summary>Normalized torque per rad/s of rate error (PX4-style); 1 = AxisAuthority.</summary>
+        NormalizedTorque = 1,
+    }
+
     public struct AcroPID
     {
+        public RateGainUnits Units;
         public PID AcroRoll {get;set;}
         public PID AcroPitch {get;set;}
         public PID AcroYaw {get;set;}
