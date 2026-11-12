@@ -36,11 +36,12 @@ namespace DroneCore.Controllers.AxisControllers
             _cmdGoal = cmd;
             _sensorManager = sensors;
             AcroPID PID = _config.Acro;
-            if (axis != 2 && axis != 3)
-                _pidSet.SetLimits(-_config.FlightParams.MaxRateRollPitch, _config.FlightParams.MaxRateRollPitch);
-            else if (axis == 2)
-                _pidSet.SetLimits(-_config.FlightParams.MaxRateYaw, _config.FlightParams.MaxRateYaw);
-            
+            // Output is an angular acceleration (deg/s^2), turned into torque by
+            // the mixer. No clamp here: the allocator knows the real motor
+            // headroom and reports saturation through SetSaturationFromTracking.
+            if (axis != 3)
+                _pidSet.SetLimits(float.NegativeInfinity, float.PositiveInfinity);
+
             _pidSet.SetGains(PID.GetPGains()[_axis], PID.GetIGains()[_axis], PID.GetDGains()[_axis]);
 
             _bInitialized = true;

@@ -107,8 +107,7 @@ namespace DroneCore.Controllers
         private ControlAllocator _controlAllocator = new ControlAllocator();
 
         // Limits & Constants (Cached for speed)
-        private float _maxAngleRateDeg;
-        private float _maxYawRateDeg;
+        private Vector3 _inertiaRpy;   // principal inertia about roll, pitch, yaw (kg m^2)
         private float _hoverThrottle01;
 
         // Telemetry Data
@@ -211,9 +210,6 @@ namespace DroneCore.Controllers
             _cachedConfig = config;
             _configApplied = true;
 
-            _maxAngleRateDeg = config.FlightParams.MaxRateRollPitch;
-            _maxYawRateDeg = config.FlightParams.MaxRateYaw;
-
             float configuredTauUp = config.RotorParams.Model.MotorTimeConstantUp;
             float configuredTauDown = config.RotorParams.Model.MotorTimeConstantDown;
             if (configuredTauUp > 0f && configuredTauDown > 0f)
@@ -233,6 +229,9 @@ namespace DroneCore.Controllers
             {
                 float currentMass = _body.Rigidbody.mass;
                 _hoverThrottle01 = _rotorPhysics.ComputeHoverThrottle(currentMass, 4);
+                // The inertia the plant integrates, so torque = J * alpha matches it.
+                _inertiaRpy = Frames.TransformPrincipalInertia(
+                    _body.Rigidbody.inertiaTensor, GetCurrentFrame());
 
                 // // --- FIX 1: Math/Physics Alignment ---
                 // Vector3 centroid = Vector3.zero;
@@ -769,12 +768,11 @@ namespace DroneCore.Controllers
             float pitchOut = output[1];
             float yawOut = output[2];
             float thrustOut = output[3];
-            float yawAuthorityScale = 1.0f; // Tune this
 
-            // Normalize rate PID outputs to torque demands (-1 to 1)
-            float rollTorque = Mathf.Clamp(rollOut / _maxAngleRateDeg, -1f, 1f);
-            float pitchTorque = Mathf.Clamp(pitchOut / _maxAngleRateDeg, -1f, 1f);
-            float yawTorque = Mathf.Clamp(yawOut / _maxYawRateDeg, -1f, 1f) * yawAuthorityScale;
+            // Rate PID outputs are angular accelerations (deg/s^2): torque = J * alpha.
+            float rollTorqueNm = _inertiaRpy.x * rollOut * Mathf.Deg2Rad;
+            float pitchTorqueNm = _inertiaRpy.y * pitchOut * Mathf.Deg2Rad;
+            float yawTorqueNm = _inertiaRpy.z * yawOut * Mathf.Deg2Rad;
             // Calculate throttle
             float throttle01 = Mathf.Clamp(thrustOut, 0f, 1f);
             
@@ -785,12 +783,16 @@ namespace DroneCore.Controllers
             float[] motor01 = new float[4];
             //float yawScale = 1.0f;
 
-            _controlAllocator.AllocateYawLimited(rollTorque,pitchTorque,yawTorque,throttle01,MinIdleThrottle,motor01);
+            float thrustN = throttle01 * _controlAllocator.NumMotors * _rotorPhysics.MaxThrust;
+            _controlAllocator.AllocateWrench(
+                thrustN, rollTorqueNm, pitchTorqueNm, yawTorqueNm,
+                _rotorPhysics.MaxThrust, MinIdleThrottle, motor01);
 
+            // Requested and achieved are both in allocator units.
             AllocationDiagnostics allocation = _controlAllocator.LastAllocation;
-            _axes[0].Rate.Pid.SetSaturationFromTracking(rollTorque, allocation.Achieved.x);
-            _axes[1].Rate.Pid.SetSaturationFromTracking(pitchTorque, allocation.Achieved.y);
-            _axes[2].Rate.Pid.SetSaturationFromTracking(yawTorque, allocation.Achieved.z);
+            _axes[0].Rate.Pid.SetSaturationFromTracking(allocation.Requested.x, allocation.Achieved.x);
+            _axes[1].Rate.Pid.SetSaturationFromTracking(allocation.Requested.y, allocation.Achieved.y);
+            _axes[2].Rate.Pid.SetSaturationFromTracking(allocation.Requested.z, allocation.Achieved.z);
             if (_verticalVelocityLoopActive)
             {
                 _axes[3].Velocity.Pid.SetSaturationFromTracking(

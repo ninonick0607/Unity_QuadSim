@@ -75,10 +75,11 @@ controller:
     pitch: {p: 5.5, i: 0.0, d: 0.0}
     yaw:   {p: 2.5, i: 0.0, d: 0.0}
 
+  # Output is angular acceleration (deg/s^2) per rate error (deg/s): p in 1/s, i in 1/s^2, d unitless.
   rate_gains:
-    roll:  {p: 0.08, i: 0.4, d: 0.0}
-    pitch: {p: 0.08, i: 0.4, d: 0.0}
-    yaw:   {p: 0.13, i: 0.3, d: 0.0}
+    roll:  {p: 16.52, i: 82.62, d: 0.0}
+    pitch: {p: 16.45, i: 82.27, d: 0.0}
+    yaw:   {p: 14.55, i: 33.57, d: 0.0}
 
 camera_parameters:
   Cam_Arm_Length: 2.5

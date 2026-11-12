@@ -111,6 +111,22 @@ namespace MathUtil
                 _ => wBodyUnity
             };
         }
+
+        /// <summary>
+        /// Principal moments of inertia (kg m^2) from Unity body axes
+        /// (x fwd, y up, z left) to the target frame's (roll, pitch, yaw) axes.
+        /// Moments are magnitudes, so FLU and FRD only reorder, with no sign
+        /// change. Assumes the principal axes are the body axes.
+        /// </summary>
+        public static Vector3 TransformPrincipalInertia(Vector3 inertiaUnityBody, SimFrame target)
+        {
+            return target switch
+            {
+                SimFrame.FLU or SimFrame.FRD =>
+                    new Vector3(inertiaUnityBody.x, inertiaUnityBody.z, inertiaUnityBody.y),
+                _ => inertiaUnityBody
+            };
+        }
         
         public static Vector3 TransformAttitude(Vector3 rpyDegUnityBody, SimFrame target)
         {
