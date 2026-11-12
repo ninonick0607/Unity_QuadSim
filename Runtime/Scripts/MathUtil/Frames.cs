@@ -158,6 +158,36 @@ namespace MathUtil
             return TransformWorldPosition(vectorUnityWorld, target);
         }
 
+        /// <summary>
+        /// ENU heading of a Unity body rotation, in radians, counter-clockwise
+        /// from East (right-handed, about Up). Taken from the body forward
+        /// axis (Unity body +X) projected onto the horizontal plane, so roll
+        /// and pitch do not change it.
+        ///
+        /// Unity yaw (eulerAngles.y) is clockwise-positive about +Y, so this
+        /// equals -eulerAngles.y in radians.
+        /// </summary>
+        public static float EnuHeadingRad(Quaternion bodyRotationUnity)
+        {
+            Vector3 forwardUnity = bodyRotationUnity * Vector3.right;
+            return Mathf.Atan2(forwardUnity.z, forwardUnity.x); // ENU (E, N) = (u.x, u.z)
+        }
+
+        /// <summary>
+        /// Rotate a world-ENU vector into the yaw-only heading frame
+        /// (x = forward, y = left, z = up) for an ENU heading in radians.
+        /// Rotation about Up by -heading; the vertical component is unchanged.
+        /// </summary>
+        public static Vector3 EnuToHeadingFlu(Vector3 vEnu, float enuHeadingRad)
+        {
+            float c = Mathf.Cos(enuHeadingRad);
+            float s = Mathf.Sin(enuHeadingRad);
+            return new Vector3(
+                c * vEnu.x + s * vEnu.y,
+                -s * vEnu.x + c * vEnu.y,
+                vEnu.z);
+        }
+
         public static Quaternion TransformQuaternion(Quaternion q, SimFrame target)
         {
             return target switch

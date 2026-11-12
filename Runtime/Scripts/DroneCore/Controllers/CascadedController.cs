@@ -881,14 +881,9 @@ namespace DroneCore.Controllers
         private float DesiredForceToCollective(Vector3 desiredSpecificForceHeading)
         {
             const float g = 9.81f;
-            Vector3 bodyUpWorld = _body.transform.up;
-            float yawRad = _body.transform.eulerAngles.y * Mathf.Deg2Rad;
-            float cosYaw = Mathf.Cos(yawRad);
-            float sinYaw = Mathf.Sin(yawRad);
-            Vector3 bodyUpHeading = new Vector3(
-                cosYaw * bodyUpWorld.x + sinYaw * bodyUpWorld.z,
-                -sinYaw * bodyUpWorld.x + cosYaw * bodyUpWorld.z,
-                bodyUpWorld.y);
+            Vector3 bodyUpEnu = Frames.TransformWorldVector(_body.transform.up, SimFrame.FLU);
+            Vector3 bodyUpHeading = Frames.EnuToHeadingFlu(
+                bodyUpEnu, Frames.EnuHeadingRad(_body.transform.rotation));
 
             float producibleSpecificForce = Mathf.Max(
                 0f, Vector3.Dot(desiredSpecificForceHeading, bodyUpHeading));
@@ -912,23 +907,10 @@ namespace DroneCore.Controllers
 
         private Vector3 OutputFrameVelToHeadingVel(Vector3 vOutputFrame, Quaternion bodyRot)
         {
-            // Extract yaw angle from Unity's rotation (always around Unity Y axis)
-            float yawDeg = bodyRot.eulerAngles.y;
-            float yawRad = yawDeg * Mathf.Deg2Rad;
- 
-            // In the output frame (FLU/FRD), horizontal plane is XY.
-            // Rotate the horizontal components by -yaw to get heading-aligned frame.
-            float cosY = Mathf.Cos(yawRad);
-            float sinY = Mathf.Sin(yawRad);
- 
-            // 2D rotation of (x, y) by -yaw:
-            //   x_heading =  cos(yaw) * x + sin(yaw) * y
-            //   y_heading = -sin(yaw) * x + cos(yaw) * y
-            float hx =  cosY * vOutputFrame.x + sinY * vOutputFrame.y;
-            float hy = -sinY * vOutputFrame.x + cosY * vOutputFrame.y;
- 
-            // Z (altitude) passes through unchanged
-            return new Vector3(hx, hy, vOutputFrame.z);
+            // The position PIDs act on GPS position, which is world ENU, so their
+            // velocity setpoint is world ENU. Rotate it into the yaw-only heading
+            // frame (forward, left, up); the vertical component is unchanged.
+            return Frames.EnuToHeadingFlu(vOutputFrame, Frames.EnuHeadingRad(bodyRot));
         }
 
         private Vector3 ConstrainVelSetpoint_HeadingFrame(
