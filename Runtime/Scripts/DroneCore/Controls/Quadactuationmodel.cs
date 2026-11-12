@@ -5,28 +5,41 @@ using Yaml.Drone;
 namespace DroneCore.Controls
 {
     
+    /// <summary>
+    /// Rotor-speed lag. Thrust scales with rotor speed squared, so a thrust
+    /// fraction f corresponds to a speed fraction w = omega/omegaMax = sqrt(f).
+    /// The speed follows its target through a first-order lag (separate
+    /// spin-up and spin-down time constants, as in Gazebo's motor model) and
+    /// the thrust actually produced is w^2.
+    /// </summary>
     public sealed class MotorLagFilter
     {
         public bool  Enabled        = false;
         public float TauUpSeconds   = 0.020f;
         public float TauDownSeconds = 0.020f;
 
-        private float[] _state;
+        private float[] _speed01;   // omega / omegaMax per rotor
 
-        public void Reset(int n) => _state = new float[n];
+        public void Reset(int n) => _speed01 = new float[n];   // rotors at rest
 
-        /// In-place: overwrites motor01 with the lagged actual output.
+        /// In-place: motor01 holds commanded thrust fractions on entry and the
+        /// thrust fractions the lagged rotor speeds produce on return.
         public void Apply(float[] motor01, float dt)
         {
             if (!Enabled || motor01 == null) return;
-            if (_state == null || _state.Length != motor01.Length)
-                _state = (float[])motor01.Clone();   // first tick: start at command
+            if (_speed01 == null || _speed01.Length != motor01.Length)
+            {
+                _speed01 = new float[motor01.Length];
+                for (int i = 0; i < motor01.Length; i++)
+                    _speed01[i] = Mathf.Sqrt(Mathf.Clamp01(motor01[i]));
+            }
 
             for (int i = 0; i < motor01.Length; i++)
             {
-                _state[i] = RotorMath.FirstOrderStep(
-                    _state[i], motor01[i], dt, TauUpSeconds, TauDownSeconds);
-                motor01[i] = _state[i];
+                float targetSpeed01 = Mathf.Sqrt(Mathf.Clamp01(motor01[i]));
+                _speed01[i] = RotorMath.FirstOrderStep(
+                    _speed01[i], targetSpeed01, dt, TauUpSeconds, TauDownSeconds);
+                motor01[i] = _speed01[i] * _speed01[i];
             }
         }
     }

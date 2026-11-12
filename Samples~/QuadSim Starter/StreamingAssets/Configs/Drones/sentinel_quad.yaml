@@ -38,9 +38,8 @@ propulsion:
   torque_coef: 0.0303
   torque_coefficient_convention: legacy_2_5_pi
 
-  # Gazebo MulticopterMotorModel asymmetric response constants. QuadSim applies
-  # them to its normalized motor command; the remaining motor-law difference is
-  # handled by plant-specific thrust calibration and rate-response comparison.
+  # Gazebo MulticopterMotorModel asymmetric response constants. Like Gazebo,
+  # QuadSim applies them to rotor speed, with thrust proportional to speed^2.
   motor_time_constant_up_s: 0.0125
   motor_time_constant_down_s: 0.025
 
