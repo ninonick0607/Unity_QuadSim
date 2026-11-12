@@ -126,10 +126,17 @@ namespace MathUtil
                     -rpyDegUnityBody.y,   // pitch
                     -rpyDegUnityBody.z    // yaw
                 ),
+                // FRD body relative to the NED world (PX4 convention), matching
+                // TransformAngularVelocity's FRD map (-x, z, y):
+                //   roll  about Forward: right-handed, so sign flips vs Unity;
+                //   pitch about Right = -Left: Unity's left-handed pitch about
+                //         Left is already nose-up-positive, so it passes through;
+                //   yaw   about Down: clockwise from above like Unity's yaw, but
+                //         referenced to North. Unity yaw 0 faces East (NED yaw 90).
                 SimFrame.FRD => new Vector3(
-                    rpyDegUnityBody.x,
-                    rpyDegUnityBody.y,
-                    -rpyDegUnityBody.z
+                    -rpyDegUnityBody.x,          // roll
+                    rpyDegUnityBody.y,           // pitch
+                    rpyDegUnityBody.z + 90f      // yaw (0 = North, clockwise)
                 ),
                 _ => rpyDegUnityBody
             };
