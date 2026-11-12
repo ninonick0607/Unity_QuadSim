@@ -116,10 +116,15 @@ namespace MathUtil
         {
             return target switch
             {
+                // FLU is right-handed: all three angles flip sign relative to
+                // Unity's left-handed Euler angles, matching
+                // TransformAngularVelocity (negate-all). Yaw is therefore
+                // counter-clockwise-positive about Up, i.e. the ENU heading
+                // from East.
                 SimFrame.FLU => new Vector3(
                     -rpyDegUnityBody.x,   // roll
                     -rpyDegUnityBody.y,   // pitch
-                    rpyDegUnityBody.z     // yaw
+                    -rpyDegUnityBody.z    // yaw
                 ),
                 SimFrame.FRD => new Vector3(
                     rpyDegUnityBody.x,
