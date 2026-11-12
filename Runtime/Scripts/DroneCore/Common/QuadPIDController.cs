@@ -13,11 +13,10 @@ namespace DroneCore.Common
         public float MaxOutput = 1f;
 
         public float IntegralLimit = 10f;
-        public float DecayFactor = 0.99f;
 
         private float _integralSum = 0f;
-        private float _prevError = 0f;
-        private bool _hasLastError = false;
+        private float _prevMeasured = 0f;
+        private bool _hasPrevMeasured = false;
         private bool _positiveOutputSaturated;
         private bool _negativeOutputSaturated;
 
@@ -26,13 +25,12 @@ namespace DroneCore.Common
         public void SetGains(float p, float i, float d) { Kp = p; Ki = i; Kd = d; }
         public void SetLimits(float min, float max) { MinOutput = min; MaxOutput = max; }
         //public void SetIntegralLimits(float limit) { IntegralLimit = Mathf.Abs(limit); }
-        public void SetDecayFactor(float decay) { DecayFactor = Mathf.Clamp01(decay); }
 
         public void Reset()
         {
             _integralSum = 0f;
-            _prevError = 0f;
-            _hasLastError = false;
+            _prevMeasured = 0f;
+            _hasPrevMeasured = false;
             ClearSaturation();
         }
 
@@ -62,15 +60,30 @@ namespace DroneCore.Common
             // P
             float pTerm = Kp * error;
 
-            // I (leak + conditional integration). Do not retain hidden state
-            // while Ki is disabled, and do not integrate farther into a
-            // downstream actuator limit reported by the mixer/allocator.
+            // D on measurement: -Kd * d(measured)/dt. While the setpoint is
+            // constant this equals Kd * d(error)/dt, but a setpoint step no
+            // longer produces a derivative spike ("derivative kick").
+            float dTerm = 0f;
+            if (_hasPrevMeasured)
+                dTerm = -Kd * (measured - _prevMeasured) / dt;
+            _prevMeasured = measured;
+            _hasPrevMeasured = true;
+
+            // I with conditional integration as the only anti-windup: do not
+            // integrate when the output is already at a limit (this PID's own
+            // clamp, or a downstream actuator limit reported through
+            // SetSaturationFromTracking) and the error would push further into
+            // it. No leak, so a constant disturbance is removed completely and
+            // the result does not depend on the controller rate. Do not retain
+            // hidden state while Ki is disabled.
             if (Ki > Mathf.Epsilon)
             {
-                _integralSum *= DecayFactor;
+                float unclamped = pTerm + Ki * _integralSum + dTerm;
+                bool atUpperLimit = unclamped >= MaxOutput || _positiveOutputSaturated;
+                bool atLowerLimit = unclamped <= MinOutput || _negativeOutputSaturated;
                 bool pushesFurtherIntoSaturation =
-                    (error > 0f && _positiveOutputSaturated) ||
-                    (error < 0f && _negativeOutputSaturated);
+                    (error > 0f && atUpperLimit) ||
+                    (error < 0f && atLowerLimit);
                 if (!pushesFurtherIntoSaturation)
                     _integralSum += error * dt;
                 _integralSum = Mathf.Clamp(_integralSum, -IntegralLimit, IntegralLimit);
@@ -81,36 +94,9 @@ namespace DroneCore.Common
             }
             float iTerm = Ki * _integralSum;
 
-            // D
-            float dTerm = 0f;
-            if (_hasLastError)
-            {
-                float derivative = (error - _prevError) / dt;
-                dTerm = Kd * derivative;
-            }
-            else
-            {
-                _hasLastError = true;
-            }
-
-            _prevError = error;
-
             // Combine + clamp
             float output = pTerm + iTerm + dTerm;
-            output = Mathf.Clamp(output, MinOutput, MaxOutput);
-
-            // Back-calculation anti-windup
-            if (Ki > Mathf.Epsilon)
-            {
-                float maxITerm = MaxOutput - pTerm - dTerm;
-                float minITerm = MinOutput - pTerm - dTerm;
-                float clampedITerm = Mathf.Clamp(iTerm, minITerm, maxITerm);
-
-                if (!Mathf.Approximately(iTerm, clampedITerm))
-                    _integralSum = clampedITerm / Ki;
-            }
-
-            return output;
+            return Mathf.Clamp(output, MinOutput, MaxOutput);
         }
     }
 }

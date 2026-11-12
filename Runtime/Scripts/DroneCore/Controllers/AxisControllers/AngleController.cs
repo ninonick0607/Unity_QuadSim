@@ -20,6 +20,8 @@ namespace DroneCore.Controllers.AxisControllers
         private float _externalGoal;
         private bool _bInitialized;
         private bool _bUseExternalGoal;
+        private float _prevYawDeg;
+        private bool _hasPrevYaw;
 
         public AngleController(DroneConfig inConfig)
         {
@@ -62,11 +64,19 @@ namespace DroneCore.Controllers.AxisControllers
                 return;
             }
 
-            // Euler yaw wraps at +/-180 degrees. Move the goal to the
-            // equivalent angle nearest the measurement before applying PID,
-            // matching AirSim's shortest-arc yaw handling.
+            // Euler yaw wraps at +/-180 degrees. Unwrap the measurement against
+            // the previous one so the PID's derivative (taken on the
+            // measurement) sees a continuous signal, then move the goal to the
+            // equivalent angle nearest the measurement, matching AirSim's
+            // shortest-arc yaw handling.
             if (_axis == 2)
+            {
+                if (_hasPrevYaw)
+                    StateAngle = NearestEquivalentAngle(_prevYawDeg, StateAngle);
+                _prevYawDeg = StateAngle;
+                _hasPrevYaw = true;
                 Goal = NearestEquivalentAngle(StateAngle, Goal);
+            }
 
             _output = _pidSet.Calculate(Goal, StateAngle, deltaTime);
         }
@@ -80,6 +90,7 @@ namespace DroneCore.Controllers.AxisControllers
             if(_pidSet!=null) _pidSet.Reset();
             _output = 0.0f;
             _bUseExternalGoal = false;
+            _hasPrevYaw = false;
         }
         public void SetExternalGoal(float Value)
         {

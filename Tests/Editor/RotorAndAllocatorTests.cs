@@ -141,7 +141,6 @@ namespace Nino.QuadSim.Tests
                 Kp = 0f,
                 Ki = 1f,
                 Kd = 0f,
-                DecayFactor = 1f,
                 IntegralLimit = 100f,
                 MinOutput = -100f,
                 MaxOutput = 100f,
@@ -164,7 +163,6 @@ namespace Nino.QuadSim.Tests
                 Kp = 0f,
                 Ki = 0f,
                 Kd = 0f,
-                DecayFactor = 1f,
             };
 
             pid.Calculate(10f, 0f, 1f);
