@@ -161,6 +161,8 @@ namespace SimCore.Rpc
             ["wrench_allocated"] = GoalMode.Wrench,
             ["wrench_bypassed"] = GoalMode.WrenchBypassed,
             ["wrench_bypass"] = GoalMode.WrenchBypassed,
+            ["rotor_speed"] = GoalMode.RotorSpeed,
+            ["throttle"]    = GoalMode.Throttle,
 
         };
 
@@ -175,6 +177,8 @@ namespace SimCore.Rpc
             [GoalMode.Passthrough] = "passthrough",
             [GoalMode.Wrench]      = "wrench",
             [GoalMode.WrenchBypassed] = "wrench_bypassed",
+            [GoalMode.RotorSpeed]  = "rotor_speed",
+            [GoalMode.Throttle]    = "throttle",
         };
 
         private static readonly Dictionary<string, ControllerKind> ControllerKindMap = new()
@@ -862,6 +866,8 @@ namespace SimCore.Rpc
                     // FRD clients, convert torque client->FLU at this point.
                     return new Axis4(x, y, z, w);   // (Mx, My, Mz, f), FLU passthrough
                 case GoalMode.Passthrough:
+                case GoalMode.RotorSpeed:
+                case GoalMode.Throttle:
                 case GoalMode.None:
                 default:
                     // No transformation — motor values and None don't need remapping
@@ -1563,6 +1569,10 @@ namespace SimCore.Rpc
                     t.MotorOutputs.BL, t.MotorOutputs.BR },
                 ["motor_thrusts"] = new object[] { t.MotorThrusts.FL, t.MotorThrusts.FR,
                     t.MotorThrusts.BL, t.MotorThrusts.BR },
+                ["rotor_speeds_rad_s"] = new object[] { t.RotorSpeedsRadS.FL, t.RotorSpeedsRadS.FR,
+                    t.RotorSpeedsRadS.BL, t.RotorSpeedsRadS.BR },
+                ["rotor_speed_targets_rad_s"] = new object[] { t.RotorSpeedTargetsRadS.FL,
+                    t.RotorSpeedTargetsRadS.FR, t.RotorSpeedTargetsRadS.BL, t.RotorSpeedTargetsRadS.BR },
                 ["desired_rates_deg"] = Vec3ToArray(t.ControllerTelemetry.DesiredRatesDeg),
                 ["desired_angles_deg"] = Vec3ToArray(t.ControllerTelemetry.DesiredAnglesDeg),
                 ["desired_vel"] = Vec3ToArray(t.ControllerTelemetry.DesiredVel),

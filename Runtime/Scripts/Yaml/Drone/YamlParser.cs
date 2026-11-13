@@ -317,6 +317,8 @@ namespace Yaml.Drone
                         outProp.Model.MotorTimeConstantUp = tauUp;
                     if (TryGetFloat(prop, "motor_time_constant_down_s", out float tauDown))
                         outProp.Model.MotorTimeConstantDown = tauDown;
+                    if (TryGetFloat(prop, "idle_rpm", out float idleRpm))
+                        outProp.Model.IdleRPM = idleRpm;
 
                     if (TryGetNode(prop, "propellers", out YamlNode rotorsNode) && rotorsNode is YamlSequenceNode rotorSeq)
                     {

@@ -36,6 +36,7 @@ namespace Yaml.Drone
         public RotorTorqueConvention TorqueConvention;
         public float MotorTimeConstantUp;
         public float MotorTimeConstantDown;
+        public float IdleRPM;   // rotor speed at zero ESC throttle (throttle mode only)
 
     }
 
@@ -220,6 +221,8 @@ namespace Yaml.Drone
     {
         public float MaxThrust;
         public float MaxTorque;
+        public float MaxSpeedRadS;    // rotor speed at MaxThrust
+        public float IdleSpeedRadS;   // rotor speed at zero ESC throttle
 
         public void ComputeRotor(RotorModel InModel,float InArmLengthMeters)
         {
@@ -230,6 +233,8 @@ namespace Yaml.Drone
             MaxTorque = RotorMath.StaticYawTorque(
                 InModel.TorqueCoeff, RotorMath.SeaLevelAirDensity, revPerSec,
                 InModel.Prop_Diameter, InModel.TorqueConvention);
+            MaxSpeedRadS = InModel.MaxRPM * 2f * Mathf.PI / 60f;
+            IdleSpeedRadS = Mathf.Clamp(InModel.IdleRPM, 0f, InModel.MaxRPM) * 2f * Mathf.PI / 60f;
         }
 
         public float ComputeHoverThrottle(float VehicleMassKg, int MotorCount = 4)

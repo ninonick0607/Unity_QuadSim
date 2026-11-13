@@ -47,7 +47,9 @@ namespace SimCore.Common
         Passthrough = 5,
         Wrench = 6,
         WrenchBypassed = 7,
-        Acceleration = 8
+        Acceleration = 8,
+        RotorSpeed = 9,   // per-motor rotor speed targets (rad/s)
+        Throttle = 10     // per-motor ESC throttle [0..1], linear in rotor speed
     }
     
     // ==================== Command Payloads ==================== //
@@ -87,7 +89,9 @@ namespace SimCore.Common
     ///   Acceleration:X=Ax_mps2,Y=Ay_mps2,     Z=YawRate_dps,   W=Az_mps2
     ///   Angle:       X=Roll_deg, Y=Pitch_deg,    Z=YawRate_dps,   W=Throttle_01
     ///   Rate:        X=RollRate, Y=PitchRate,    Z=YawRate_dps,   W=Throttle_01
-    ///   Passthrough: X=M0,       Y=M1,           Z=M2,            W=M3
+    ///   Passthrough: X=M0,       Y=M1,           Z=M2,            W=M3   (thrust fraction 0..1)
+    ///   RotorSpeed:  X=M0,       Y=M1,           Z=M2,            W=M3   (rotor speed, rad/s)
+    ///   Throttle:    X=M0,       Y=M1,           Z=M2,            W=M3   (ESC throttle 0..1)
     /// </summary>
     [Serializable]
     public struct Axis4

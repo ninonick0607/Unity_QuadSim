@@ -6,40 +6,54 @@ namespace DroneCore.Controls
 {
     
     /// <summary>
-    /// Rotor-speed lag. Thrust scales with rotor speed squared, so a thrust
-    /// fraction f corresponds to a speed fraction w = omega/omegaMax = sqrt(f).
-    /// The speed follows its target through a first-order lag (separate
-    /// spin-up and spin-down time constants, as in Gazebo's motor model) and
-    /// the thrust actually produced is w^2.
+    /// Rotor-speed plant. Every motor command ends as a speed target
+    /// w = omega/omegaMax in [0, 1]. The speed follows its target through a
+    /// first-order lag when enabled (separate spin-up and spin-down time
+    /// constants, as in Gazebo's motor model), and thrust scales with speed
+    /// squared, so the thrust fraction produced is w^2.
     /// </summary>
-    public sealed class MotorLagFilter
+    public sealed class RotorSpeedModel
     {
-        public bool  Enabled        = false;
+        public bool  Enabled        = false;   // lag on; off means speed = target
         public float TauUpSeconds   = 0.020f;
         public float TauDownSeconds = 0.020f;
 
-        private float[] _speed01;   // omega / omegaMax per rotor
+        private float[] _speed01;    // actual omega / omegaMax per rotor
+        private float[] _target01;   // commanded omega / omegaMax per rotor
 
-        public void Reset(int n) => _speed01 = new float[n];   // rotors at rest
+        /// <summary>Speed fraction that produces thrust fraction f.</summary>
+        public static float SpeedForThrust01(float thrust01) => Mathf.Sqrt(Mathf.Clamp01(thrust01));
 
-        /// In-place: motor01 holds commanded thrust fractions on entry and the
-        /// thrust fractions the lagged rotor speeds produce on return.
-        public void Apply(float[] motor01, float dt)
+        public float Speed01(int i) => (_speed01 != null && i < _speed01.Length) ? _speed01[i] : 0f;
+        public float Target01(int i) => (_target01 != null && i < _target01.Length) ? _target01[i] : 0f;
+
+        public void Reset(int n)   // rotors at rest
         {
-            if (!Enabled || motor01 == null) return;
-            if (_speed01 == null || _speed01.Length != motor01.Length)
+            _speed01 = new float[n];
+            _target01 = new float[n];
+        }
+
+        /// <summary>
+        /// Advance the rotor speeds one step toward targetSpeed01 and write the
+        /// thrust fractions they produce into outThrust01.
+        /// </summary>
+        public void Step(float[] targetSpeed01, float dt, float[] outThrust01)
+        {
+            int n = targetSpeed01.Length;
+            if (_speed01 == null || _speed01.Length != n)
             {
-                _speed01 = new float[motor01.Length];
-                for (int i = 0; i < motor01.Length; i++)
-                    _speed01[i] = Mathf.Sqrt(Mathf.Clamp01(motor01[i]));
+                Reset(n);
+                for (int i = 0; i < n; i++)   // first step: start at the command
+                    _speed01[i] = Mathf.Clamp01(targetSpeed01[i]);
             }
 
-            for (int i = 0; i < motor01.Length; i++)
+            for (int i = 0; i < n; i++)
             {
-                float targetSpeed01 = Mathf.Sqrt(Mathf.Clamp01(motor01[i]));
-                _speed01[i] = RotorMath.FirstOrderStep(
-                    _speed01[i], targetSpeed01, dt, TauUpSeconds, TauDownSeconds);
-                motor01[i] = _speed01[i] * _speed01[i];
+                _target01[i] = Mathf.Clamp01(targetSpeed01[i]);
+                _speed01[i] = Enabled
+                    ? RotorMath.FirstOrderStep(_speed01[i], _target01[i], dt, TauUpSeconds, TauDownSeconds)
+                    : _target01[i];
+                outThrust01[i] = _speed01[i] * _speed01[i];
             }
         }
     }

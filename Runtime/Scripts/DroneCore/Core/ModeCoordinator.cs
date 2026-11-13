@@ -305,8 +305,9 @@ namespace DroneCore.Core
         /// <summary>Is the drone in a mode where it should be actively flying?</summary>
         public bool IsFlightActive => _activeMode != GoalMode.None;
         
-        /// <summary>Is the drone in a direct control mode (Rate or Passthrough)?</summary>
-        public bool IsDirectControl => _activeMode == GoalMode.Rate || _activeMode == GoalMode.Passthrough;
+        /// <summary>Is the drone in a direct control mode (Rate or a per-motor mode)?</summary>
+        public bool IsDirectControl => _activeMode == GoalMode.Rate || _activeMode == GoalMode.Passthrough
+            || _activeMode == GoalMode.RotorSpeed || _activeMode == GoalMode.Throttle;
 
         // ============================================================================
         // Cleanup

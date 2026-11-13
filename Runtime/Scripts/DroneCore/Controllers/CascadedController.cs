@@ -132,7 +132,8 @@ namespace DroneCore.Controllers
         [SerializeField] private float motorLagTauSeconds  = 0.020f;  // legacy symmetric / spin-up value
         [SerializeField] private float motorLagTauDownSeconds = 0.020f;
         [SerializeField] private float allocatedMinIdle01  = 0.0f;    // 0 lets motors reach 0 at loop apex
-        private readonly MotorLagFilter _motorLag = new MotorLagFilter();
+        private readonly RotorSpeedModel _rotorSpeeds = new RotorSpeedModel();
+        private readonly float[] _speedTarget01 = new float[4];   // per-motor omega / omegaMax
         
         // ============================================================================
         // Public Accessors
@@ -140,6 +141,10 @@ namespace DroneCore.Controllers
 
         public IReadOnlyList<float> LastMotor01 => _motor;
         public IReadOnlyList<float> Thrusts => _thrusts;
+        /// <summary>Actual rotor speed after the motor lag (rad/s).</summary>
+        public float RotorSpeedRadS(int motor) => _rotorSpeeds.Speed01(motor) * _rotorPhysics.MaxSpeedRadS;
+        /// <summary>Commanded rotor speed (rad/s).</summary>
+        public float RotorSpeedTargetRadS(int motor) => _rotorSpeeds.Target01(motor) * _rotorPhysics.MaxSpeedRadS;
         public CascadeTelemetrySnapshot TelemetrySnapshot => _telemetry;
         public IReadOnlyDictionary<PIDKey, PIDInfo> PIDMap => _pidMap;
         public EffectivenessMatrix Effectiveness => _controlAllocator.Effectiveness;
@@ -218,7 +223,7 @@ namespace DroneCore.Controllers
                 enableMotorLag = true;
                 motorLagTauSeconds = configuredTauUp;
                 motorLagTauDownSeconds = configuredTauDown;
-                _motorLag.Reset(4);
+                _rotorSpeeds.Reset(4);
             }
             else
             {
@@ -355,7 +360,7 @@ namespace DroneCore.Controllers
                 _thrusts[i] = 0f;
                 _motor[i] = 0f;
             }
-            _motorLag.Reset(4);
+            _rotorSpeeds.Reset(4);
 
             // Preserve mode/source, just zero the command
             if (_body != null && _body.CommandProxy != null)
@@ -441,33 +446,28 @@ namespace DroneCore.Controllers
                     motor01
                 );
 
-                // Plant: optional first-order motor lag (live toggle), then actuate.
-                _motorLag.Enabled        = enableMotorLag;
-                _motorLag.TauUpSeconds   = motorLagTauSeconds;
-                _motorLag.TauDownSeconds = motorLagTauDownSeconds;
-                _motorLag.Apply(motor01, deltaTime);
-
-                QuadActuationModel.ComputeBodyWrench(
-                    motor01,
-                    _cachedConfig.RotorParams.Rotors,
-                    _rotorPhysics,
-                    out Vector3 netForce,
-                    out Vector3 netTorque
-                );
-                
-                _body.SetBodyWrench(netForce, netTorque);
-                _lastAchievedForceBody = netForce;
-                _lastAchievedTorqueBody = netTorque;
-
-                for (int i = 0; i < 4; i++)
-                {
-                    _motor[i]   = motor01[i];
-                    _thrusts[i] = motor01[i] * _rotorPhysics.MaxThrust;
-                }
-
+                ActuateThrust01(motor01, deltaTime);
                 return;
             }
-            
+
+            // --- ROTOR SPEED / THROTTLE MODES ---
+            // Per-motor commands (FL, FR, BL, BR) go straight to the rotor plant.
+            if (mode == GoalMode.RotorSpeed || mode == GoalMode.Throttle)
+            {
+                float maxSpeed = Mathf.Max(_rotorPhysics.MaxSpeedRadS, 1e-6f);
+                float idle01 = _rotorPhysics.IdleSpeedRadS / maxSpeed;
+                for (int i = 0; i < 4; i++)
+                {
+                    // RotorSpeed: rad/s. Throttle: ESC throttle, linear in speed
+                    // from idle to max. The plant clamps targets to [0, 1].
+                    _speedTarget01[i] = (mode == GoalMode.RotorSpeed)
+                        ? cmd[i] / maxSpeed
+                        : idle01 + Mathf.Clamp01(cmd[i]) * (1f - idle01);
+                }
+                ActuateRotorSpeeds(_speedTarget01, deltaTime);
+                return;
+            }
+
             // --- NONE MODE ---
             if (mode == GoalMode.None)
             {
@@ -737,31 +737,8 @@ namespace DroneCore.Controllers
                 motor01[1] = Mathf.Clamp01(cmd.Y);  // FR
                 motor01[2] = Mathf.Clamp01(cmd.Z);  // BL
                 motor01[3] = Mathf.Clamp01(cmd.W);  // BR
-                
-                _motorLag.Enabled        = enableMotorLag;
-                _motorLag.TauUpSeconds   = motorLagTauSeconds;
-                _motorLag.TauDownSeconds = motorLagTauDownSeconds;
-                _motorLag.Apply(motor01, deltaTime);
-                
-                // Compute body wrench from motor commands through the actuation model
-                Vector3 netForce, netTorque;
-                QuadActuationModel.ComputeBodyWrench(
-                    motor01,
-                    _cachedConfig.RotorParams.Rotors,
-                    _rotorPhysics,
-                    out netForce,
-                    out netTorque
-                );
-                _body.SetBodyWrench(netForce, netTorque);
-                _lastAchievedForceBody = netForce;
-                _lastAchievedTorqueBody = netTorque;
 
-                // Store for telemetry / UI
-                for (int i = 0; i < 4; i++)
-                {
-                    _motor[i] = motor01[i];
-                    _thrusts[i] = motor01[i] * _rotorPhysics.MaxThrust;
-                }
+                ActuateThrust01(motor01, deltaTime);
                 return;
             }
     
@@ -817,25 +794,43 @@ namespace DroneCore.Controllers
                 motor01 = new float[4];
                 for (int i = 0; i < 4; i++) motor01[i] = throttle01;
             }
-            
-            _motorLag.Enabled        = enableMotorLag;
-            _motorLag.TauUpSeconds   = motorLagTauSeconds;
-            _motorLag.TauDownSeconds = motorLagTauDownSeconds;
-            _motorLag.Apply(motor01, deltaTime);
-            
-            // Compute body wrench
-            Vector3 netForce, netTorque;
-            QuadActuationModel.ComputeBodyWrench(motor01,_cachedConfig.RotorParams.Rotors,_rotorPhysics,out netForce,out netTorque);
+
+            ActuateThrust01(motor01, deltaTime);
+        }
+
+        // ============================================================================
+        // Rotor plant
+        // ============================================================================
+
+        /// <summary>Thrust fractions [0..1] per motor, as rotor speed targets.</summary>
+        private void ActuateThrust01(float[] thrust01, float deltaTime)
+        {
+            for (int i = 0; i < 4; i++)
+                _speedTarget01[i] = RotorSpeedModel.SpeedForThrust01(thrust01[i]);
+            ActuateRotorSpeeds(_speedTarget01, deltaTime);
+        }
+
+        /// <summary>
+        /// Every motor command ends here: rotor speed targets (fraction of max
+        /// speed) -> lagged rotor speeds -> rotor thrusts and drag torques ->
+        /// body wrench on the Rigidbody.
+        /// </summary>
+        private void ActuateRotorSpeeds(float[] targetSpeed01, float deltaTime)
+        {
+            _rotorSpeeds.Enabled        = enableMotorLag;
+            _rotorSpeeds.TauUpSeconds   = motorLagTauSeconds;
+            _rotorSpeeds.TauDownSeconds = motorLagTauDownSeconds;
+            _rotorSpeeds.Step(targetSpeed01, deltaTime, _motor);   // _motor = thrust fractions produced
+
+            QuadActuationModel.ComputeBodyWrench(
+                _motor, _cachedConfig.RotorParams.Rotors, _rotorPhysics,
+                out Vector3 netForce, out Vector3 netTorque);
             _body.SetBodyWrench(netForce, netTorque);
             _lastAchievedForceBody = netForce;
             _lastAchievedTorqueBody = netTorque;
 
-            // Store for UI/debugging
             for (int i = 0; i < 4; i++)
-            {
-                _motor[i] = motor01[i];
-                _thrusts[i] = motor01[i] * _rotorPhysics.MaxThrust;
-            }
+                _thrusts[i] = _motor[i] * _rotorPhysics.MaxThrust;
         }
 
         // ============================================================================

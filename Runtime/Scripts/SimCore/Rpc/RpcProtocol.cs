@@ -32,7 +32,7 @@ namespace SimCore.Rpc
     public static class RpcCapabilities
     {
         public const int ProtocolMajor = 1;
-        public const int ProtocolMinor = 0;
+        public const int ProtocolMinor = 1;
         public const string UnityPackageVersion = "0.3.0";
         public const int FrameSchemaVersion = 1;
         public const int TimeSchemaVersion = 1;
@@ -49,6 +49,7 @@ namespace SimCore.Rpc
             "collision_events",
             "yaml_schema_v1",
             "rpc_request_limits",
+            "rotor_speed_control",
         };
 
         public static Dictionary<string, object> ConnectData(

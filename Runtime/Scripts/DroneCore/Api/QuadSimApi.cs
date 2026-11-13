@@ -436,6 +436,14 @@ namespace DroneCore.Api
                     BR = _controller.Thrusts[3]
                 };
             }
+            if (_controller != null)
+            {
+                for (int i = 0; i < 4; i++)
+                {
+                    telem.RotorSpeedsRadS[i] = _controller.RotorSpeedRadS(i);
+                    telem.RotorSpeedTargetsRadS[i] = _controller.RotorSpeedTargetRadS(i);
+                }
+            }
 
             return telem;
         }
@@ -495,8 +503,10 @@ namespace DroneCore.Api
         public string DroneID;
         public GoalMode Mode;
         public ControllerKind Controller;
-        public Motor4 MotorOutputs;   
-        public Motor4 MotorThrusts;  
+        public Motor4 MotorOutputs;            // thrust fraction produced, 0..1
+        public Motor4 MotorThrusts;            // N
+        public Motor4 RotorSpeedsRadS;         // actual rotor speed after the motor lag
+        public Motor4 RotorSpeedTargetsRadS;   // commanded rotor speed
         public CascadedController.CascadeTelemetrySnapshot ControllerTelemetry;
         public Vector3 AchievedForceBody;
         public Vector3 AchievedTorqueBody;
