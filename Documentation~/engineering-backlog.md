@@ -41,9 +41,12 @@ review, and **delegated** items may be done by the AI.
 ## Fidelity gaps (paper reviewers will ask)
 
 - Thrust is quadratic in rotor speed and motor lag acts on rotor speed
-  (`2cbefc1`). Remaining gap: motor commands (`send_motors`, the allocator
-  output) are thrust fractions with an ideal speed controller. There is no
-  ESC throttle curve, no RPM command, and no RPM telemetry.
+  (`2cbefc1`). Rotor-speed and throttle commands and rotor-speed telemetry
+  exist (`8960d36`). Remaining gaps: throttle is ideal linear-in-speed (no
+  battery voltage or motor Kv model), and the PX4 bridge still sends PX4's
+  outputs as thrust fractions in `passthrough`, while PX4's Gazebo simulation
+  treats them as rotor-speed commands; switching it to `throttle` needs
+  Gazebo's idle and scaling values checked first.
 - Aerodynamic drag is Unity Rigidbody damping. There is no rotor drag or blade
   flapping, no ground effect, no battery or voltage model, and air density is
   fixed.

@@ -11,6 +11,20 @@
 - Added Phase 3/4 validation, compatibility, security, and authoring documentation.
 - Updated runtime and bundled UImGui code for Unity 6000.5 compiler and
   serialization-analyzer compatibility.
+- **Changed rate-loop gain units.** The rate PID now outputs angular
+  acceleration and the mixer applies torque = inertia × acceleration, so
+  rate gains are in 1/s and carry over between airframes. Bundled profiles
+  were converted exactly; custom drone YAMLs need their `rate_gains`
+  converted (factor `MaxThrust / (max_rate × inertia × π/180)` per axis), or
+  can set `controller.rate_gain_units: normalized_torque` for PX4-style gains.
+- Motor lag now acts on rotor speed, with thrust and drag torque proportional
+  to rotor speed squared.
+- Added `rotor_speed` and `throttle` motor modes, optional
+  `propulsion.idle_rpm`, and `rotor_speeds_rad_s` /
+  `rotor_speed_targets_rad_s` telemetry (protocol 1.1, feature
+  `rotor_speed_control`).
+- Fixed PID integral leak and derivative kick, the heading-frame rotation
+  sign, and FLU/FRD attitude yaw conventions.
 
 ## [0.2.3] - 2026-07-21
 
