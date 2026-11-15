@@ -7,7 +7,9 @@ body_mesh: "/QuadSimPlugin/Assets/Drone_Models/QuadRotor1/Quadrotor1.Quadrotor1"
 physical_properties:
   mass_kg: 0.73
   com_offset: {x: 0.0, y: 0.0, z: 0.05}
-  inertia: {x: 0.00791, y: 0.00791, z: 0.01231}  
+  # Flightmare J = diag(Jxx, Jyy, Jzz) = (0.00791, 0.00791, 0.01231) in body FLU.
+  # Unity axes are X-forward, Y-up, Z-left, so yaw (Jzz) goes on y.
+  inertia: {x: 0.00791, y: 0.01231, z: 0.00791}
   arm_length: 0.17 
   linear_drag_coef: 0.1
   angular_drag_coef: 0.05
@@ -18,7 +20,9 @@ propulsion:
   max_rpm: 28000 
   max_thrust: 6.98 
   thrust_coef: 0.101 
-  torque_coef: 0.016
+  # Flightmare kappa = 0.016 m (yaw torque = kappa * thrust). QuadSim reads a
+  # dimensionless coefficient, so torque_coef = kappa * 2.5*pi * thrust_coef / prop_diameter.
+  torque_coef: 0.099937
   torque_coefficient_convention: legacy_2_5_pi
   # FRotorInstance array
   # FIX THESE
@@ -52,7 +56,9 @@ controller:
   rate_gains:
     roll:  {p: 394.9, i: 22.57, d: 0.1128}
     pitch: {p: 253.7, i: 14.5, d: 0.0725}
-    yaw:   {p: 564.1, i: 0.0, d: 0.0}
+    # 564 1/s (the exact conversion of the old gain) is above what a 250 Hz
+    # loop supports (P*dt > 2) and limit-cycles once yaw authority is correct.
+    yaw:   {p: 10.0, i: 0.0, d: 0.0}
 
 camera_parameters:
   Cam_Arm_Length: 0.9          # meters, orbit/follow distance

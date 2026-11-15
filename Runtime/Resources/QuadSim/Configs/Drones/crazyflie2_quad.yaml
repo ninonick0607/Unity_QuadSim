@@ -7,7 +7,9 @@ body_mesh: "/QuadSimPlugin/Assets/Drone_Models/CrazyFlie/cf2_assembly.cf2_assemb
 physical_properties:
   mass_kg: 0.029
   com_offset: {x: 0.0, y: 0.0, z: 0.0}
-  inertia: {x: 0.00001657, y: 0.00001666, z: 0.00002926}
+  # Published CF2 Ixx, Iyy, Izz = (1.657e-5, 1.666e-5, 2.926e-5) in body FLU.
+  # Unity axes are X-forward, Y-up, Z-left, so yaw (Izz) goes on y.
+  inertia: {x: 0.00001657, y: 0.00002926, z: 0.00001666}
   arm_length: 0.046
   linear_drag_coef: 0.02
   angular_drag_coef: 0.001
@@ -21,7 +23,9 @@ propulsion:
   # THRUST2TORQUE = 0.0069928948992470565 m
   max_thrust: 0.147
   thrust_coef: 0.183
-  torque_coef: 0.0069928948992470565
+  # THRUST2TORQUE is yaw torque per thrust (m). QuadSim reads a dimensionless
+  # coefficient, so torque_coef = THRUST2TORQUE * 2.5*pi * thrust_coef / prop_diameter.
+  torque_coef: 0.22335
   torque_coefficient_convention: legacy_2_5_pi
 
   # Firmware thrust curve, not directly represented by current QuadSim schema:
