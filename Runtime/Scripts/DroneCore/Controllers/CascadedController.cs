@@ -136,6 +136,8 @@ namespace DroneCore.Controllers
         [SerializeField] private float allocatedMinIdle01  = 0.0f;    // 0 lets motors reach 0 at loop apex
         private readonly RotorSpeedModel _rotorSpeeds = new RotorSpeedModel();
         private readonly float[] _speedTarget01 = new float[4];   // per-motor omega / omegaMax
+        private readonly float[] _motorCmd01 = new float[4];      // per-motor thrust fraction command (reused each step)
+        private const float MinIdleThrottle = 0.04f;              // lowest collective / motor output the cascade commands
         
         // ============================================================================
         // Public Accessors
@@ -443,7 +445,7 @@ namespace DroneCore.Controllers
 
             if (mode == GoalMode.Wrench)
             {
-                float[] motor01 = new float[4];
+                float[] motor01 = _motorCmd01;
                 Vector3 mFlu = new Vector3(cmd.X, cmd.Y, cmd.Z);
 
                 float sMax = _controlAllocator.AllocateWrench(
@@ -707,7 +709,6 @@ namespace DroneCore.Controllers
             }
 
             // 7. THROTTLE
-            const float MinIdleThrottle = 0.04f;
             if (mode == GoalMode.Rate || bGamepadAngle)
             {
                 output[3] = Mathf.Max(cmd.W, MinIdleThrottle);
@@ -742,7 +743,7 @@ namespace DroneCore.Controllers
             {
                 // Direct motor passthrough — bypass cascade and allocator entirely.
                 // cmd packing: X=FL, Y=FR, Z=BL, W=BR (matches Motor4 order)
-                float[] motor01 = new float[4];
+                float[] motor01 = _motorCmd01;
                 motor01[0] = Mathf.Clamp01(cmd.X);  // FL
                 motor01[1] = Mathf.Clamp01(cmd.Y);  // FR
                 motor01[2] = Mathf.Clamp01(cmd.Z);  // BL
@@ -774,13 +775,10 @@ namespace DroneCore.Controllers
             float yawTorqueNm = _rateTorqueScale.z * yawOut * Mathf.Deg2Rad;
             // Calculate throttle
             float throttle01 = Mathf.Clamp(thrustOut, 0f, 1f);
-            
-            const float MinIdleThrottle = 0.04f;
             throttle01 = Mathf.Clamp(throttle01, MinIdleThrottle, 1f);
 
             // Use effectiveness-based allocation
-            float[] motor01 = new float[4];
-            //float yawScale = 1.0f;
+            float[] motor01 = _motorCmd01;
 
             float thrustN = throttle01 * _controlAllocator.NumMotors * _rotorPhysics.MaxThrust;
             _controlAllocator.AllocateWrench(
@@ -796,13 +794,6 @@ namespace DroneCore.Controllers
             {
                 _axes[3].Velocity.Pid.SetSaturationFromTracking(
                     _requestedCollective01, allocation.Achieved.w);
-            }
-
-            // Fallback if allocator fails
-            if (motor01 == null || motor01.Length != 4)
-            {
-                motor01 = new float[4];
-                for (int i = 0; i < 4; i++) motor01[i] = throttle01;
             }
 
             ActuateThrust01(motor01, deltaTime);

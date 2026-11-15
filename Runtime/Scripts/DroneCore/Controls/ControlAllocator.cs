@@ -74,6 +74,11 @@ namespace DroneCore.Controls
         private readonly EffectivenessMatrix _effectiveness = new EffectivenessMatrix();
         private AllocationDiagnostics _lastAllocation = new AllocationDiagnostics();
 
+        // Per-step scratch buffers, sized for the largest supported vehicle.
+        private readonly float[] _baseMotor = new float[EffectivenessMatrix.MaxMotors];
+        private readonly float[] _rollPitchDirection = new float[EffectivenessMatrix.MaxMotors];
+        private readonly float[] _yawDirSigned = new float[EffectivenessMatrix.MaxMotors];
+
         public ControlAllocator()
         {
             Reset();
@@ -443,23 +448,13 @@ namespace DroneCore.Controls
             // Keep collective thrust authoritative. The former final "shift down"
             // preserved torque differences by removing collective, causing altitude
             // loss during aggressive horizontal commands.
-            float[] uThrust = { 0f, 0f, 0f, 0f, 0f, thrustZ01 };
-            float[] uRollPitch = { rollTorque01, pitchTorque01, 0f, 0f, 0f, 0f };
-
-            float[] baseMotor = new float[numMotors];
-            float[] rollPitchDirection = new float[numMotors];
+            float[] baseMotor = _baseMotor;
+            float[] rollPitchDirection = _rollPitchDirection;
             for (int m = 0; m < numMotors; m++)
             {
-                float thrust = 0f;
-                float rollPitch = 0f;
-                for (int axis = 0; axis < EffectivenessMatrix.NumAxes; axis++)
-                {
-                    thrust += _effectiveness.PseudoInverse[m, axis] * uThrust[axis];
-                    rollPitch += _effectiveness.PseudoInverse[m, axis] * uRollPitch[axis];
-                }
-
-                baseMotor[m] = thrust;
-                rollPitchDirection[m] = rollPitch;
+                baseMotor[m] = _effectiveness.PseudoInverse[m, 5] * thrustZ01;
+                rollPitchDirection[m] = _effectiveness.PseudoInverse[m, 0] * rollTorque01
+                                        + _effectiveness.PseudoInverse[m, 1] * pitchTorque01;
             }
 
             float rollPitchScale = ComputeDemandScaleFromHeadroom(
@@ -473,7 +468,7 @@ namespace DroneCore.Controls
             
             // TODO: Missing Num 2 from ControlAllocator.cpp
             float yawSign = (yawTorque01 >= 0f) ? 1f : -1f;
-            float[] yawDirSigned = new float[numMotors];
+            float[] yawDirSigned = _yawDirSigned;
             for (int m = 0; m < numMotors; m++)
                 yawDirSigned[m] = _effectiveness.PseudoInverse[m, 2] * yawSign; // TODO: Change here
 
@@ -561,41 +556,6 @@ namespace DroneCore.Controls
             }
 
             return Mathf.Clamp01(scale);
-        }
-
-        // ────────────────────────────────────────────────────────────
-        //  PostProcessMotorOutputs  (mirrors UE static function)
-        // ────────────────────────────────────────────────────────────
-        private static void PostProcessMotorOutputs(float[] motor01,int count,float minMotorOutput)
-        {
-            if (count <= 0) return;
-
-            float minOut = motor01[0];
-            float maxOut = motor01[0];
-            for (int i = 1; i < count; i++)
-            {
-                minOut = Mathf.Min(minOut, motor01[i]);
-                maxOut = Mathf.Max(maxOut, motor01[i]);
-            }
-
-            // Shift up if below minimum
-            if (minOut < minMotorOutput)
-            {
-                float shift = minMotorOutput - minOut;
-                for (int i = 0; i < count; i++) motor01[i] += shift;
-                maxOut += shift;
-            }
-
-            // Shift down if above 1
-            if (maxOut > 1f)
-            {
-                float shift = maxOut - 1f;
-                for (int i = 0; i < count; i++) motor01[i] -= shift;
-            }
-
-            // Final clamp
-            for (int i = 0; i < count; i++)
-                motor01[i] = Mathf.Clamp(motor01[i], minMotorOutput, 1f);
         }
 
         // ────────────────────────────────────────────────────────────
