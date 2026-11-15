@@ -25,6 +25,11 @@
   `rotor_speed_control`).
 - Fixed PID integral leak and derivative kick, the heading-frame rotation
   sign, and FLU/FRD attitude yaw conventions.
+- The cascade reads one state snapshot per step from
+  `controller.state_source` (`sensors` by default, `truth` optional) instead
+  of mixing sensor samples with the interpolated transform. Velocity mode is
+  measured and commanded in the level heading frame (equal to body FLU when
+  level). `SensorData.HeadingVel` was removed.
 
 ## [0.2.3] - 2026-07-21
 
