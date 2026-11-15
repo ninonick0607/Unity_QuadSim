@@ -535,9 +535,9 @@ namespace DroneCore.Controllers
                 Quaternion bodyRot = _state.Current.RotationUnity;
                 Vector3 vSpHeading = OutputFrameVelToHeadingVel(vSpOutputFrame, bodyRot);
  
-                // Constrain velocity: XY = horizontal, Z = vertical (in output frame)
-                // TODO: DEFINE THESE IN CONFIG
-                Vector3 vSpConstrained = ConstrainVelSetpoint_HeadingFrame(vSpHeading, 4.0f, 10f, 8f);
+                // Constrain velocity to the profile's limits: XY by magnitude, Z (up) symmetric.
+                Vector3 vSpConstrained = ConstrainVelSetpoint_HeadingFrame(
+                    vSpHeading, _cachedConfig.FlightParams.MaxVelXY, _cachedConfig.FlightParams.MaxVelZ);
  
                 // The velocity setpoint is already in the output frame —
                 // no Frames.TransformLinear needed.
@@ -936,8 +936,7 @@ namespace DroneCore.Controllers
         private Vector3 ConstrainVelSetpoint_HeadingFrame(
             Vector3 vSp,
             float vXyMax,
-            float vUpMax,
-            float vDownMax)
+            float vZMax)
         {
             Vector3 output = vSp;
 
@@ -951,8 +950,8 @@ namespace DroneCore.Controllers
                 output.y = clamped.y;
             }
 
-            // Z clamp
-            output.z = Mathf.Clamp(output.z, -vUpMax, vDownMax);
+            // Z clamp (heading frame z is up)
+            output.z = Mathf.Clamp(output.z, -vZMax, vZMax);
 
             return output;
         }
