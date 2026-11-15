@@ -85,6 +85,21 @@ namespace Yaml.Drone
         NormalizedTorque = 1,
     }
 
+    /// <summary>Where the controller's state snapshot comes from each step.</summary>
+    public enum StateSource
+    {
+        /// <summary>The drone's sensors (noise when enabled, GPS at its own rate).</summary>
+        Sensors = 0,
+        /// <summary>The exact Rigidbody state, bypassing the sensors.</summary>
+        Truth = 1,
+    }
+
+    /// <summary>Controller settings that are not per-loop gains.</summary>
+    public struct ControllerSettings
+    {
+        public StateSource StateSource;
+    }
+
     public struct AcroPID
     {
         public RateGainUnits Units;
@@ -209,7 +224,8 @@ namespace Yaml.Drone
         public AnglePID Angle;
         public VelocityPID Velocity;
         public PositionPID Position;
-        
+        public ControllerSettings Controller;
+
         // Source File TODO: Lets try and implement this
         public string SourceFile;
         

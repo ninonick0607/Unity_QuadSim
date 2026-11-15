@@ -1,6 +1,5 @@
 ﻿using DroneCore.Common;
 using DroneCore.Interfaces;
-using RobotCore;
 using UnityEngine;
 using Yaml.Drone;
 
@@ -13,7 +12,7 @@ namespace DroneCore.Controllers.AxisControllers
 
         private int _axis;
         private ICommandSource _cmdGoal;
-        private SensorManager _sensorManager;
+        private VehicleStateHolder _state;
         private DroneConfig _config;
         private float _output;
         private float _externalGoal;
@@ -24,11 +23,11 @@ namespace DroneCore.Controllers.AxisControllers
             _config = inConfig;
         }
         
-        public void Initialize(int axis, ICommandSource cmd, SensorManager sensors)
+        public void Initialize(int axis, ICommandSource cmd, VehicleStateHolder state)
         {
             _axis = axis;
             _cmdGoal = cmd;
-            _sensorManager = sensors;
+            _state = state;
             PositionPID PID = _config.Position;
     
             if (axis == 3)
@@ -42,13 +41,12 @@ namespace DroneCore.Controllers.AxisControllers
 
         public void Update(float deltaTime)
         {
-            if (!_bInitialized || _cmdGoal == null || _sensorManager == null || _pidSet == null)
+            if (!_bInitialized || _cmdGoal == null || _state == null || _pidSet == null)
             {
                 _output = 0f;
                 return;
             }
 
-            SensorData StateData = _sensorManager.Latest;
             float Goal = _cmdGoal.GetCommandValue()[_axis];
 
             // Axis 2 (yaw) passes through — no position PID for yaw
@@ -58,21 +56,19 @@ namespace DroneCore.Controllers.AxisControllers
                 return;
             }
             
-            // GPS position is in the output frame (e.g. FLU).
+            // Position and position setpoints are both world ENU.
             // Cascade axis mapping:
-            //   Axis 0 (forward)  → output frame .x
-            //   Axis 1 (lateral)  → output frame .y
-            //   Axis 3 (altitude) → output frame .z
-            //
-            // This works for FLU (x=fwd, y=left, z=up) and FRD (x=fwd, y=right, z=down).
-            // The PID sign is correct in both cases because the command frame matches
-            // the measurement frame — both are in the output frame.
+            //   Axis 0 → East (.x)
+            //   Axis 1 → North (.y)
+            //   Axis 3 → Up / altitude (.z)
+            // The resulting ENU velocity setpoint is rotated into the heading
+            // frame by CascadedController before the velocity loop.
             float State;
             switch (_axis)
             {
-                case 0: State = StateData.GpsPosition.x; break;  // forward
-                case 1: State = StateData.GpsPosition.y; break;  // lateral
-                case 3: State = StateData.GpsPosition.z; break;  // altitude
+                case 0: State = _state.Current.PositionEnu.x; break;  // forward
+                case 1: State = _state.Current.PositionEnu.y; break;  // lateral
+                case 3: State = _state.Current.PositionEnu.z; break;  // altitude
                 default: State = 0f; break;
             }
 

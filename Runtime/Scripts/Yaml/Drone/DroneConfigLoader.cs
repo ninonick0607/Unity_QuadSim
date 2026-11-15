@@ -139,7 +139,8 @@ namespace Yaml.Drone
                 out outConfig.Angle,
                 out outConfig.Acro,
                 out outConfig.Velocity,
-                out outConfig.Position
+                out outConfig.Position,
+                out outConfig.Controller
             );
 
             if (success)

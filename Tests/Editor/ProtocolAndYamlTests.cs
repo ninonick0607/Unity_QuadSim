@@ -79,7 +79,7 @@ namespace Nino.QuadSim.Tests
         {
             return YamlParser.LoadDroneConfigFromString(
                 yaml, "test", out model, out _, out _, out _, out _,
-                out _, out _, out _, out _);
+                out _, out _, out _, out _, out _);
         }
 
         private static string MinimalYaml(int schemaVersion) => $@"

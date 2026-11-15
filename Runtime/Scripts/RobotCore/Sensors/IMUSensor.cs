@@ -20,6 +20,7 @@ namespace RobotCore.Sensors
         public Vector3 LastAngVel { get; private set; }      // rad/s in OutputFrame
         public Vector3 LastAtt { get; private set; }         // degrees (Euler) in OutputFrame
         public Quaternion LastOrientation { get; private set; } // orientation in OutputFrame
+        public Quaternion LastRotationUnity { get; private set; } = Quaternion.identity; // body to world, Unity axes
         public Vector3 LastLinAcc { get; private set; }      // m/s^2 in OutputFrame
         public Vector3 LastVel { get; private set; }
 
@@ -47,6 +48,7 @@ namespace RobotCore.Sensors
             LastAngVel = Vector3.zero;
             LastAtt = Vector3.zero;
             LastOrientation = Quaternion.identity;
+            LastRotationUnity = Quaternion.identity;
             LastLinAcc = Vector3.zero;
             LastVel = Vector3.zero;
             LastTimestampSec = 0;
@@ -78,21 +80,27 @@ namespace RobotCore.Sensors
         }
         public void SampleAttitude(double nowSec, float deltaTime)
         {
-            Vector3 euler = _bodyTransform.rotation.eulerAngles;
-    
-            // Reorder to (roll, pitch, yaw) — NO sign changes here, 
+            LastAtt = AttitudeDeg(_bodyTransform.rotation, OutputFrame);
+            LastOrientation = Frames.TransformQuaternion(_bodyTransform.rotation, OutputFrame);
+            LastRotationUnity = _bodyTransform.rotation;
+        }
+
+        /// <summary>Roll, pitch, yaw (deg, each in +-180) of a Unity body rotation, in the given frame.</summary>
+        public static Vector3 AttitudeDeg(Quaternion rotationUnity, SimFrame frame)
+        {
+            Vector3 euler = rotationUnity.eulerAngles;
+
+            // Reorder to (roll, pitch, yaw) — NO sign changes here,
             // TransformAttitude handles LH→RH
             Vector3 rpyDeg = new Vector3(euler.x, euler.z, euler.y);
-    
-            Vector3 att = Frames.TransformAttitude(rpyDeg, OutputFrame);
-    
+
+            Vector3 att = Frames.TransformAttitude(rpyDeg, frame);
+
             // Wrap to ±180 (Unity eulerAngles are [0,360), UE FRotator is [-180,180))
             att.x = Wrap180(att.x);
             att.y = Wrap180(att.y);
             att.z = Wrap180(att.z);
-    
-            LastAtt = att;
-            LastOrientation = Frames.TransformQuaternion(_bodyTransform.rotation, OutputFrame);
+            return att;
         }
         private static float Wrap180(float a)
         {

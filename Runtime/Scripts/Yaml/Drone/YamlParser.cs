@@ -75,7 +75,8 @@ namespace Yaml.Drone
             out AnglePID outAngle,
             out AcroPID outAcro,
             out VelocityPID outVel,
-            out PositionPID outPos
+            out PositionPID outPos,
+            out ControllerSettings outCtrl
         )
         {
             outModel = new ModelType();
@@ -87,6 +88,7 @@ namespace Yaml.Drone
             outAcro = new AcroPID();
             outVel = new VelocityPID();
             outPos = new PositionPID();
+            outCtrl = new ControllerSettings();
         }
 
         // ---------------------------------------------------------
@@ -103,7 +105,8 @@ namespace Yaml.Drone
             out AnglePID outAngle,
             out AcroPID outAcro,
             out VelocityPID outVel,
-            out PositionPID outPos
+            out PositionPID outPos,
+            out ControllerSettings outCtrl
         )
         {
             InitDefaults(
@@ -115,7 +118,8 @@ namespace Yaml.Drone
                 out outAngle,
                 out outAcro,
                 out outVel,
-                out outPos
+                out outPos,
+                out outCtrl
             );
 
             if (!File.Exists(fullPath))
@@ -146,7 +150,8 @@ namespace Yaml.Drone
                 out outAngle,
                 out outAcro,
                 out outVel,
-                out outPos
+                out outPos,
+                out outCtrl
             );
         }
 
@@ -161,7 +166,8 @@ namespace Yaml.Drone
             out AnglePID outAngle,
             out AcroPID outAcro,
             out VelocityPID outVel,
-            out PositionPID outPos
+            out PositionPID outPos,
+            out ControllerSettings outCtrl
         )
         {
             InitDefaults(
@@ -173,7 +179,8 @@ namespace Yaml.Drone
                 out outAngle,
                 out outAcro,
                 out outVel,
-                out outPos
+                out outPos,
+                out outCtrl
             );
 
             if (string.IsNullOrWhiteSpace(yamlText))
@@ -223,7 +230,8 @@ namespace Yaml.Drone
                 out outAngle,
                 out outAcro,
                 out outVel,
-                out outPos
+                out outPos,
+                out outCtrl
             );
         }
 
@@ -238,7 +246,8 @@ namespace Yaml.Drone
             out AnglePID outAngle,
             out AcroPID outAcro,
             out VelocityPID outVel,
-            out PositionPID outPos
+            out PositionPID outPos,
+            out ControllerSettings outCtrl
         )
         {
             InitDefaults(
@@ -250,7 +259,8 @@ namespace Yaml.Drone
                 out outAngle,
                 out outAcro,
                 out outVel,
-                out outPos
+                out outPos,
+                out outCtrl
             );
 
             try
@@ -391,6 +401,19 @@ namespace Yaml.Drone
                         else
                         {
                             Debug.LogError($"[Drone.YamlParser] Unknown rate_gain_units '{rateUnits}': {sourceLabel}");
+                            return false;
+                        }
+                    }
+
+                    if (TryGetString(ctrl, "state_source", out string stateSource))
+                    {
+                        if (stateSource == "sensors")
+                            outCtrl.StateSource = StateSource.Sensors;
+                        else if (stateSource == "truth")
+                            outCtrl.StateSource = StateSource.Truth;
+                        else
+                        {
+                            Debug.LogError($"[Drone.YamlParser] Unknown state_source '{stateSource}': {sourceLabel}");
                             return false;
                         }
                     }

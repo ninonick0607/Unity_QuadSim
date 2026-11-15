@@ -68,7 +68,7 @@ namespace Nino.QuadSim.Editor
             sourcePath = AssetDatabase.GetAssetPath(yamlAsset);
             if (!YamlParser.LoadDroneConfigFromString(
                     yamlAsset.text, sourcePath, out model, out physical,
-                    out propulsion, out _, out _, out _, out _, out _, out _))
+                    out propulsion, out _, out _, out _, out _, out _, out _, out _))
             {
                 error = "The selected YAML did not pass the Unity runtime parser.";
                 return;

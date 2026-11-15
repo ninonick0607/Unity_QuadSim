@@ -252,7 +252,7 @@ namespace Nino.QuadSim.Tests
             Assert.That(yaml, Is.Not.Null);
             Assert.That(YamlParser.LoadDroneConfigFromString(
                 yaml.text, profile, out _, out _, out _, out _, out _,
-                out AnglePID angle, out _, out _, out _), Is.True);
+                out AnglePID angle, out _, out _, out _, out _), Is.True);
             Assert.That(angle.AngleYaw.P, Is.GreaterThan(0f));
         }
 
@@ -294,7 +294,7 @@ namespace Nino.QuadSim.Tests
         {
             return YamlParser.LoadDroneConfigFromString(
                 yaml, label, out _, out _, out propulsion, out _, out _,
-                out _, out _, out _, out _);
+                out _, out _, out _, out _, out _);
         }
 
         private static string InvalidYaml(int id0, int id1, int id2, int id3) => $@"

@@ -1,4 +1,5 @@
 using DroneCore;
+using DroneCore.Common;
 using MathUtil;
 using RobotCore.Sensors;
 using SimCore;
@@ -245,14 +246,6 @@ namespace RobotCore
                 ? "body_frd/world_enu"
                 : "body_flu/world_enu";
 
-            // Translational control uses a yaw-only heading frame. Roll and pitch
-            // must not rotate horizontal motion into the vertical velocity loop.
-            // Expose FLU ordering (forward, left, up). Uses the same Frames
-            // conversion as CascadedController.OutputFrameVelToHeadingVel.
-            latest.HeadingVel = Frames.EnuToHeadingFlu(
-                Frames.TransformWorldVector(rb.linearVelocity, SimFrame.FLU),
-                Frames.EnuHeadingRad(bodyTransform.rotation));
-
             // IMU
             if (_imuLimiter.ShouldRunAndConsume(nowNanos))
             {
@@ -308,6 +301,51 @@ namespace RobotCore
             }
             
             Latest = latest;
+        }
+
+        // ====================================================================
+        // Controller state sources (see DroneCore.Common.VehicleState)
+        // ====================================================================
+
+        /// <summary>
+        /// State as the sensors report it: IMU attitude, rates and orientation,
+        /// GPS position at its own rate, noise when enabled. Velocity has no
+        /// real sensor until an estimator exists; it is the IMU velocity sample
+        /// (a stand-in for an estimator output) rotated into the level heading
+        /// frame with the IMU orientation.
+        /// </summary>
+        public VehicleState SensorState()
+        {
+            SensorData s = Latest;
+            Quaternion rotation = IMU.LastRotationUnity;
+            Vector3 velocityWorldUnity = rotation * Frames.InverseTransformLinear(s.ImuVel, outputFrame);
+            return new VehicleState
+            {
+                PositionEnu = s.GpsPosition,
+                HeadingVelocity = Frames.EnuToHeadingFlu(
+                    Frames.TransformWorldVector(velocityWorldUnity, SimFrame.FLU),
+                    Frames.EnuHeadingRad(rotation)),
+                AttitudeDeg = s.ImuAttitude,
+                BodyRatesRadS = s.ImuAngVel,
+                RotationUnity = rotation,
+            };
+        }
+
+        /// <summary>Exact Rigidbody state, in the same units and frames as SensorState.</summary>
+        public VehicleState TruthState()
+        {
+            Quaternion rotation = rb.rotation;
+            return new VehicleState
+            {
+                PositionEnu = Frames.TransformWorldPosition(rb.position, SimFrame.FLU),
+                HeadingVelocity = Frames.EnuToHeadingFlu(
+                    Frames.TransformWorldVector(rb.linearVelocity, SimFrame.FLU),
+                    Frames.EnuHeadingRad(rotation)),
+                AttitudeDeg = IMUSensor.AttitudeDeg(rotation, outputFrame),
+                BodyRatesRadS = Frames.TransformAngularVelocity(
+                    Quaternion.Inverse(rotation) * rb.angularVelocity, outputFrame),
+                RotationUnity = rotation,
+            };
         }
     }
 }

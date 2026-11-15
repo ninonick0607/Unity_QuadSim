@@ -1,6 +1,5 @@
 using DroneCore.Common;
 using DroneCore.Interfaces;
-using RobotCore; // SensorManager, SensorData
 using UnityEngine;
 using Yaml.Drone;
 
@@ -14,7 +13,7 @@ namespace DroneCore.Controllers.AxisControllers
 
         private int _axis;
         private ICommandSource _cmdGoal;
-        private SensorManager _sensorManager;
+        private VehicleStateHolder _state;
         private DroneConfig _config;
         private float _output;
         private float _externalGoal;
@@ -28,11 +27,11 @@ namespace DroneCore.Controllers.AxisControllers
             _config = inConfig;
         }
 
-        public void Initialize(int axis, ICommandSource cmd, SensorManager sensors)
+        public void Initialize(int axis, ICommandSource cmd, VehicleStateHolder state)
         {
             _axis = axis;
             _cmdGoal = cmd;
-            _sensorManager = sensors;
+            _state = state;
             AnglePID PID = _config.Angle;
 
             // Angle PID output is a rate setpoint (deg/s)
@@ -48,14 +47,13 @@ namespace DroneCore.Controllers.AxisControllers
         
         public void Update(float deltaTime)
         {
-            if (!_bInitialized || _sensorManager == null || _pidSet == null || (_cmdGoal == null && !_bUseExternalGoal))
+            if (!_bInitialized || _state == null || _pidSet == null || (_cmdGoal == null && !_bUseExternalGoal))
             {
                 _output = 0.0f;
                 return;
             }
 
-            SensorData StateData = _sensorManager.Latest;
-            float StateAngle = StateData.ImuAttitude[_axis];
+            float StateAngle = _state.Current.AttitudeDeg[_axis];
             float Goal = _bUseExternalGoal ? _externalGoal :  _cmdGoal.GetCommandValue()[_axis];
             
             if (_axis == 3)

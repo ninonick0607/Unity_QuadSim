@@ -82,6 +82,8 @@ namespace DroneCore.Controllers
         private QuadPawn _body;
         private SensorManager _sensorManager;
         private ICommandSource _goalSource;
+        // The one state every loop reads, refreshed at the start of each step.
+        private readonly VehicleStateHolder _state = new VehicleStateHolder();
 
         // ============================================================================
         // Configuration & Physics
@@ -314,13 +316,13 @@ namespace DroneCore.Controllers
             for (int axis = 0; axis < 4; axis++)
             {
                 if (_axes[axis].Position != null)
-                    _axes[axis].Position.Initialize(axis, _goalSource, _sensorManager);
+                    _axes[axis].Position.Initialize(axis, _goalSource, _state);
 
-                _axes[axis].Velocity.Initialize(axis, _goalSource, _sensorManager);
-                _axes[axis].Rate.Initialize(axis, _goalSource, _sensorManager);
+                _axes[axis].Velocity.Initialize(axis, _goalSource, _state);
+                _axes[axis].Rate.Initialize(axis, _goalSource, _state);
 
                 if (_axes[axis].Angle != null)
-                    _axes[axis].Angle.Initialize(axis, _goalSource, _sensorManager);
+                    _axes[axis].Angle.Initialize(axis, _goalSource, _state);
             }
         }
 
@@ -380,6 +382,14 @@ namespace DroneCore.Controllers
         public void StepController(float deltaTime)
         {
             if (!_configApplied) return;
+
+            // One state snapshot per step, from the configured source.
+            if (_sensorManager != null)
+            {
+                _state.Current = (_cachedConfig.Controller.StateSource == StateSource.Truth)
+                    ? _sensorManager.TruthState()
+                    : _sensorManager.SensorState();
+            }
 
             float actualDeltaTime = Mathf.Clamp(deltaTime, 0.001f, 0.1f);
 
@@ -522,7 +532,7 @@ namespace DroneCore.Controllers
                 }
  
                 // Rotate horizontal components into heading frame
-                Quaternion bodyRot = _body.transform.rotation;
+                Quaternion bodyRot = _state.Current.RotationUnity;
                 Vector3 vSpHeading = OutputFrameVelToHeadingVel(vSpOutputFrame, bodyRot);
  
                 // Constrain velocity: XY = horizontal, Z = vertical (in output frame)
@@ -890,9 +900,10 @@ namespace DroneCore.Controllers
         private float DesiredForceToCollective(Vector3 desiredSpecificForceHeading)
         {
             const float g = 9.81f;
-            Vector3 bodyUpEnu = Frames.TransformWorldVector(_body.transform.up, SimFrame.FLU);
+            Quaternion bodyRot = _state.Current.RotationUnity;
+            Vector3 bodyUpEnu = Frames.TransformWorldVector(bodyRot * Vector3.up, SimFrame.FLU);
             Vector3 bodyUpHeading = Frames.EnuToHeadingFlu(
-                bodyUpEnu, Frames.EnuHeadingRad(_body.transform.rotation));
+                bodyUpEnu, Frames.EnuHeadingRad(bodyRot));
 
             float producibleSpecificForce = Mathf.Max(
                 0f, Vector3.Dot(desiredSpecificForceHeading, bodyUpHeading));

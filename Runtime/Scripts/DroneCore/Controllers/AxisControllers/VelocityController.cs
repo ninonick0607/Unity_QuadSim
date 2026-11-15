@@ -1,7 +1,6 @@
 ﻿using System;
 using DroneCore.Common;
 using DroneCore.Interfaces;
-using RobotCore; // SensorManager, SensorData
 using UnityEngine;
 using Yaml.Drone;
 
@@ -21,7 +20,7 @@ namespace DroneCore.Controllers.AxisControllers
 
         private int _axis;
         private ICommandSource _cmdGoal;
-        private SensorManager _sensorManager;
+        private VehicleStateHolder _state;
         private DroneConfig _config;
         private float _output;
         private float _externalGoal;
@@ -33,11 +32,11 @@ namespace DroneCore.Controllers.AxisControllers
             _config = inConfig;
         }
         
-        public void Initialize(int axis, ICommandSource cmd, SensorManager sensors)
+        public void Initialize(int axis, ICommandSource cmd, VehicleStateHolder state)
         {
             _axis = axis;
             _cmdGoal = cmd;
-            _sensorManager = sensors;
+            _state = state;
             VelocityPID PID = _config.Velocity;
 
             float maxAccelLimit = Mathf.Tan(_config.FlightParams.MaxAngle * Mathf.Deg2Rad) * Gravity;
@@ -57,13 +56,12 @@ namespace DroneCore.Controllers.AxisControllers
         
         public void Update(float deltaTime)
         {
-            if (!_bInitialized || _sensorManager == null || _pidSet == null || (_cmdGoal == null && !_bUseExternalGoal))
+            if (!_bInitialized || _state == null || _pidSet == null || (_cmdGoal == null && !_bUseExternalGoal))
             {
                 _output = 0.0f;
                 return;
             }
 
-            SensorData StateData = _sensorManager.Latest;
             float Goal = _bUseExternalGoal ? _externalGoal :  _cmdGoal.GetCommandValue()[_axis];
 
             if (_axis == 2)
@@ -72,12 +70,11 @@ namespace DroneCore.Controllers.AxisControllers
                 return;
             }
 
-            // Preserve the original body-local semantics for forward/left.
-            // Vertical control is the exception: use world-up velocity so pitch
-            // and roll cannot project horizontal flight into the altitude loop.
-            float StateVel = _axis == 3
-                ? StateData.HeadingVel.z
-                : StateData.ImuVel[_axis];
+            // Velocity in the level heading frame (forward, left, up): the frame
+            // the setpoints and this loop's acceleration output are expressed in.
+            // Roll and pitch do not rotate horizontal motion into the vertical axis.
+            Vector3 v = _state.Current.HeadingVelocity;
+            float StateVel = _axis == 0 ? v.x : _axis == 1 ? v.y : v.z;
             _output = _pidSet.Calculate(Goal, StateVel, deltaTime);
             
         }
