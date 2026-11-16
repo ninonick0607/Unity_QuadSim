@@ -12,10 +12,6 @@ namespace RobotCore
     [DisallowMultipleComponent]
     public sealed class SensorManager : MonoBehaviour
     {
-        [Header("Refs")]
-        [SerializeField] private Rigidbody rb;
-        [SerializeField] private Transform bodyTransform;
-
         [Header("Output Frame")]
         public SimFrame outputFrame = SimFrame.FLU;
 
@@ -55,7 +51,10 @@ namespace RobotCore
         public MagSensor Mag { get; private set; }
         
 
-        public SensorData Latest { get; private set; }
+        // Sensors sample the vehicle's published physics state and publish the
+        // measurement record; nothing else writes measurements.
+        private VehicleDataStore _store;
+        private SensorData _latest;
         public int noiseSeed = 12345; 
         private long _episodeId;
         private ulong _sequence;
@@ -85,18 +84,11 @@ namespace RobotCore
             return true;
         }
         
-        private void ResolveRefsOrThrow()
+        /// <summary>Attach to the vehicle's data store as the sole writer of its measurements.</summary>
+        public void Bind(VehicleDataStore store)
         {
-            if (rb == null) rb = GetComponentInParent<Rigidbody>();
-            if (rb == null)
-                throw new System.Exception($"SensorManager on '{name}' cannot find Rigidbody in parents. Put it under DroneRoot.");
-
-            if (bodyTransform == null) bodyTransform = rb.transform;
-        }
-
-        private void Awake()
-        {
-            ResolveRefsOrThrow();
+            _store = store;
+            _store.Claim(VehicleRecord.Measurements, this);
         }
         
         /// <summary>Apply scene-level env BEFORE OnStart(). Single writer for seed/noise/origin.
@@ -145,17 +137,15 @@ namespace RobotCore
         }
         public void OnStart()
         {
-            ResolveRefsOrThrow();
-
-            IMU  = new IMUSensor(rb, bodyTransform, noiseSeed + 1);
-            GPS  = new GPSSensor(rb, noiseSeed + 2);
+            IMU  = new IMUSensor(noiseSeed + 1);
+            GPS  = new GPSSensor(noiseSeed + 2);
 
             Geo = SimCoreApi.Get().Geo;
             Geo.SetOrigin(originLatDeg, originLonDeg,originHeightM);
             
-            Baro = new BaroSensor(rb, bodyTransform, noiseSeed + 3);
+            Baro = new BaroSensor(noiseSeed + 3);
             
-            Mag = new MagSensor(rb, bodyTransform, noiseSeed + 4);
+            Mag = new MagSensor(noiseSeed + 4);
 
             
             // outputFrame selects the BODY-axis convention only (FLU/FRD).
@@ -164,7 +154,7 @@ namespace RobotCore
             Mag.OutputFrame = outputFrame;
 
             IMU.Reset();
-            IMU.Initialize(rb);
+            IMU.Initialize(_store.Truth);
 
             GPS.Reset();
             GPS.Initialize(Geo);
@@ -183,7 +173,7 @@ namespace RobotCore
 
             _logLimiter  = new FrequencyLimiter(logHz <= 0 ? 1e-6 : logHz, now);
 
-            Latest = default;
+            _latest = default;
             PrimeSnapshot(now);
         }
 
@@ -191,7 +181,7 @@ namespace RobotCore
         {
             _sequence = 0;
             IMU.Reset();
-            IMU.Initialize(rb);
+            IMU.Initialize(_store.Truth);
             
             GPS.Reset();
             GPS.Initialize(Geo);
@@ -210,7 +200,7 @@ namespace RobotCore
             _magLimiter?.Reset(now);
             _logLimiter?.Reset(now);
 
-            Latest = default;
+            _latest = default;
             PrimeSnapshot(now);
         }
 
@@ -230,13 +220,15 @@ namespace RobotCore
 
         public void UpdateSensors(double dtSec, long nowNanos)
         {
+            if (_store == null) return;
             double nowSec = nowNanos * 1e-9;
+            PhysicsState truth = _store.Truth;
 
             // Keep BODY output frame synced (IMU + mag). GPS position is ENU always.
             IMU.OutputFrame = outputFrame;
             Mag.OutputFrame = outputFrame;
 
-            var latest = Latest;
+            var latest = _latest;
             latest.BodyFrame = outputFrame;   // self-description for the RPC payload
             latest.EpisodeId = _episodeId;
             latest.StepIndex = ClockFactory.Clock.StepCount;
@@ -249,11 +241,12 @@ namespace RobotCore
             // IMU
             if (_imuLimiter.ShouldRunAndConsume(nowNanos))
             {
-                IMU.Sample(nowSec, (float)dtSec, enableNoise);   // was: IMU.Sample(nowSec, (float)dtSec);
+                IMU.Sample(truth, nowSec, (float)dtSec, enableNoise);
 
                 latest.ImuAngVel = IMU.LastAngVel;
                 latest.ImuAttitude = IMU.LastAtt;
                 latest.ImuOrientation = IMU.LastOrientation; 
+                latest.ImuRotationUnity = IMU.LastRotationUnity;
                 latest.ImuAccel = IMU.LastLinAcc;
                 latest.ImuVel = IMU.LastVel;
                 latest.ImuTimestampSec = IMU.LastTimestampSec;
@@ -263,7 +256,7 @@ namespace RobotCore
             // GPS — local position is always world-frame ENU from GPSSensor
             if (_gpsLimiter.ShouldRunAndConsume(nowNanos))
             {
-                GPS.Sample(nowSec, enableNoise);
+                GPS.Sample(truth, nowSec, enableNoise);
 
                 latest.GpsPosition     = GPS.LastPosition;
                 latest.GpsTimestampSec = GPS.LastTimestampSec;
@@ -278,7 +271,7 @@ namespace RobotCore
             // Baro
             if (_baroLimiter.ShouldRunAndConsume(nowNanos))
             {
-                Baro.Sample(nowSec, enableNoise);
+                Baro.Sample(truth, nowSec, enableNoise);
 
                 latest.BaroPressurePa       = Baro.LastPressure;
                 latest.BaroPressureHPa      = Baro.LastPressureHPa;
@@ -291,7 +284,7 @@ namespace RobotCore
             // Mag
             if (_magLimiter.ShouldRunAndConsume(nowNanos))
             {
-                Mag.Sample(nowSec, (float)dtSec, enableNoise);
+                Mag.Sample(truth, nowSec, (float)dtSec, enableNoise);
 
                 latest.MagField          = Mag.LastMagField;
                 latest.MagHeadingDeg     = Mag.MagneticHeading;
@@ -300,52 +293,8 @@ namespace RobotCore
                 latest.MagValid          = Mag.IsValid;
             }
             
-            Latest = latest;
-        }
-
-        // ====================================================================
-        // Controller state sources (see DroneCore.Common.VehicleState)
-        // ====================================================================
-
-        /// <summary>
-        /// State as the sensors report it: IMU attitude, rates and orientation,
-        /// GPS position at its own rate, noise when enabled. Velocity has no
-        /// real sensor until an estimator exists; it is the IMU velocity sample
-        /// (a stand-in for an estimator output) rotated into the level heading
-        /// frame with the IMU orientation.
-        /// </summary>
-        public VehicleState SensorState()
-        {
-            SensorData s = Latest;
-            Quaternion rotation = IMU.LastRotationUnity;
-            Vector3 velocityWorldUnity = rotation * Frames.InverseTransformLinear(s.ImuVel, outputFrame);
-            return new VehicleState
-            {
-                PositionEnu = s.GpsPosition,
-                HeadingVelocity = Frames.EnuToHeadingFlu(
-                    Frames.TransformWorldVector(velocityWorldUnity, SimFrame.FLU),
-                    Frames.EnuHeadingRad(rotation)),
-                AttitudeDeg = s.ImuAttitude,
-                BodyRatesRadS = s.ImuAngVel,
-                RotationUnity = rotation,
-            };
-        }
-
-        /// <summary>Exact Rigidbody state, in the same units and frames as SensorState.</summary>
-        public VehicleState TruthState()
-        {
-            Quaternion rotation = rb.rotation;
-            return new VehicleState
-            {
-                PositionEnu = Frames.TransformWorldPosition(rb.position, SimFrame.FLU),
-                HeadingVelocity = Frames.EnuToHeadingFlu(
-                    Frames.TransformWorldVector(rb.linearVelocity, SimFrame.FLU),
-                    Frames.EnuHeadingRad(rotation)),
-                AttitudeDeg = IMUSensor.AttitudeDeg(rotation, outputFrame),
-                BodyRatesRadS = Frames.TransformAngularVelocity(
-                    Quaternion.Inverse(rotation) * rb.angularVelocity, outputFrame),
-                RotationUnity = rotation,
-            };
+            _latest = latest;
+            _store.PublishMeasurements(this, latest);
         }
     }
 }

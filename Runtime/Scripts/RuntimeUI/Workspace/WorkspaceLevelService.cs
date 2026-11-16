@@ -42,7 +42,7 @@ namespace QuadSim.RuntimeUI.Workspace
                 if (sensors == null) continue;
                 sensors.Configure(seed, noise, lat, lon, alt, sensors.outputFrame);
                 sensors.ReseedForEpisode(seed, pawn.DroneIndex);
-                if (sensors.IMU != null) sensors.OnReset();
+                if (sensors.IMU != null) pawn.ResetSensors();
             }
             return true;
         }

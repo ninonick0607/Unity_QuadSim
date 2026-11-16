@@ -20,7 +20,7 @@ namespace DroneCore.Controllers.AxisControllers
 
         private int _axis;
         private ICommandSource _cmdGoal;
-        private VehicleStateHolder _state;
+        private VehicleDataStore _store;   // reads Estimate
         private DroneConfig _config;
         private float _output;
         private float _externalGoal;
@@ -32,11 +32,11 @@ namespace DroneCore.Controllers.AxisControllers
             _config = inConfig;
         }
         
-        public void Initialize(int axis, ICommandSource cmd, VehicleStateHolder state)
+        public void Initialize(int axis, ICommandSource cmd, VehicleDataStore store)
         {
             _axis = axis;
             _cmdGoal = cmd;
-            _state = state;
+            _store = store;
             VelocityPID PID = _config.Velocity;
 
             float maxAccelLimit = Mathf.Tan(_config.FlightParams.MaxAngle * Mathf.Deg2Rad) * Gravity;
@@ -56,7 +56,7 @@ namespace DroneCore.Controllers.AxisControllers
         
         public void Update(float deltaTime)
         {
-            if (!_bInitialized || _state == null || _pidSet == null || (_cmdGoal == null && !_bUseExternalGoal))
+            if (!_bInitialized || _store == null || _pidSet == null || (_cmdGoal == null && !_bUseExternalGoal))
             {
                 _output = 0.0f;
                 return;
@@ -73,7 +73,7 @@ namespace DroneCore.Controllers.AxisControllers
             // Velocity in the level heading frame (forward, left, up): the frame
             // the setpoints and this loop's acceleration output are expressed in.
             // Roll and pitch do not rotate horizontal motion into the vertical axis.
-            Vector3 v = _state.Current.HeadingVelocity;
+            Vector3 v = _store.Estimate.HeadingVelocity;
             float StateVel = _axis == 0 ? v.x : _axis == 1 ? v.y : v.z;
             _output = _pidSet.Calculate(Goal, StateVel, deltaTime);
             

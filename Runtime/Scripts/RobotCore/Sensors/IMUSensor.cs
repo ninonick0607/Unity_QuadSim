@@ -1,3 +1,4 @@
+using DroneCore.Common;
 using MathUtil;
 using RobotCore.Core_Utils;
 using UnityEngine;
@@ -7,9 +8,9 @@ namespace RobotCore.Sensors
     // ReSharper disable once InconsistentNaming
     public sealed class IMUSensor
     {
-        private Rigidbody _rb;
-        private Transform _bodyTransform;
-        
+        // Samples the vehicle's published physics state (VehicleDataStore.Truth);
+        // it never reads the Rigidbody or transform itself.
+
         // State
         private Vector3 _prevVelWorld;
         private bool _hasPrev;
@@ -32,10 +33,8 @@ namespace RobotCore.Sensors
         public float VelNoiseStdDev   = 0.02f;   // m/s
         private readonly GaussianRng _rng;
         
-        public IMUSensor(Rigidbody rb, Transform bodyTransform, int noiseSeed = 1)
+        public IMUSensor(int noiseSeed = 1)
         {
-            _rb = rb;
-            _bodyTransform = bodyTransform;
             _rng = new GaussianRng(noiseSeed);
         }
 
@@ -54,35 +53,22 @@ namespace RobotCore.Sensors
             LastTimestampSec = 0;
             IsValid = false;
         }
-        public void Initialize(Rigidbody rb)
+        public void Initialize(in PhysicsState truth)
         {
-            if (rb == null)
-            {
-                _rb = null;
-                _bodyTransform = null;
-                IsValid = false;
-                return;
-            }
-
-            _rb = rb;
-            _bodyTransform = rb.transform;
-
-            _prevVelWorld = rb.linearVelocity;
+            _prevVelWorld = truth.VelocityUnity;
             _hasPrev = true;
             IsValid = true;
         }
-        public void SampleAngularVelocity(double nowSec, float deltaTime)
+        private void SampleAngularVelocity(in PhysicsState truth)
         {
-            Vector3 wWorld = _rb.angularVelocity;
-            Vector3 wBody = _bodyTransform.InverseTransformDirection(wWorld);
-            
+            Vector3 wBody = Quaternion.Inverse(truth.RotationUnity) * truth.AngularVelocityUnity;
             LastAngVel = Frames.TransformAngularVelocity(wBody, OutputFrame); // Output is in Rad/s
         }
-        public void SampleAttitude(double nowSec, float deltaTime)
+        private void SampleAttitude(in PhysicsState truth)
         {
-            LastAtt = AttitudeDeg(_bodyTransform.rotation, OutputFrame);
-            LastOrientation = Frames.TransformQuaternion(_bodyTransform.rotation, OutputFrame);
-            LastRotationUnity = _bodyTransform.rotation;
+            LastAtt = AttitudeDeg(truth.RotationUnity, OutputFrame);
+            LastOrientation = Frames.TransformQuaternion(truth.RotationUnity, OutputFrame);
+            LastRotationUnity = truth.RotationUnity;
         }
 
         /// <summary>Roll, pitch, yaw (deg, each in +-180) of a Unity body rotation, in the given frame.</summary>
@@ -109,9 +95,9 @@ namespace RobotCore.Sensors
             if (a < -180f) a += 360f;
             return a;
         }
-        public void SampleAcceleration(double nowSec, float deltaTime)
+        private void SampleAcceleration(in PhysicsState truth, float deltaTime)
         {
-            Vector3 vWorld = _rb.linearVelocity;
+            Vector3 vWorld = truth.VelocityUnity;
             Vector3 aWorld = (vWorld - _prevVelWorld) / deltaTime;
             _prevVelWorld = vWorld;
 
@@ -122,20 +108,18 @@ namespace RobotCore.Sensors
             if (!RemoveGravity)
                 aWorld -= Physics.gravity;
 
-            Vector3 aBody = _bodyTransform.InverseTransformDirection(aWorld);
+            Vector3 aBody = Quaternion.Inverse(truth.RotationUnity) * aWorld;
             LastLinAcc = Frames.TransformAcceleration(aBody, OutputFrame);
         }
-        public void SampleVelocity(double nowSec, float deltaTime)
+        private void SampleVelocity(in PhysicsState truth)
         {
-            Vector3 vWorld = _rb.linearVelocity;
-            Vector3 vBody = _bodyTransform.InverseTransformDirection(vWorld);
-            
+            Vector3 vBody = Quaternion.Inverse(truth.RotationUnity) * truth.VelocityUnity;
             LastVel = Frames.TransformLinear(vBody, OutputFrame);
         }
         // Call from SensorManager's post-physics sample phase using deterministic dt.
-        public void Sample(double nowSec, float deltaTime, bool addNoise = false)
+        public void Sample(in PhysicsState truth, double nowSec, float deltaTime, bool addNoise = false)
         {
-            if (_rb == null || _bodyTransform == null || deltaTime <= 0f)
+            if (deltaTime <= 0f)
             {
                 IsValid = false;
                 return;
@@ -143,14 +127,14 @@ namespace RobotCore.Sensors
 
             if (!_hasPrev)
             {
-                _prevVelWorld = _rb.linearVelocity;
+                _prevVelWorld = truth.VelocityUnity;
                 _hasPrev = true;
             }
 
-            SampleAcceleration(nowSec, deltaTime);
-            SampleAngularVelocity(nowSec, deltaTime);
-            SampleAttitude(nowSec, deltaTime);
-            SampleVelocity(nowSec, deltaTime);
+            SampleAcceleration(truth, deltaTime);
+            SampleAngularVelocity(truth);
+            SampleAttitude(truth);
+            SampleVelocity(truth);
 
             if (addNoise)
             {

@@ -225,12 +225,12 @@ namespace QuadSim.RuntimeUI.Workspace
         }
         private void RefreshMotors()
         {
-            var pawn = Flight?.Pawn; var ctrl = pawn != null ? pawn.Controller : null;
+            var pawn = Flight?.Pawn;
             bool changed = pawn != motorPawn; motorPawn = pawn;
             float blend = 1 - Mathf.Exp(-Time.unscaledDeltaTime / 0.08f);
             for (int i = 0; i < 4; i++)
             {
-                float value = ctrl != null && i < ctrl.LastMotor01.Count ? ctrl.LastMotor01[i] : 0;
+                float value = pawn != null ? pawn.Data.Actuators.Thrust01[i] : 0;
                 value = WorkspaceBackend.IsFinite(value) ? Mathf.Clamp01(value) : 0;
                 motorLevels[i] = changed ? value : Mathf.Lerp(motorLevels[i], value, blend);
                 motors[i].style.height = Length.Percent(motorLevels[i] * 100);
@@ -238,11 +238,11 @@ namespace QuadSim.RuntimeUI.Workspace
         }
         private void RefreshMotorLabels()
         {
-            var ctrl = Flight?.Pawn != null ? Flight.Pawn.Controller : null;
+            var pawn = Flight?.Pawn;
             for (int i = 0; i < 4; i++)
             {
-                float value = ctrl != null && i < ctrl.LastMotor01.Count ? ctrl.LastMotor01[i] : 0;
-                float thrust = ctrl != null && i < ctrl.Thrusts.Count ? ctrl.Thrusts[i] : 0;
+                float value = pawn != null ? pawn.Data.Actuators.Thrust01[i] : 0;
+                float thrust = pawn != null ? pawn.Data.Actuators.ThrustN[i] : 0;
                 motorLabels[i].text = $"{Mathf.Clamp01(value) * 100:F0}%\n{thrust:F2} N";
             }
         }

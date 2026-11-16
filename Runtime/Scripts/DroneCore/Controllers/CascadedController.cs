@@ -82,8 +82,9 @@ namespace DroneCore.Controllers
         private QuadPawn _body;
         private SensorManager _sensorManager;
         private ICommandSource _goalSource;
-        // The one state every loop reads, refreshed at the start of each step.
-        private readonly VehicleStateHolder _state = new VehicleStateHolder();
+        // The vehicle's data store: loops read its Estimate; this controller is the
+        // sole writer of its Actuators (rotor plant) and Controller records.
+        private VehicleDataStore _store;
 
         // ============================================================================
         // Configuration & Physics
@@ -143,20 +144,10 @@ namespace DroneCore.Controllers
         // Public Accessors
         // ============================================================================
 
-        public IReadOnlyList<float> LastMotor01 => _motor;
-        public IReadOnlyList<float> Thrusts => _thrusts;
-        /// <summary>Actual rotor speed after the motor lag (rad/s).</summary>
-        public float RotorSpeedRadS(int motor) => _rotorSpeeds.Speed01(motor) * _rotorPhysics.MaxSpeedRadS;
-        /// <summary>Commanded rotor speed (rad/s).</summary>
-        public float RotorSpeedTargetRadS(int motor) => _rotorSpeeds.Target01(motor) * _rotorPhysics.MaxSpeedRadS;
-        public CascadeTelemetrySnapshot TelemetrySnapshot => _telemetry;
+        // Controller outputs (motors, thrusts, rotor speeds, targets, allocation)
+        // are published to the vehicle's data store, not exposed here.
         public IReadOnlyDictionary<PIDKey, PIDInfo> PIDMap => _pidMap;
         public EffectivenessMatrix Effectiveness => _controlAllocator.Effectiveness;
-        public AllocationDiagnostics LastAllocation => _controlAllocator.LastAllocation;
-        public int AllocatorRank => _controlAllocator.Rank;
-        public float AllocatorConditionNumber => _controlAllocator.ConditionNumber;
-        public Vector3 LastAchievedForceBody => _lastAchievedForceBody;
-        public Vector3 LastAchievedTorqueBody => _lastAchievedTorqueBody;
         
         /// <summary>Debug visuals hook. RuntimeUI writes this; consume in a future debug-draw pass. TODO.</summary>
         public bool DebugVisualsEnabled { get; set; }
@@ -182,6 +173,12 @@ namespace DroneCore.Controllers
             _body = body;
             _sensorManager = sensors;
             _goalSource = body.CommandProxy;
+            if (body != null)
+            {
+                _store = body.Data;
+                _store.Claim(VehicleRecord.Actuators, this);
+                _store.Claim(VehicleRecord.Controller, this);
+            }
             //_thrusters = body.Thrusters;
 
             if (_body == null)
@@ -318,13 +315,13 @@ namespace DroneCore.Controllers
             for (int axis = 0; axis < 4; axis++)
             {
                 if (_axes[axis].Position != null)
-                    _axes[axis].Position.Initialize(axis, _goalSource, _state);
+                    _axes[axis].Position.Initialize(axis, _goalSource, _store);
 
-                _axes[axis].Velocity.Initialize(axis, _goalSource, _state);
-                _axes[axis].Rate.Initialize(axis, _goalSource, _state);
+                _axes[axis].Velocity.Initialize(axis, _goalSource, _store);
+                _axes[axis].Rate.Initialize(axis, _goalSource, _store);
 
                 if (_axes[axis].Angle != null)
-                    _axes[axis].Angle.Initialize(axis, _goalSource, _state);
+                    _axes[axis].Angle.Initialize(axis, _goalSource, _store);
             }
         }
 
@@ -374,6 +371,7 @@ namespace DroneCore.Controllers
                 _body.CommandProxy.ForceSetCommand(new Axis4(), keepMode, owner);
             }
 
+            PublishOutputs();
             Debug.Log($"[CascadedController] {name}: State reset");
         }
 
@@ -384,14 +382,6 @@ namespace DroneCore.Controllers
         public void StepController(float deltaTime)
         {
             if (!_configApplied) return;
-
-            // One state snapshot per step, from the configured source.
-            if (_sensorManager != null)
-            {
-                _state.Current = (_cachedConfig.Controller.StateSource == StateSource.Truth)
-                    ? _sensorManager.TruthState()
-                    : _sensorManager.SensorState();
-            }
 
             float actualDeltaTime = Mathf.Clamp(deltaTime, 0.001f, 0.1f);
 
@@ -411,6 +401,35 @@ namespace DroneCore.Controllers
             }
 
             FlightController(actualDeltaTime);
+            PublishOutputs();
+        }
+
+        /// <summary>Publish this step's rotor plant output and controller status to the vehicle's data store.</summary>
+        private void PublishOutputs()
+        {
+            if (_store == null) return;
+
+            var actuators = new ActuatorState
+            {
+                ForceBody = _lastAchievedForceBody,
+                TorqueBody = _lastAchievedTorqueBody,
+            };
+            for (int i = 0; i < 4; i++)
+            {
+                actuators.Thrust01[i] = _motor[i];
+                actuators.ThrustN[i] = _thrusts[i];
+                actuators.RotorSpeedRadS[i] = _rotorSpeeds.Speed01(i) * _rotorPhysics.MaxSpeedRadS;
+                actuators.RotorSpeedTargetRadS[i] = _rotorSpeeds.Target01(i) * _rotorPhysics.MaxSpeedRadS;
+            }
+            _store.PublishActuators(this, actuators);
+
+            _store.PublishController(this, new ControllerStatus
+            {
+                Targets = _telemetry,
+                Allocation = _controlAllocator.LastAllocation,
+                AllocatorRank = _controlAllocator.Rank,
+                AllocatorConditionNumber = _controlAllocator.ConditionNumber,
+            });
         }
         
         
@@ -534,7 +553,7 @@ namespace DroneCore.Controllers
                 }
  
                 // Rotate horizontal components into heading frame
-                Quaternion bodyRot = _state.Current.RotationUnity;
+                Quaternion bodyRot = _store.Estimate.RotationUnity;
                 Vector3 vSpHeading = OutputFrameVelToHeadingVel(vSpOutputFrame, bodyRot);
  
                 // Constrain velocity to the profile's limits: XY by magnitude, Z (up) symmetric.
@@ -891,7 +910,7 @@ namespace DroneCore.Controllers
         private float DesiredForceToCollective(Vector3 desiredSpecificForceHeading)
         {
             const float g = 9.81f;
-            Quaternion bodyRot = _state.Current.RotationUnity;
+            Quaternion bodyRot = _store.Estimate.RotationUnity;
             Vector3 bodyUpEnu = Frames.TransformWorldVector(bodyRot * Vector3.up, SimFrame.FLU);
             Vector3 bodyUpHeading = Frames.EnuToHeadingFlu(
                 bodyUpEnu, Frames.EnuHeadingRad(bodyRot));

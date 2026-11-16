@@ -35,11 +35,11 @@ namespace QuadSim.RuntimeUI.ImGuiHud
                 ImGui.TextColored(SimImGuiStyle.HeaderBlue, "State Info");
                 ImGui.Separator();
 
-                var s = pawn.Sensors != null ? pawn.Sensors.Latest : default;
+                var s = pawn.Data.Measurements;   // the IMU/GPS sections show raw measurements
                 float mass = pawn.Rigidbody != null ? pawn.Rigidbody.mass : 0f;
                 ImGui.Text($"Drone Mass: {mass:F2} kg");
 
-                var tel = ctrl.TelemetrySnapshot;
+                var tel = pawn.Data.Controller.Targets;
 
                 ImGui.TextColored(SimImGuiStyle.HeaderBlue, "IMU");
                 ImGui.Text($"Valid: {s.ImuValid}   t={s.ImuTimestampSec:F3}s");
@@ -94,16 +94,12 @@ namespace QuadSim.RuntimeUI.ImGuiHud
         {
             ImGui.Text("Thruster Power");
 
-            var motor01 = ctrl.LastMotor01;
-            var thrusts = ctrl.Thrusts;
+            var actuators = pawn.Data.Actuators;
+            var motor01 = actuators.Thrust01;
+            var thrusts = actuators.ThrustN;
             string[] labels = { "FL", "FR", "BL", "BR" };
 
-            int count = Mathf.Min(4, Mathf.Min(motor01.Count, thrusts.Count));
-            if (count <= 0)
-            {
-                ImGui.TextDisabled("No motor telemetry yet.");
-                return;
-            }
+            const int count = 4;
 
             if (ImGui.BeginTable("##ThrustBars", count, ImGuiTableFlags.SizingFixedFit))
             {

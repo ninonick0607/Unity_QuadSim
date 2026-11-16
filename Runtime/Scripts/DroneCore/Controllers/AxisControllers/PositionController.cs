@@ -12,7 +12,7 @@ namespace DroneCore.Controllers.AxisControllers
 
         private int _axis;
         private ICommandSource _cmdGoal;
-        private VehicleStateHolder _state;
+        private VehicleDataStore _store;   // reads Estimate
         private DroneConfig _config;
         private float _output;
         private float _externalGoal;
@@ -23,11 +23,11 @@ namespace DroneCore.Controllers.AxisControllers
             _config = inConfig;
         }
         
-        public void Initialize(int axis, ICommandSource cmd, VehicleStateHolder state)
+        public void Initialize(int axis, ICommandSource cmd, VehicleDataStore store)
         {
             _axis = axis;
             _cmdGoal = cmd;
-            _state = state;
+            _store = store;
             PositionPID PID = _config.Position;
     
             if (axis == 3)
@@ -41,7 +41,7 @@ namespace DroneCore.Controllers.AxisControllers
 
         public void Update(float deltaTime)
         {
-            if (!_bInitialized || _cmdGoal == null || _state == null || _pidSet == null)
+            if (!_bInitialized || _cmdGoal == null || _store == null || _pidSet == null)
             {
                 _output = 0f;
                 return;
@@ -66,9 +66,9 @@ namespace DroneCore.Controllers.AxisControllers
             float State;
             switch (_axis)
             {
-                case 0: State = _state.Current.PositionEnu.x; break;  // forward
-                case 1: State = _state.Current.PositionEnu.y; break;  // lateral
-                case 3: State = _state.Current.PositionEnu.z; break;  // altitude
+                case 0: State = _store.Estimate.PositionEnu.x; break;  // forward
+                case 1: State = _store.Estimate.PositionEnu.y; break;  // lateral
+                case 3: State = _store.Estimate.PositionEnu.z; break;  // altitude
                 default: State = 0f; break;
             }
 

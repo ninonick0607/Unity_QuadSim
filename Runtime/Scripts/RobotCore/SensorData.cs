@@ -30,6 +30,7 @@ namespace RobotCore
         public Vector3 ImuAccel;         // m/s², body specific force (gravity included)
         public Vector3 ImuVel;           // m/s, BODY-frame velocity (not world!)
         public Quaternion ImuOrientation; // body(BodyFrame) → world(ENU)
+        public Quaternion ImuRotationUnity; // same attitude, body → world in Unity axes (internal; not sent over RPC)
         public double ImuTimestampSec;
         public bool ImuValid;
 

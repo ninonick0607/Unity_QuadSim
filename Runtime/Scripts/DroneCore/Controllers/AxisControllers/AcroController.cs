@@ -15,7 +15,7 @@ namespace DroneCore.Controllers.AxisControllers
         public int _axis { get; private set; }
         private ICommandSource _cmdGoal;
         private float _externalGoal;
-        private VehicleStateHolder _state;
+        private VehicleDataStore _store;   // reads Estimate
         private DroneConfig _config;
         
         private bool _bInitialized;
@@ -29,11 +29,11 @@ namespace DroneCore.Controllers.AxisControllers
             _config = inConfig;
         }
         
-        public void Initialize(int axis, ICommandSource cmd, VehicleStateHolder state)
+        public void Initialize(int axis, ICommandSource cmd, VehicleDataStore store)
         {
             _axis = axis;
             _cmdGoal = cmd;
-            _state = state;
+            _store = store;
             AcroPID PID = _config.Acro;
             // Output is an angular acceleration (deg/s^2), turned into torque by
             // the mixer. No clamp here: the allocator knows the real motor
@@ -51,13 +51,13 @@ namespace DroneCore.Controllers.AxisControllers
 
         public void Update(float deltaTime)
         {
-            if (!_bInitialized || _state == null || _pidSet == null || (_cmdGoal == null && !_bUseExternalGoal))
+            if (!_bInitialized || _store == null || _pidSet == null || (_cmdGoal == null && !_bUseExternalGoal))
             {
                 _output = 0.0f;
                 return;
             }
 
-            float StateRate = _state.Current.BodyRatesRadS[_axis];
+            float StateRate = _store.Estimate.BodyRatesRadS[_axis];
             float Goal = _bUseExternalGoal ? _externalGoal : _cmdGoal.GetCommandValue()[_axis];
             float StateRateDegS = Mathf.Rad2Deg * StateRate;
             

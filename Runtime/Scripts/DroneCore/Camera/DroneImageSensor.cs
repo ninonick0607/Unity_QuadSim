@@ -86,9 +86,7 @@ namespace DroneCore.CameraSystem
             }
 
             _sequence++;
-            SensorData metadata = _owner != null && _owner.Sensors != null
-                ? _owner.Sensors.Latest
-                : default;
+            SensorData metadata = _owner != null ? _owner.Data.Measurements : default;
             return new Dictionary<string, object>
             {
                 ["agent_id"] = _owner != null ? _owner.AgentId : string.Empty,

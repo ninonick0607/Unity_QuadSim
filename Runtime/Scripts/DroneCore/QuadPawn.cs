@@ -11,6 +11,7 @@ using SimCore.Common;
 using UnityEngine;
 using Yaml.Drone;
 using DroneCore.Api;
+using DroneCore.Common;
 using QuadSim.RL;
 
 namespace DroneCore
@@ -18,7 +19,9 @@ namespace DroneCore
     /// <summary>
     /// QuadPawn is the physical drone entity — the "vehicle" that exists in the world.
     /// It owns references to all drone subsystems and orchestrates the physics step:
-    ///   Controller → Apply Wrench → Physics → Sensors
+    ///   Controller → Apply Wrench → Physics → Truth → Sensors → Estimate
+    /// It also owns the vehicle's data store (Data): every consumer (controller,
+    /// UI, RPC) reads vehicle data there, and each record has one writer.
     ///
     /// DroneManager iterates QuadPawns in the pre- and post-physics phases.
     /// QuadPawn is NOT an ISimulatable — DroneManager drives it.
@@ -77,7 +80,6 @@ namespace DroneCore
 
         // Canonical motor order: [0]=FL, [1]=FR, [2]=BL, [3]=BR
         private readonly Transform[] _motors = new Transform[4];
-        private readonly float[] _propellerRPMs = new float[4];
 
         // Config
         private DroneConfig _config;
@@ -113,11 +115,19 @@ namespace DroneCore
         // Manager reference (set explicitly by DroneManager, not searched)
         private DroneManager _droneManager;
 
+        // The vehicle's data store and the estimator that writes its Estimate record.
+        // QuadPawn is the sole writer of the Truth record.
+        private readonly VehicleDataStore _data = new VehicleDataStore();
+        private StateEstimator _estimator;
+
         // ============================================================================
         // Public Accessors
         // ============================================================================
 
         public void SetDroneManager(DroneManager manager) => _droneManager = manager;
+
+        /// <summary>This vehicle's data: truth, measurements, estimate, actuators, controller status.</summary>
+        public VehicleDataStore Data => _data;
 
         public Rigidbody Rigidbody => rb;
         public Transform[] Motors => _motors;
@@ -178,6 +188,9 @@ namespace DroneCore
             if (modeCoordinator == null) modeCoordinator = GetComponent<ModeCoordinator>();
             if (quadSimApi == null) quadSimApi = GetComponent<QuadSimApi>();
             EnsureCameraRig();
+
+            _data.Claim(VehicleRecord.Truth, this);
+            _estimator = new StateEstimator(_data);
             
             // Build motor array from serialized references
             _motors[0] = motorFL;
@@ -309,6 +322,7 @@ namespace DroneCore
         {
             _config = config;
             _configApplied = true;
+            _estimator.Source = _config.Controller.StateSource;
 
             EnsureCameraRig();
             CameraDirector director = CameraDirector.Get();
@@ -429,13 +443,16 @@ namespace DroneCore
 
             Debug.Log($"[QuadPawn] {DroneID}: Initializing subsystems...");
 
-            // 1. Sensors
+            // 1. Sensors: sample the current physics state, then the first estimate.
+            PublishTruth();
             if (sensorManager != null)
             {
+                sensorManager.Bind(_data);
                 sensorManager.OnStart();
                 _sensorsReady = true;
                 Debug.Log($"[QuadPawn] {DroneID}: SensorManager initialized");
             }
+            _estimator.Update();
 
             // 2. Controller — only ready if sensors are
             if (controller != null && _sensorsReady)
@@ -479,8 +496,33 @@ namespace DroneCore
         public void PostPhysicsStep(double dtSec, long nowNanos)
         {
             if (!_initialized) return;
+            PublishTruth();
             if (sensorManager != null && _sensorsReady)
                 sensorManager.UpdateSensors(dtSec, nowNanos);
+            _estimator.Update();
+        }
+
+        /// <summary>Publish the Rigidbody's current state as this vehicle's Truth record.</summary>
+        private void PublishTruth()
+        {
+            if (rb != null)
+                _data.PublishTruth(this, PhysicsState.FromRigidbody(rb));
+        }
+
+        /// <summary>Re-publish truth and the estimate after something moved the body between steps.</summary>
+        private void RefreshAfterTeleport()
+        {
+            PublishTruth();
+            _estimator?.Update();
+        }
+
+        /// <summary>Reset the sensors and re-sample them at the current pose (e.g. after a geo-origin change).</summary>
+        public void ResetSensors()
+        {
+            PublishTruth();
+            if (sensorManager != null && _sensorsReady)
+                sensorManager.OnReset();
+            _estimator?.Update();
         }
 
         private void RunController(float dt)
@@ -590,8 +632,8 @@ namespace DroneCore
             ResetPhysics();
             ResetControllerState();
 
-            if (sensorManager != null)
-                sensorManager.OnReset();
+            // Sensors re-sample at the new pose, then the estimate follows.
+            ResetSensors();
 
             Debug.Log($"[QuadPawn] {DroneID}: Position reset to {pos}, rb.position={(rb != null ? rb.position.ToString() : "NULL")}");
         }
@@ -607,6 +649,7 @@ namespace DroneCore
 
             rb.angularVelocity = Vector3.zero;
             rb.linearVelocity = Vector3.zero;
+            RefreshAfterTeleport();
         }
 
         /// <summary>
@@ -629,6 +672,7 @@ namespace DroneCore
             _lastAppliedGeneration = 0;
 
             rb.WakeUp();
+            RefreshAfterTeleport();
         }
 
         /// <summary>
@@ -681,29 +725,9 @@ namespace DroneCore
         private void UpdatePropellerVisuals(float deltaTime)
         {
             if (propellerMeshes == null || propellerMeshes.Length != 4) return;
-            if (controller == null) return;
 
-            var motorOutputs = controller.LastMotor01;
-            if (motorOutputs == null || motorOutputs.Count != 4) return;
-
-            // Thrust model params from config or defaults
-            float thrustCoef = 1e-5f;
-            float propDiameter = 0.127f;
-            float airDensity = 1.225f;
-            float maxThrustPerMotor = 4.12f;
-
-            if (_configApplied)
-            {
-                if (_config.RotorParams.Model.ThrustCoeff > 0)
-                    thrustCoef = _config.RotorParams.Model.ThrustCoeff;
-                if (_config.RotorParams.Model.Prop_Diameter > 0)
-                    propDiameter = _config.RotorParams.Model.Prop_Diameter;
-                if (_config.FlightParams.MaxThrust > 0)
-                    maxThrustPerMotor = _config.FlightParams.MaxThrust / 4f;
-            }
-
-            float denom = thrustCoef * airDensity * Mathf.Pow(propDiameter, 4);
-            if (denom < 1e-10f) return;
+            // Spin the meshes at the rotor plant's actual rotor speeds.
+            Motor4 rotorSpeedRadS = _data.Actuators.RotorSpeedRadS;
 
             // Spin direction from config or default X-config
             int[] spinDir = { 1, -1, -1, 1 };
@@ -717,13 +741,8 @@ namespace DroneCore
             {
                 if (propellerMeshes[i] == null) continue;
 
-                float thrust01 = Mathf.Max(0f, motorOutputs[i]);
-                float thrustN = thrust01 * maxThrustPerMotor;
-                float rpm = 60f * Mathf.Sqrt(thrustN / denom);
-                _propellerRPMs[i] = rpm;
-
-                float direction = spinDir[i];
-                float frameRotation = (rpm / 60f) * 360f * deltaTime * direction;
+                float degreesPerSecond = rotorSpeedRadS[i] * Mathf.Rad2Deg;
+                float frameRotation = degreesPerSecond * deltaTime * spinDir[i];
 
                 propellerMeshes[i].Rotate(propellerSpinAxis, frameRotation, Space.Self);
             }

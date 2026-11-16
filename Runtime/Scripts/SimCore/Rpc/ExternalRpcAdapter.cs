@@ -21,6 +21,7 @@
 
 using System;
 using System.Collections.Generic;
+using DroneCore.Common;
 using UnityEngine;
 using SimCore.Common;
 using DroneCore;
@@ -496,6 +497,8 @@ namespace SimCore.Rpc
                 ["get_sensor_data"]  = HandleGetSensorData,
                 ["capture_images"]   = HandleCaptureImages,
                 ["get_telemetry"]    = HandleGetTelemetry,
+                ["get_state"]        = HandleGetState,
+                ["get_truth"]        = HandleGetTruth,
                 ["set_controller"]   = HandleSetController,
 
                 // --- Phase 9b: Reset operations ---
@@ -884,6 +887,38 @@ namespace SimCore.Rpc
             var s = drone.GetSensorData();
             return RpcResponse.Ok(req.RequestId, SensorDataToDict(s));
         }
+
+        // --- get_state / get_truth ---
+        // Same fields for both, so an estimate can be compared with the truth directly.
+
+        private RpcResponse HandleGetState(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+            if (!TryGetSelectedDrone(req, out var drone, out var droneErr)) return droneErr;
+            return RpcResponse.Ok(req.RequestId, VehicleStateToDict(drone.GetStateEstimate(), drone.GetSensorData(), "estimate"));
+        }
+
+        private RpcResponse HandleGetTruth(RpcRequest req)
+        {
+            if (!RequireConnected(req, out var err)) return err;
+            if (!TryGetSelectedDrone(req, out var drone, out var droneErr)) return droneErr;
+            return RpcResponse.Ok(req.RequestId, VehicleStateToDict(drone.GetTruth(), drone.GetSensorData(), "truth"));
+        }
+
+        private Dictionary<string, object> VehicleStateToDict(VehicleState v, SensorData s, string source) => new Dictionary<string, object>
+        {
+            ["source"] = source,
+            ["episode_id"] = _rlEpisodeId,
+            ["step_index"] = ClockFactory.Clock.StepCount,
+            ["sim_time_ns"] = _sim.SimTimeNanos,
+            ["sim_time"] = _sim.SimTimeSec,
+            // Body-axis convention of attitude_deg and body_rates (as for sensors).
+            ["frame"] = StateEstimator.OutputFrame(s) == SimFrame.FRD ? "frd" : "flu",
+            ["position_enu"] = Vec3ToArray(v.PositionEnu),
+            ["heading_velocity"] = Vec3ToArray(v.HeadingVelocity),   // forward, left, up
+            ["attitude_deg"] = Vec3ToArray(v.AttitudeDeg),
+            ["body_rates"] = Vec3ToArray(v.BodyRatesRadS),          // rad/s
+        };
 
         private RpcResponse HandleCaptureImages(RpcRequest req)
         {

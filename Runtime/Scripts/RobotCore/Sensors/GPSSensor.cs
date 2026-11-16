@@ -1,3 +1,4 @@
+using DroneCore.Common;
 using MathUtil;
 using RobotCore.Core_Utils;
 using UnityEngine;
@@ -6,7 +7,7 @@ namespace RobotCore.Sensors
 {
     public sealed class GPSSensor
     {
-        private Rigidbody _rb;
+        // Samples the vehicle's published physics state (VehicleDataStore.Truth).
 
         /// <summary>
         /// Last sampled local position, ALWAYS world-frame ENU
@@ -33,9 +34,8 @@ namespace RobotCore.Sensors
         public bool    IsValid          { get; private set; }
 
         
-        public GPSSensor(Rigidbody inRb, int noiseSeed = 2)
+        public GPSSensor(int noiseSeed = 2)
         {
-            _rb = inRb;
             _rng = new GaussianRng(noiseSeed);
         }
 
@@ -51,20 +51,14 @@ namespace RobotCore.Sensors
         public void Initialize(GeoReferencingSystem inGeo )
         {
             _geo = inGeo;
-            IsValid = (_geo != null && _rb != null);
+            IsValid = _geo != null;
             HasFix = true;
         }
 
-        public void Sample(double nowSec, bool addNoise = false)
+        public void Sample(in PhysicsState truth, double nowSec, bool addNoise = false)
         {
-            if (_rb == null)
-            {
-                HasFix = false;
-                return;
-            }
-
             // World-frame local position is always ENU (see LastPosition doc).
-            Vector3 pos = Frames.TransformWorldPosition(_rb.position, SimFrame.FLU);
+            Vector3 pos = Frames.TransformWorldPosition(truth.PositionUnity, SimFrame.FLU);
 
             if (addNoise)
             {
@@ -76,7 +70,7 @@ namespace RobotCore.Sensors
             if (_geo != null)
             {
                 // Noise-free ENU for the geodetic conversion (ground truth).
-                Vector3 enu = Frames.TransformWorldPosition(_rb.position, SimFrame.FLU);
+                Vector3 enu = Frames.TransformWorldPosition(truth.PositionUnity, SimFrame.FLU);
                 _geo.EnuToGeodetic(enu.x, enu.y, enu.z,
                     out double lat, out double lon, out double h);
                 LastLatDeg = lat;
@@ -86,7 +80,7 @@ namespace RobotCore.Sensors
                 // Unity world is X=East, Y=Up, Z=North (Mag's own convention comment),
                 // so NED = (N, E, D) = (vz, vx, -vy). No Frames call needed, and this
                 // avoids any origin-offset ambiguity in transforming a velocity vector.
-                Vector3 v = _rb.linearVelocity;          // _rb.linearVelocity on Unity 6+
+                Vector3 v = truth.VelocityUnity;
                 LastVelNED = new Vector3(v.z, v.x, -v.y);
             }
             

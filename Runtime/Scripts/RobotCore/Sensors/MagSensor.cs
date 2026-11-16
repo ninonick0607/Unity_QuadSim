@@ -1,3 +1,4 @@
+using DroneCore.Common;
 using SimCore;
 using MathUtil;
 using UnityEngine;
@@ -13,9 +14,8 @@ namespace RobotCore.Sensors
         public const float CALIBRATION_DURATION = 1.0f;       // vestigial; mirrors Unreal, gates nothing
 
         private readonly GaussianRng _rng;
-        private Rigidbody _rb;
-        private Transform _bodyTransform;
-        private GeoReferencingSystem _geo;
+        private GeoReferencingSystem _geo;   // samples the published physics state (VehicleDataStore.Truth)
+        private Quaternion _rotationUnity = Quaternion.identity;   // body to world at the last sample
 
         public SimFrame OutputFrame = SimFrame.FLU;
 
@@ -31,10 +31,8 @@ namespace RobotCore.Sensors
         private bool  _earthFieldValid;
         private bool  _declinationLogged;
 
-        public MagSensor(Rigidbody rb, Transform bodyTransform, int noiseSeed = 4)
+        public MagSensor(int noiseSeed = 4)
         {
-            _rb = rb;
-            _bodyTransform = bodyTransform;
             _rng = new GaussianRng(noiseSeed);
         }
 
@@ -57,12 +55,12 @@ namespace RobotCore.Sensors
         public void Initialize(GeoReferencingSystem geo)
         {
             _geo = geo;
-            IsValid = (_geo != null && _rb != null && _bodyTransform != null);
+            IsValid = _geo != null;
         }
 
-        public void Sample(double nowSec, float dtSec, bool addNoise)
+        public void Sample(in PhysicsState truth, double nowSec, float dtSec, bool addNoise)
         {
-            if (_geo == null || _rb == null || _bodyTransform == null)
+            if (_geo == null)
             {
                 IsValid = false;
                 return;
@@ -74,7 +72,8 @@ namespace RobotCore.Sensors
                 if (_calibrationTime >= CALIBRATION_DURATION) IsCalibrating = false;
             }
 
-            UpdateEarthMagField();
+            _rotationUnity = truth.RotationUnity;
+            UpdateEarthMagField(truth);
             if (!_earthFieldValid) { IsValid = false; return; }
 
             // Earth field NED (Gauss) -> Unity world (X=East, Y=Up, Z=North):
@@ -83,7 +82,7 @@ namespace RobotCore.Sensors
             Vector3 fieldWorldUnity = new Vector3(e, -d, n);
 
             // World -> body (Unity), then -> OutputFrame. Same machinery as the IMU.
-            Vector3 fieldBodyUnity = _bodyTransform.InverseTransformDirection(fieldWorldUnity);
+            Vector3 fieldBodyUnity = Quaternion.Inverse(_rotationUnity) * fieldWorldUnity;
             Vector3 field = Frames.TransformLinear(fieldBodyUnity, OutputFrame);
 
             if (addNoise)
@@ -100,10 +99,10 @@ namespace RobotCore.Sensors
             IsValid = true;
         }
 
-        private void UpdateEarthMagField()
+        private void UpdateEarthMagField(in PhysicsState truth)
         {
             // World position in ENU (East, North, Up) — TransformWorldPosition(FLU) is the ENU map.
-            Vector3 flu = Frames.TransformWorldPosition(_rb.position, SimFrame.FLU);
+            Vector3 flu = Frames.TransformWorldPosition(truth.PositionUnity, SimFrame.FLU);
             _geo.EnuToGeodetic(flu.x, flu.y, flu.z, out double lat, out double lon, out _);
 
             EarthMagFieldNED    = GeoMagneticTables.GetMagFieldVectorNED((float)lat, (float)lon);
@@ -123,7 +122,7 @@ namespace RobotCore.Sensors
             // This points at *magnetic* North regardless of vehicle yaw, so the value tracks
             // declination — it's a transform self-consistency check, not vehicle heading.
             Vector3 bodyUnity  = Frames.InverseTransformLinear(LastMagField, OutputFrame);
-            Vector3 worldUnity = _bodyTransform.TransformDirection(bodyUnity);
+            Vector3 worldUnity = _rotationUnity * bodyUnity;
 
             float headingRad = Mathf.Atan2(worldUnity.x /*East*/, worldUnity.z /*North*/);
             float headingDeg = Mathf.Rad2Deg * headingRad;

@@ -150,12 +150,11 @@ namespace QuadSim.RuntimeUI.Workspace
         {
             var pawn = Selected;
             if (pawn == null || pawn.Sensors == null) return "No selected drone sensor data.";
-            var s = pawn.Sensors.Latest;
+            var s = pawn.Data.Measurements;
             string text = $"INERTIAL MEASUREMENT\nDrone   {pawn.DroneID}\nFrame   {pawn.Sensors.outputFrame}\nIMU   valid: {s.ImuValid}   t: {s.ImuTimestampSec:F3} s\nAttitude   {s.ImuAttitude:F2} deg\nRates   {s.ImuAngVel * Mathf.Rad2Deg:F2} deg/s\nBody velocity   {s.ImuVel:F2} m/s\nSpecific force   {s.ImuAccel:F2} m/s²\n\nGPS / WORLD ENU\nPosition   {s.GpsPosition:F2} m\nLat / lon   {s.GpsLatDeg:F5} / {s.GpsLonDeg:F5}\nAltitude   {s.GpsAltM:F2} m\n\nMAGNETOMETER\nField   {s.MagField:F3} Gauss\nHeading / declination   {s.MagHeadingDeg:F1} / {s.MagDeclinationDeg:F1} deg\n\nBAROMETER\nPressure   {s.BaroPressureHPa:F2} hPa\nTemperature   {s.BaroTemperatureC:F1} °C\nMSL altitude   {s.BaroAltitudeMSL:F2} m";
             if (pawn.Controller != null)
             {
-                var c = pawn.Controller;
-                var t = c.TelemetrySnapshot;
+                var t = pawn.Data.Controller.Targets;
                 text += $"\n\nCONTROLLER TARGETS\nAngles   {t.DesiredAnglesDeg:F2} deg\nRates   {t.DesiredRatesDeg:F2} deg/s\nVelocity   {t.DesiredVel:F2} m/s";
             }
             return text;

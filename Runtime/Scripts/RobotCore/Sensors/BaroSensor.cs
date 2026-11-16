@@ -1,3 +1,4 @@
+using DroneCore.Common;
 using SimCore;
 using MathUtil;
 using UnityEngine;
@@ -21,9 +22,7 @@ namespace RobotCore.Sensors
         private const float ISA_PRESSURE_MSL = 101325.0f;
         private const float ISA_EXPONENT = 5.256f; // g*M/(R*L)
 
-        private Rigidbody _rb;
-        private Transform _bodyTransform;
-        private GeoReferencingSystem _geo;
+        private GeoReferencingSystem _geo;   // samples the published physics state (VehicleDataStore.Truth)
 
         private double _lastSampleSec;
         private bool _hasPrevSample;
@@ -47,10 +46,8 @@ namespace RobotCore.Sensors
         public double LastTimestampSec { get; private set; }
         public bool IsValid { get; private set; }
 
-        public BaroSensor(Rigidbody rb, Transform bodyTransform, int noiseSeed = 3)
+        public BaroSensor(int noiseSeed = 3)
         {
-            _rb = rb;
-            _bodyTransform = bodyTransform;
             _rng = new GaussianRng(noiseSeed);
         }
 
@@ -71,20 +68,20 @@ namespace RobotCore.Sensors
         public void Initialize(GeoReferencingSystem geo)
         {
             _geo = geo;
-            IsValid = (_geo != null && _rb != null);
+            IsValid = _geo != null;
         }
 
         // Called by SensorManager at baro rate. dt is computed internally so drift stays
         // correct regardless of how the manager schedules us.
-        public void Sample(double nowSec, bool addNoise)
+        public void Sample(in PhysicsState truth, double nowSec, bool addNoise)
         {
-            if (_geo == null || _rb == null)
+            if (_geo == null)
             {
                 IsValid = false;
                 return;
             }
 
-            float altMsl = GetAltitudeMSL();
+            float altMsl = GetAltitudeMSL(truth);
             EstimatedAltitude = altMsl;
 
             CalculatePressureFromAltitude(altMsl); // sets clean LastPressure + LastTemperature
@@ -106,10 +103,10 @@ namespace RobotCore.Sensors
             IsValid = true;
         }
 
-        private float GetAltitudeMSL()
+        private float GetAltitudeMSL(in PhysicsState truth)
         {
             // Single frame boundary: world -> FLU, Z is up. Origin height + up = MSL altitude.
-            float up = Frames.TransformWorldPosition(_rb.position, SimFrame.FLU).z;
+            float up = Frames.TransformWorldPosition(truth.PositionUnity, SimFrame.FLU).z;
             return (float)(_geo.OriginHeight + up);
         }
 

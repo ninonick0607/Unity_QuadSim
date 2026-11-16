@@ -25,6 +25,7 @@
 //   - No Rigidbody ground truth in either path.
 
 using System;
+using DroneCore.Common;
 using UnityEngine;
 using SimCore;
 using SimCore.Common;
@@ -372,8 +373,29 @@ namespace DroneCore.Api
         /// </summary>
         public SensorData GetSensorData()
         {
-            if (_sensorManager == null) return default;
-            return _sensorManager.Latest;
+            if (_pawn == null) return default;
+            return _pawn.Data.Measurements;
+        }
+
+        /// <summary>
+        /// The vehicle's state estimate: what its controller believes, from the
+        /// configured state source (sensors by default).
+        /// </summary>
+        public VehicleState GetStateEstimate()
+        {
+            if (_pawn == null) return default;
+            return _pawn.Data.Estimate;
+        }
+
+        /// <summary>
+        /// Exact physics state in the same form as GetStateEstimate. Privileged:
+        /// for evaluation, rewards and estimator validation, not for control.
+        /// </summary>
+        public VehicleState GetTruth()
+        {
+            if (_pawn == null) return default;
+            return StateEstimator.FromPhysics(
+                _pawn.Data.Truth, StateEstimator.OutputFrame(_pawn.Data.Measurements));
         }
 
         public RLAgentState GetRLState()
@@ -390,8 +412,8 @@ namespace DroneCore.Api
         /// </summary>
         public CascadedController.CascadeTelemetrySnapshot GetControllerTelemetry()
         {
-            if (_controller == null) return default;
-            return _controller.TelemetrySnapshot;
+            if (_pawn == null) return default;
+            return _pawn.Data.Controller.Targets;
         }
 
         /// <summary>
@@ -405,46 +427,22 @@ namespace DroneCore.Api
                 DroneID = DroneID,
                 Mode = CurrentMode,
                 Controller = CurrentController,
-                ControllerTelemetry = GetControllerTelemetry(),
-                AchievedForceBody = _controller != null
-                    ? _controller.LastAchievedForceBody : Vector3.zero,
-                AchievedTorqueBody = _controller != null
-                    ? _controller.LastAchievedTorqueBody : Vector3.zero,
-                AllocatorRank = _controller != null ? _controller.AllocatorRank : 0,
-                AllocatorConditionNumber = _controller != null
-                    ? _controller.AllocatorConditionNumber : float.PositiveInfinity,
-                Allocation = _controller != null ? _controller.LastAllocation : null,
+                AllocatorConditionNumber = float.PositiveInfinity,
             };
+            if (_pawn == null) return telem;
 
-            if (_controller != null && _controller.LastMotor01 != null)
-            {
-                telem.MotorOutputs = new Motor4
-                {
-                    FL = _controller.LastMotor01[0],
-                    FR = _controller.LastMotor01[1],
-                    BL = _controller.LastMotor01[2],
-                    BR = _controller.LastMotor01[3]
-                };
-            }
-            if (_controller != null && _controller.Thrusts != null)
-            {
-                telem.MotorThrusts = new Motor4
-                {
-                    FL = _controller.Thrusts[0],
-                    FR = _controller.Thrusts[1],
-                    BL = _controller.Thrusts[2],
-                    BR = _controller.Thrusts[3]
-                };
-            }
-            if (_controller != null)
-            {
-                for (int i = 0; i < 4; i++)
-                {
-                    telem.RotorSpeedsRadS[i] = _controller.RotorSpeedRadS(i);
-                    telem.RotorSpeedTargetsRadS[i] = _controller.RotorSpeedTargetRadS(i);
-                }
-            }
-
+            ActuatorState actuators = _pawn.Data.Actuators;
+            ControllerStatus status = _pawn.Data.Controller;
+            telem.ControllerTelemetry = status.Targets;
+            telem.AchievedForceBody = actuators.ForceBody;
+            telem.AchievedTorqueBody = actuators.TorqueBody;
+            telem.AllocatorRank = status.AllocatorRank;
+            telem.AllocatorConditionNumber = status.AllocatorConditionNumber;
+            telem.Allocation = status.Allocation;
+            telem.MotorOutputs = actuators.Thrust01;
+            telem.MotorThrusts = actuators.ThrustN;
+            telem.RotorSpeedsRadS = actuators.RotorSpeedRadS;
+            telem.RotorSpeedTargetsRadS = actuators.RotorSpeedTargetRadS;
             return telem;
         }
 

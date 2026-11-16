@@ -25,10 +25,4 @@ namespace DroneCore.Common
         /// <summary>Body-to-world rotation, Unity axes. Heading and collective.</summary>
         public Quaternion RotationUnity;
     }
-
-    /// <summary>Holds the current snapshot so the controller and its loops share one copy.</summary>
-    public sealed class VehicleStateHolder
-    {
-        public VehicleState Current;
-    }
 }

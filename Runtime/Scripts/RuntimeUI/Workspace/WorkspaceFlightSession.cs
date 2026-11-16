@@ -94,8 +94,8 @@ namespace QuadSim.RuntimeUI.Workspace
             if (!Matches(expectedId) || !Supports(mode)) return false;
             if (Api.CurrentMode != mode && !Api.SetMode(mode)) return false;
             var state = State;
-            var sensors = Pawn.Sensors != null ? Pawn.Sensors.Latest : default;
-            state.Command = InitialCommand(mode, sensors.GpsPosition, sensors.ImuAttitude.z, HoverThrottle);
+            var estimate = Pawn.Data.Estimate;   // start setpoints from what the vehicle believes
+            state.Command = InitialCommand(mode, estimate.PositionEnu, estimate.AttitudeDeg.z, HoverThrottle);
             state.Mode = mode; state.Engaged = true; state.Hover = false; state.Gamepad = false;
             return true;
         }

@@ -345,16 +345,16 @@ namespace QuadSim.RuntimeUI.ImGuiHud
         private void InitCommandForMode(QuadPawn pawn, DronePanelState state, GoalMode mode)
         {
             var cmd = state.Cmd;
-            var latest = pawn.Sensors != null ? pawn.Sensors.Latest : default;
+            var estimate = pawn.Data.Estimate;   // start setpoints from what the vehicle believes
             float hoverThrottle = HoverThrottle01(pawn);
 
             switch (mode)
             {
                 case GoalMode.Position:
-                    cmd.PosX = latest.GpsPosition.x;
-                    cmd.PosY = latest.GpsPosition.y;
-                    cmd.PosAlt = latest.GpsPosition.z;
-                    cmd.PosYawDeg = latest.ImuAttitude.z;
+                    cmd.PosX = estimate.PositionEnu.x;
+                    cmd.PosY = estimate.PositionEnu.y;
+                    cmd.PosAlt = estimate.PositionEnu.z;
+                    cmd.PosYawDeg = estimate.AttitudeDeg.z;
                     break;
 
                 case GoalMode.Velocity:
@@ -453,10 +453,10 @@ namespace QuadSim.RuntimeUI.ImGuiHud
                 {
                     api.SetMode(GoalMode.Position);
 
-                    var latest = pawn.Sensors != null ? pawn.Sensors.Latest : default;
-                    cmd.PosX = latest.GpsPosition.x;
-                    cmd.PosY = latest.GpsPosition.y;
-                    cmd.PosYawDeg = latest.ImuAttitude.z;
+                    var estimate = pawn.Data.Estimate;
+                    cmd.PosX = estimate.PositionEnu.x;
+                    cmd.PosY = estimate.PositionEnu.y;
+                    cmd.PosYawDeg = estimate.AttitudeDeg.z;
                     cmd.PosAlt = state.HoverAlt;
                 }
             }
