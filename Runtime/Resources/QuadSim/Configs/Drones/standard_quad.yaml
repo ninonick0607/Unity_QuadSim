@@ -1,32 +1,57 @@
-# Drone Configuration File
-# Version: 1.0
+# Drone Configuration File - AirSim generic quad (F450-class)
+#
+# Origin: this profile started as AirSim's default SimpleFlight quad (its
+# earlier revisions carried AirSim's 0.2286 m / 6396.667 rpm / 0.109919 as
+# comments, and max_thrust 4.179446268 N is AirSim's exact value). It had
+# since been mixed with a 5 in rotor, Sentinel's Gazebo inertia and an
+# unexplained 1.28 kg, which is why its declared max_thrust disagreed with the
+# coefficient-derived value by 45%. It is now AirSim's quad again.
+#
+# Sources (microsoft/AirSim main, AirLib/include/vehicles/multirotor/):
+#   [A1] RotorParams.hpp: C_T 0.109919, C_P 0.040164 (UIUC, at 6396.667 rpm),
+#        propeller_diameter 0.2286, max_rpm 6396.667, max_thrust 4.179446268,
+#        torque = C_P * rho * n^2 * D^5 / (2*pi).
+#   [A2] MultiRotorParams.hpp setupFrameGenericQuad(): mass 1.0, arm 0.2275,
+#        motor_assembly_weight 0.055, body box 0.180 x 0.11 x 0.040, rotor_z
+#        0.025 (NED, below the center of gravity); initializeRotorQuadX()
+#        rotor positions and turning directions; computeInertiaMatrix().
+#   [A3] firmwares/simple_flight/firmware/Params.hpp: SimpleFlight's angle
+#        and angle-rate limits.
+# Not representable: AirSim's quadratic body drag from face areas
+# (linear_drag_coefficient 0.325); QuadSim keeps Unity damping instead.
 schema_version: 1
 prefab_key: standard_quad
 name: "Standard_Quad_V1"
 body_mesh: "/QuadSimPlugin/Assets/Drone_Models/QuadRotor1/Quadrotor1.Quadrotor1"
 
 physical_properties:
-  mass_kg: 1.28
-  com_offset: {x: 0.0, y: 0.05, z: 0.0} # Leave empty if not known
-  inertia: {x: 0.02383614, y: 0.04399995, z: 0.02393907}
-  arm_length: 0.1789 # 0.127  # Missing - FDroneParameters::Arm_Length
+  mass_kg: 1.0
+  com_offset: {x: 0.0, y: 0.0, z: 0.0}
+  # AirSim box (0.78 kg) plus four 0.055 kg motors [A2]:
+  # Ixx, Iyy, Izz = (0.00672119, 0.00804069, 0.01427888) in body FLU.
+  # Unity axes are X-forward, Y-up, Z-left, so yaw (Izz) goes on y.
+  inertia: {x: 0.00672119, y: 0.01427888, z: 0.00804069}
+  arm_length: 0.2275
   linear_drag_coef: 0.1
   angular_drag_coef: 0.05
 
 propulsion:
-  # FRotorModel fields
-  prop_diameter: 0.127 #0.2286
-  max_rpm: 28000 #6396.667 #28000
-  max_thrust: 4.179446268 #8
-  thrust_coef: 0.11 #0.109919
+  prop_diameter: 0.2286
+  max_rpm: 6396.667
+  max_thrust: 4.179446268
+  thrust_coef: 0.109919
+  # AirSim's C_P with AirSim's 2*pi divisor [A1]: torque-to-thrust 0.013294 m.
   torque_coef: 0.040164
-  torque_coefficient_convention: legacy_2_5_pi
-  # FRotorInstance array
+  torque_coefficient_convention: power_coefficient_2_pi
+  # Quad X at 0.2275 / sqrt(2) = 0.160867 m [A2]. AirSim spins FR and BL
+  # counter-clockwise and FL and BR clockwise, so the reactive body-yaw sign
+  # (-1 = CCW, +1 = CW) is -1 on FL/BR and +1 on FR/BL. Rotors sit 0.025 m
+  # below the center of gravity [A2]; a vertical offset adds no torque.
   propellers:
-    - {id: 0, x: 0.211, y: 0.0117, z: 0.211, dir: -1} # FL 
-    - {id: 1, x: 0.211, y: 0.0117, z: -0.211, dir: 1} # FR
-    - {id: 2, x: -0.211, y: 0.0117, z: 0.211, dir: 1} # BL
-    - {id: 3, x: -0.211, y: 0.0117, z: -0.211, dir: -1} # BR
+    - {id: 0, x:  0.160867, y: -0.025, z:  0.160867, dir: -1} # FL
+    - {id: 1, x:  0.160867, y: -0.025, z: -0.160867, dir:  1} # FR
+    - {id: 2, x: -0.160867, y: -0.025, z:  0.160867, dir:  1} # BL
+    - {id: 3, x: -0.160867, y: -0.025, z: -0.160867, dir: -1} # BR
 
 runtime:
   physics_rate_hz: 250
@@ -64,11 +89,15 @@ camera_parameters:
     z: 2.0
     
 limits:
+  # SimpleFlight sets no clear velocity cap [A3]; these are QuadSim choices.
   max_velocity_xy: 8.0
   max_velocity_z: 10.0
-  max_tilt_angle_deg: 45.0
-  max_angular_rate_RP_deg: 45.0
-  max_angular_rate_Yaw_deg: 90.0
-  max_thrust_newtons: 7
+  # SimpleFlight angle_level_pid max_limit = pi/5.5 rad [A3].
+  max_tilt_angle_deg: 32.727
+  # SimpleFlight angle_rate_pid max_limit = 2.5 rad/s on every axis [A3].
+  max_angular_rate_RP_deg: 143.239
+  max_angular_rate_Yaw_deg: 143.239
+  # Total of four rotors at propulsion.max_thrust (schema: total-thrust limit).
+  max_thrust_newtons: 16.72
   max_pid_output: 700.0
   acceptable_distance: 5
