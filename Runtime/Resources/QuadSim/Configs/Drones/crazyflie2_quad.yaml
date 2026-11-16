@@ -1,4 +1,22 @@
-# Drone Configuration File - Crazyflie 2.1
+# Drone Configuration File - Crazyflie 2.1 (brushed)
+#
+# Sources:
+#   [B1] bitcraze/crazyflie-firmware d794c5c,
+#        src/platform/interface/platform_defaults_cf2.h: ARM_LENGTH 0.046,
+#        CF_MASS 0.029, THRUST_MAX 0.12 N, THRUST2TORQUE, VMOTOR2THRUST*.
+#   [B2] same commit, src/modules/src/power_distribution_quadrotor.c
+#        (powerDistributionForceTorque): M1 front-right, M2 back-right,
+#        M3 back-left, M4 front-left; yaw signs -, +, -, + on M1..M4.
+#   [B3] bitcraze.io PWM-to-thrust page, 2015 bench table: 57.9 g total at
+#        23882 rpm; fit thrust_g = 1.0942e-7 rpm^2 - 2.1059e-4 rpm + 0.15417.
+#   [B4] Foerster, System Identification of the Crazyflie 2.0 Nano
+#        Quadrocopter, ETH Zurich BSc thesis, 2015: thrust at full command
+#        0.160 N per motor, torque = 0.005964552 * thrust + 1.563e-5.
+#   [L]  Landry, Planning and Control for Quadrotor Flight through Cluttered
+#        Environments, MIT MSc thesis, 2015: inertia.
+# The Crazyflie 2.1 Brushless is a different vehicle (CF_MASS 0.0393,
+# ARM_LENGTH 0.050, THRUST_MAX 0.2 N, THRUST2TORQUE 0.00569 in
+# platform_defaults_cf21bl.h) and is not modeled by this file.
 schema_version: 1
 prefab_key: crazyflie2_quad
 name: "Crazyflie_Quad_V1"
@@ -7,7 +25,7 @@ body_mesh: "/QuadSimPlugin/Assets/Drone_Models/CrazyFlie/cf2_assembly.cf2_assemb
 physical_properties:
   mass_kg: 0.029
   com_offset: {x: 0.0, y: 0.0, z: 0.0}
-  # Published CF2 Ixx, Iyy, Izz = (1.657e-5, 1.666e-5, 2.926e-5) in body FLU.
+  # Published CF2 Ixx, Iyy, Izz = (1.657e-5, 1.666e-5, 2.926e-5) in body FLU [L].
   # Unity axes are X-forward, Y-up, Z-left, so yaw (Izz) goes on y.
   inertia: {x: 0.00001657, y: 0.00002926, z: 0.00001666}
   arm_length: 0.046
@@ -18,9 +36,13 @@ propulsion:
   prop_diameter: 0.045
   max_rpm: 24000
 
-  # Bitcraze CF2.1+ default:
-  # THRUST_MAX = 0.12 N per motor
-  # THRUST2TORQUE = 0.0069928948992470565 m
+  # Physical maximum per motor. Bitcraze's 2015 fit gives 0.1426 N at
+  # 24000 rpm [B3] and Foerster 0.160 N at full command [B4]; 0.147 N sits
+  # between them. The firmware's THRUST_MAX = 0.12 N [B1] is not the motor's
+  # limit: it is the battery-compensated command ceiling the firmware never
+  # exceeds, chosen so it stays reachable as the battery drains.
+  # Bitcraze CF2.1+ default THRUST2TORQUE = 0.0069928948992470565 m [B1]
+  # (Foerster measured 0.00596 m on the older propellers [B4]).
   max_thrust: 0.147
   thrust_coef: 0.183
   # THRUST2TORQUE is yaw torque per thrust (m). QuadSim reads a dimensionless
@@ -28,7 +50,8 @@ propulsion:
   torque_coef: 0.22335
   torque_coefficient_convention: legacy_2_5_pi
 
-  # Firmware thrust curve, not directly represented by current QuadSim schema:
+  # Firmware thrust curve [B1] (thrust vs motor voltage, battery-compensated
+  # mode), not directly represented by current QuadSim schema:
   # VMOTOR2THRUST0 = -0.02476537915958403
   # VMOTOR2THRUST1 =  0.06523793527519485
   # VMOTOR2THRUST2 = -0.026792504967750107
@@ -37,12 +60,15 @@ propulsion:
 
   # QuadSim canonical order: 0=FL, 1=FR, 2=BL, 3=BR
   # Unity body: +x forward, +y up, +z left
-  # ARM_LENGTH = 0.046 m, so X/Z offsets are arm_length / sqrt(2)
+  # ARM_LENGTH = 0.046 m [B1], so X/Z offsets are arm_length / sqrt(2)
+  # dir is the reactive body-yaw sign (-1 = CCW, +1 = CW). In [B2] raising M1
+  # (front-right) or M3 (back-left) lowers torqueZ (z up), so their reactive
+  # torque is clockwise (+1); M4 (front-left) and M2 (back-right) are -1.
   propellers:
-    - {id: 0, x:  0.032527, y: 0.008, z:  0.032527, dir:  1}  # FL
-    - {id: 1, x:  0.032527, y: 0.008, z: -0.032527, dir: -1}  # FR
-    - {id: 2, x: -0.032527, y: 0.008, z:  0.032527, dir: -1}  # BL
-    - {id: 3, x: -0.032527, y: 0.008, z: -0.032527, dir:  1}  # BR
+    - {id: 0, x:  0.032527, y: 0.008, z:  0.032527, dir: -1}  # FL = M4
+    - {id: 1, x:  0.032527, y: 0.008, z: -0.032527, dir:  1}  # FR = M1
+    - {id: 2, x: -0.032527, y: 0.008, z:  0.032527, dir:  1}  # BL = M3
+    - {id: 3, x: -0.032527, y: 0.008, z: -0.032527, dir: -1}  # BR = M2
 
 runtime:
   physics_rate_hz: 250
@@ -79,14 +105,18 @@ camera_parameters:
     z: 2.0
 
 limits:
+  # Firmware position-controller defaults [B1]: PID_POS_VEL_X/Y/Z_MAX 1.0 m/s
+  # and PID_VEL_ROLL/PITCH_MAX 20 deg (runtime parameters posCtlPid.*).
   max_velocity_xy: 1.0
   max_velocity_z: 1.0
   max_tilt_angle_deg: 20.0
+  # The firmware sets no attitude-rate limit; these are QuadSim choices.
   max_angular_rate_RP_deg: 120.0
   max_angular_rate_Yaw_deg: 90.0
 
-  # 0.12 N per motor * 4 motors
-  max_thrust_newtons: 0.6
+  # Total of four rotors at propulsion.max_thrust (schema: total-thrust limit).
+  # The firmware itself caps at 4 * 0.12 = 0.48 N [B1].
+  max_thrust_newtons: 0.588
 
   max_pid_output: 1.0
   altitude_threshold: 0.1
