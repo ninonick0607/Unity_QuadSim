@@ -30,6 +30,12 @@
   of mixing sensor samples with the interpolated transform. Velocity mode is
   measured and commanded in the level heading frame (equal to body FLU when
   level). `SensorData.HeadingVel` was removed.
+- Each vehicle owns a data store (`QuadPawn.Data`) with one writer per record:
+  physics truth, sensor measurements, state estimate, controller status and
+  actuator state. Sensors sample the published truth; UI, telemetry and RPC
+  read the store. `SensorManager.Latest` and the controller's output getters
+  were removed. Added `QuadSimApi.GetStateEstimate`/`GetTruth` and RPC
+  `get_state`/`get_truth` (protocol 1.2, feature `vehicle_state`).
 
 ## [0.2.3] - 2026-07-21
 
