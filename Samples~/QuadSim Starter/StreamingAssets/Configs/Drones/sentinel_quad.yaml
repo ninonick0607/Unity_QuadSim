@@ -1,3 +1,20 @@
+# Drone Configuration File - ModalAI Sentinel (Holybro S500 V2 frame)
+#
+# Sources:
+#   [M1] docs.modalai.com/sentinel-functional-description: take-off weight
+#        1347 g (1011 g without battery), 480 mm diagonal, Holybro
+#        2216-880kv motors, 10 in / 254 mm propellers.
+#   [M2] ModalAI voxl-px4-params (gitlab.com/voxl-public/voxl-sdk/utilities/
+#        voxl-px4-params), params/v1.14/platforms/Sentinel_V1.params and
+#        params/v1.18/D0006/Sentinel_V1_base.params (identical values):
+#        CA_ROTOR*_PX/PY = +-0.17 m, CA_ROTOR*_KM = +-0.05, MPC_THR_HOVER 0.39,
+#        THR_MDL_FAC 0.80, VOXL_ESC_CONFIG 1 (RPM control),
+#        VOXL_ESC_RPM_MIN/MAX = 1000/7000, and the MPC_*/MC_* limits below.
+#   [G]  Gazebo sentinel_base SDF (origin not public): inertia, motor time
+#        constants. Its 1.347 kg base link already equals the full take-off
+#        weight [M1], so its four rotor links double-count mass.
+# No ModalAI source gives inertia or the yaw torque-to-thrust ratio.
+# PX4's KM 0.05 is PX4's default allocation value, not a measurement.
 schema_version: 1
 prefab_key: sentinel_quad
 name: "ModalAI_Sentinel_RB5_S500"
@@ -5,40 +22,44 @@ name: "ModalAI_Sentinel_RB5_S500"
 body_mesh: "/QuadSimPlugin/Assets/Drone_Models/Sentinel/Sentinel.Sentinel"
 
 physical_properties:
-  # Gazebo sentinel_base: 1.347 kg body + four 0.016076923 kg rotor links.
-  mass_kg: 1.4113076923
+  # Take-off weight with battery [M1].
+  mass_kg: 1.347
 
   # QuadSim is one rigid body centered at the composed Gazebo center of mass.
   com_offset: {x: 0.0, y: 0.0, z: 0.0}
 
-  # Gazebo composed inertia about that center is FLU
+  # Gazebo composed inertia [G] about that center is FLU
   # (0.02383614, 0.02393907, 0.04399995). Unity axes are X-forward,
-  # Y-up, Z-left, hence the Y/Z permutation here.
+  # Y-up, Z-left, hence the Y/Z permutation here. It includes the
+  # double-counted 0.064 kg of rotor links; kept until a measured value exists.
   inertia: {x: 0.02383614, y: 0.04399995, z: 0.02393907}
-  arm_length: 0.24607316
+  # Half the 480 mm motor-to-motor diagonal [M1].
+  arm_length: 0.24
   linear_drag_coef: 0.15
   angular_drag_coef: 0.08
 
 propulsion:
+  # 10 in propellers [M1].
   prop_diameter: 0.254
 
-  # Gazebo maxRotVelocity = 1095 rad/s
-  max_rpm: 10456.48
+  # The ESC runs closed-loop RPM control with a 7000 rpm ceiling [M2].
+  max_rpm: 7000
 
-  # motorConstant * maxRotVelocity^2
-  # 1.075e-5 * 1095^2 = 12.8895 N per motor
-  max_thrust: 12.88952
+  # PX4 hovers at 0.39 of maximum collective thrust [M2]:
+  # 1.347 kg * 9.81 / 4 / 0.39 = 8.4706 N per motor (thrust-to-weight 2.56).
+  # Cross-check: at 7000 rpm this needs Ct = 0.122, typical of a 10x4.5
+  # propeller, and PX4's THR_MDL_FAC 0.80 curve maps 0.39 thrust to 4506 rpm.
+  max_thrust: 8.4706
+  thrust_coef: 0.122053
 
-  # Converted from Gazebo's T = motorConstant * omega^2
-  # into QuadSim's T = Ct * rho * n^2 * D^4 convention.
-  thrust_coef: 0.0832333
-
-  # Previously validated QuadSim yaw-torque coefficient. Keep this empirical
-  # plant value until a controlled PX4 yaw-rate sweep justifies changing it.
-  torque_coef: 0.0303
+  # Yaw torque-to-thrust ratio kept at the previous plant value, 0.011773 m,
+  # until a controlled PX4 yaw-rate sweep justifies changing it. torque_coef
+  # changes only because thrust_coef changed:
+  # torque_coef = 0.011773 * 2.5*pi * thrust_coef / prop_diameter.
+  torque_coef: 0.044432
   torque_coefficient_convention: legacy_2_5_pi
 
-  # Gazebo MulticopterMotorModel asymmetric response constants. Like Gazebo,
+  # Gazebo MulticopterMotorModel asymmetric response constants [G]. Like Gazebo,
   # QuadSim applies them to rotor speed, with thrust proportional to speed^2.
   motor_time_constant_up_s: 0.0125
   motor_time_constant_down_s: 0.025
@@ -47,11 +68,13 @@ propulsion:
   # reactive body-yaw torque sign (-1=CCW, +1=CW), while Gazebo names the
   # rotor's own rotation. PX4 none_iris outputs are also remapped to this order
   # by px4_bridge.MOTOR_MAP, so Gazebo motor directions cannot be copied here.
+  # Positions: 0.24 m / sqrt(2) = 0.1697 m [M1] (PX4 rounds to 0.17 [M2]).
+  # Directions match [M2]: KM > 0 (CCW propeller) on FR and BL.
   propellers:
-    - {id: 0, x:  0.174, y: 0.0, z:  0.174, dir: -1}
-    - {id: 1, x:  0.174, y: 0.0, z: -0.174, dir:  1}
-    - {id: 2, x: -0.174, y: 0.0, z:  0.174, dir:  1}
-    - {id: 3, x: -0.174, y: 0.0, z: -0.174, dir: -1}
+    - {id: 0, x:  0.1697, y: 0.0, z:  0.1697, dir: -1}
+    - {id: 1, x:  0.1697, y: 0.0, z: -0.1697, dir:  1}
+    - {id: 2, x: -0.1697, y: 0.0, z:  0.1697, dir:  1}
+    - {id: 3, x: -0.1697, y: 0.0, z: -0.1697, dir: -1}
 
 runtime:
   physics_rate_hz: 250
@@ -90,14 +113,19 @@ camera_parameters:
     z: 2.0
 
 limits:
-  max_velocity_xy: 3.0
-  max_velocity_z: 1.12
+  # Active "outdoor" block of [M2]: MPC_XY_VEL_MAX 5.0 (ModalAI [M1] also
+  # states 5 m/s); the 3.0 "indoor" values are commented out there.
+  max_velocity_xy: 5.0
+  # PX4 allows 4.0 m/s up and 1.5 m/s down [M2]; QuadSim has one symmetric
+  # z limit, so it takes the tighter descent value.
+  max_velocity_z: 1.5
+  # MPC_TILTMAX_AIR 30, MC_ROLLRATE/PITCHRATE/YAWRATE_MAX 150 [M2].
   max_tilt_angle_deg: 30.0
   max_angular_rate_RP_deg: 150.0
   max_angular_rate_Yaw_deg: 150.0
 
-  # Per-motor maximum, matching propulsion.max_thrust
-  max_thrust_newtons: 12.88952
+  # Total of four rotors at propulsion.max_thrust (schema: total-thrust limit).
+  max_thrust_newtons: 33.88
 
   max_pid_output: 700.0
   acceptable_distance: 5
