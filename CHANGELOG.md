@@ -36,6 +36,16 @@
   read the store. `SensorManager.Latest` and the controller's output getters
   were removed. Added `QuadSimApi.GetStateEstimate`/`GetTruth` and RPC
   `get_state`/`get_truth` (protocol 1.2, feature `vehicle_state`).
+- **Corrected the bundled drone profiles against their sources.** Each
+  profile now lists its sources at the top.
+  - Flightmare follows flightlib: symmetric X, no CoM offset, an 11.22 N
+    per-rotor ceiling, no body drag, and 6 rad/s rate limits.
+  - Sentinel follows ModalAI's docs and PX4 params: 1.347 kg, a 480 mm
+    diagonal, 7000 rpm, hover at 0.39, and 5 m/s / 1.5 m/s velocity limits.
+  - Crazyflie2 rotor yaw directions now match the firmware mixer.
+  - Standard is AirSim's generic quad again.
+  - `limits.max_thrust_newtons` now holds the four-rotor total, as the
+    schema specifies.
 
 ## [0.2.3] - 2026-07-21
 
