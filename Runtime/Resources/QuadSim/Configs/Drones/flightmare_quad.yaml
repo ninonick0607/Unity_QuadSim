@@ -1,36 +1,64 @@
-# Drone Configuration File
-# Version: 1.0
+# Drone Configuration File - Flightmare quadrotor
+#
+# Sources (uzh-rpg/flightmare master d4218ae, flightlib):
+#   [F1] src/dynamics/quadrotor_dynamics.cpp: t_BM_, J_, thrust_max_,
+#        getAllocationMatrix(), motorOmegaToThrust()
+#   [F2] configs/quadrotor_env.yaml: mass 0.73, arm_l 0.17, motor_omega_max
+#        3000, motor_tau 0.0001, thrust_map, kappa 0.016
+#   [F3] src/objects/quadrotor.cpp: run(), runMotors()
+# Not from Flightmare: prop_diameter (QuadSim parameterization only), body
+# mesh, camera, controller gains and limits.
 schema_version: 1
 prefab_key: flightmare_quad
-name: "Standard_Quad_V1"
+name: "Flightmare_Quad"
 body_mesh: "/QuadSimPlugin/Assets/Drone_Models/QuadRotor1/Quadrotor1.Quadrotor1"
 physical_properties:
   mass_kg: 0.73
-  com_offset: {x: 0.0, y: 0.0, z: 0.05}
-  # Flightmare J = diag(Jxx, Jyy, Jzz) = (0.00791, 0.00791, 0.01231) in body FLU.
+  # Flightmare has no center-of-mass offset [F1].
+  com_offset: {x: 0.0, y: 0.0, z: 0.0}
+  # Flightmare J = mass/12 * arm_l^2 * diag(4.5, 4.5, 7) [F1]
+  # = (0.00791, 0.00791, 0.01231) in body FLU.
   # Unity axes are X-forward, Y-up, Z-left, so yaw (Jzz) goes on y.
   inertia: {x: 0.00791, y: 0.01231, z: 0.00791}
-  arm_length: 0.17 
-  linear_drag_coef: 0.1
-  angular_drag_coef: 0.05
+  arm_length: 0.17
+  # Flightmare integrates no aerodynamic drag on the body [F3].
+  linear_drag_coef: 0.0
+  angular_drag_coef: 0.0
 
 propulsion:
-  # FRotorModel fields
-  prop_diameter: 0.127 
-  max_rpm: 28000 
-  max_thrust: 6.98 
-  thrust_coef: 0.101 
-  # Flightmare kappa = 0.016 m (yaw torque = kappa * thrust). QuadSim reads a
+  # Flightmare thrust per motor is a*w^2 + b*w + c (thrust_map [F2]),
+  # clamped to [0, thrust_max_]. thrust_max_ is set once in the constructor
+  # from motor_omega_max = 2000 and updateParams() never recomputes it, so the
+  # yaml's 3000 only clamps w: the effective ceiling is
+  # a*2000^2 + b*2000 + c = 11.2225 N per motor [F1].
+  # QuadSim models T = Tmax * (w/wmax)^2 and cannot represent the b*w + c
+  # terms; it matches Flightmare at zero and at maximum thrust only.
+  # w is read as rad/s (the yaml comment says rpm, but 738 rpm hover would be
+  # implausible), so wmax = 2000 rad/s = 19098.59 rpm. prop_diameter is not
+  # a Flightmare value, so thrust_coef is a fit, not a physical Ct.
+  prop_diameter: 0.127
+  max_rpm: 19098.59
+  max_thrust: 11.2225
+  thrust_coef: 0.347566
+  # Flightmare kappa = 0.016 m (yaw torque = kappa * thrust) [F2]. QuadSim reads a
   # dimensionless coefficient, so torque_coef = kappa * 2.5*pi * thrust_coef / prop_diameter.
-  torque_coef: 0.099937
+  torque_coef: 0.343909
   torque_coefficient_convention: legacy_2_5_pi
-  # FRotorInstance array
-  # FIX THESE
+  # Flightmare motor_tau = 0.0001 s [F2]: no lag at a 250 Hz step, so no
+  # motor time constants are set here.
+
+  # Symmetric X, every rotor at arm_l * sqrt(0.5) = 0.120208 m in x and y [F1].
+  # Flightmare simulates torques from B_allocation_ [F3], whose roll/pitch
+  # rows are t_BM_.topRows<2>() and yaw row kappa*(1,-1,1,-1) [F1]. That puts
+  # Flightmare motors 0,1,2,3 at FL, FR, BR, BL (not the FR, BR, BL, FL that
+  # t_BM_ itself lists), with FL/BR producing counter-clockwise body yaw.
+  # QuadSim order FL, FR, BL, BR = Flightmare motors 0, 1, 3, 2.
+  # dir is the reactive body-yaw sign (-1 = CCW, +1 = CW).
   propellers:
-    - {id: 0, x: 0.11, y: 0.00, z: 0.12, dir: -1}
-    - {id: 1, x: 0.11, y: 0.00, z: -0.14, dir: 1}
-    - {id: 2, x: -0.11, y: 0.00, z: 0.12, dir: 1}
-    - {id: 3, x: -0.11, y: 0.00, z: -0.14, dir: -1}
+    - {id: 0, x:  0.120208, y: 0.0, z:  0.120208, dir: -1}  # FL = Flightmare 0
+    - {id: 1, x:  0.120208, y: 0.0, z: -0.120208, dir:  1}  # FR = Flightmare 1
+    - {id: 2, x: -0.120208, y: 0.0, z:  0.120208, dir:  1}  # BL = Flightmare 3
+    - {id: 3, x: -0.120208, y: 0.0, z: -0.120208, dir: -1}  # BR = Flightmare 2
 
 runtime:
   physics_rate_hz: 250
@@ -67,11 +95,14 @@ camera_parameters:
   Cam_Socket_Offset: {x: 0.0, y: 0.0, z: 20.0}   # NOTE: cm, and UE axis order
     
 limits:
+  # Flightmare sets no velocity or tilt limit; these are QuadSim choices.
   max_velocity_xy: 8.0
   max_velocity_z: 10.0
   max_tilt_angle_deg: 45.0
-  max_angular_rate_RP_deg: 45.0
-  max_angular_rate_Yaw_deg: 90.0
-  max_thrust_newtons: 7
+  # Flightmare omega_max = 6 rad/s on every body axis [F2].
+  max_angular_rate_RP_deg: 343.775
+  max_angular_rate_Yaw_deg: 343.775
+  # Total of four rotors at propulsion.max_thrust (schema: total-thrust limit).
+  max_thrust_newtons: 44.89
   max_pid_output: 700.0
   acceptable_distance: 5
