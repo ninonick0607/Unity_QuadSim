@@ -74,10 +74,15 @@ controller:
     yaw:   {p: 2.5, i: 0.0, d: 0.0}
 
   # Output is angular acceleration (deg/s^2) per rate error (deg/s): p in 1/s, i in 1/s^2, d unitless.
+  # The loop runs every 4 ms physics step on the 250 Hz gyro, so p*dt must stay
+  # well below 1 (above 1 it rings at the step rate, above 2 it diverges).
+  # p is the rate-loop bandwidth: 30 1/s roll/pitch (p*dt = 0.12, 5x the
+  # attitude p of 6) and 10 1/s yaw (4x the attitude yaw p of 2.5).
+  # i and d keep the previous i/p and d/p ratios (0.0571 1/s, 0.000286 s).
   rate_gains:
-    roll:  {p: 142.7, i: 8.156, d: 0.04078}
-    pitch: {p: 142.1, i: 8.121, d: 0.0406}
-    yaw:   {p: 110.5, i: 0.0, d: 0.0}
+    roll:  {p: 30.0, i: 1.71, d: 0.0086}
+    pitch: {p: 30.0, i: 1.71, d: 0.0086}
+    yaw:   {p: 10.0, i: 0.0, d: 0.0}
 
 camera_parameters:
   Cam_Arm_Length: 1.5
