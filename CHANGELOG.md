@@ -46,6 +46,9 @@
   - Standard is AirSim's generic quad again.
   - `limits.max_thrust_newtons` now holds the four-rotor total, as the
     schema specifies.
+- Lowered the rate-loop bandwidth of the Flightmare, Standard and Crazyflie2
+  profiles to 30 1/s roll/pitch. The old gains rang or swung the motors at
+  the 250 Hz step rate.
 
 ## [0.2.3] - 2026-07-21
 
